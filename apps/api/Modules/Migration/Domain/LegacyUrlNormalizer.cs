@@ -30,6 +30,9 @@ public static partial class LegacyUrlNormalizer
         }
 
         var path = DuplicateSlashRegex().Replace(uri.AbsolutePath, "/");
+        if (path is "/" or "/index.php")
+            return path;
+
         var parameters = uri.Query.TrimStart('?')
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(part => part.Split('=', 2))
