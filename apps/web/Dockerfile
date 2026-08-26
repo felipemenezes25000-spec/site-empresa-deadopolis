@@ -11,6 +11,8 @@ RUN npm run build
 
 FROM node:24-alpine AS final
 RUN addgroup -S municipal && adduser -S municipal -G municipal
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build --chown=municipal:municipal /app/.next/standalone ./
