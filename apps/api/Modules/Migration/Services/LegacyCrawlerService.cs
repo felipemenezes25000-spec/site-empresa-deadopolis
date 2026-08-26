@@ -77,16 +77,20 @@ public sealed partial class LegacyCrawlerService
                     }
 
                     if (fetched.StatusCode is >= 200 and <= 299
-                        && fetched.ContentType?.Equals("text/html", StringComparison.OrdinalIgnoreCase) == true
-                        && depth < job.MaxDepth)
+                        && fetched.ContentType?.Equals("text/html", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         var html = DecodeHtml(fetched.Body);
                         foreach (var candidate in ExtractLinks(uri, html))
                         {
                             if (ExternalUrlSafety.IsAllowedUri(candidate, job.AllowedHost))
-                                Enqueue(candidate, depth + 1, job, queued, queue);
+                            {
+                                var candidateDepth = LegacyTraversalPolicy.GetNextDepth(uri, candidate, depth);
+                                Enqueue(candidate, candidateDepth, job, queued, queue);
+                            }
                             else
+                            {
                                 externalLinks++;
+                            }
                         }
                     }
                 }
