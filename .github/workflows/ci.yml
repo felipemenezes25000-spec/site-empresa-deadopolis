@@ -35,6 +35,8 @@ jobs:
         run: dotnet tool restore
       - name: Fresh database migration
         run: dotnet ef database update --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build
+      - name: Repeat database migration to verify idempotency
+        run: dotnet ef database update --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build
       - name: Migration script verification
         run: |
           dotnet ef migrations script --idempotent --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build > /tmp/migrations.sql
