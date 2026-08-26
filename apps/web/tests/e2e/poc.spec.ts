@@ -18,6 +18,23 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(page.getByRole("heading", { name: /Bom dia/i })).toBeVisible();
 
   const suffix = Date.now().toString().slice(-8);
+
+  const cmsSummary = `[DEMONSTRAÇÃO] Conteúdo CMS atualizado pelo E2E ${suffix}.`;
+  const cmsStartsAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  const cmsEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  await page.goto("/admin/conteudo");
+  await page.getByRole("button", { name: "Editar Acesso à Informação" }).click();
+  await expect(page.getByRole("heading", { name: "Editar conteúdo" })).toBeVisible();
+  await page.getByLabel("Resumo").fill(cmsSummary);
+  await page.getByLabel("Início de exibição").fill(cmsStartsAt);
+  await page.getByLabel("Fim de exibição").fill(cmsEndsAt);
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText("Alterações salvas com nova versão.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Histórico de revisões" })).toBeVisible();
+  await expect(page.getByText(/Versão 1/).first()).toBeVisible();
+  await page.goto("/acesso-a-informacao");
+  await expect(page.getByText(cmsSummary, { exact: true })).toBeVisible();
+
   const newsSlug = `poc-noticia-${suffix}`;
   await page.goto("/admin/noticias/nova");
   await page.getByLabel("Título").fill(`[DEMONSTRAÇÃO] Notícia POC ${suffix}`);
