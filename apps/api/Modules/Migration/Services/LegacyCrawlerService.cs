@@ -49,7 +49,8 @@ public sealed partial class LegacyCrawlerService
                 cancellationToken.ThrowIfCancellationRequested();
                 var (uri, depth) = queue.Dequeue();
                 var normalizedPath = LegacyUrlNormalizer.Normalize(uri.ToString());
-                if (!discovered.Add(normalizedPath)) continue;
+                if (!discovered.Add(normalizedPath))
+                    continue;
 
                 var legacy = new LegacyUrl(job.MunicipalityId, job.Id, uri.ToString(), normalizedPath, depth);
                 database.LegacyUrls.Add(legacy);
@@ -143,9 +144,11 @@ public sealed partial class LegacyCrawlerService
         HashSet<string> queued,
         Queue<(Uri Uri, int Depth)> queue)
     {
-        if (depth > job.MaxDepth || !ExternalUrlSafety.IsAllowedUri(uri, job.AllowedHost)) return;
+        if (depth > job.MaxDepth || !ExternalUrlSafety.IsAllowedUri(uri, job.AllowedHost))
+            return;
         var canonical = Canonicalize(uri);
-        if (queued.Add(canonical.AbsoluteUri)) queue.Enqueue((canonical, depth));
+        if (queued.Add(canonical.AbsoluteUri))
+            queue.Enqueue((canonical, depth));
     }
 
     private static Uri Canonicalize(Uri uri)
@@ -176,8 +179,10 @@ public sealed partial class LegacyCrawlerService
                 || raw.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
                 || raw.StartsWith("tel:", StringComparison.OrdinalIgnoreCase)
                 || raw.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase)
-                || raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
-            if (Uri.TryCreate(baseUri, raw, out var candidate)) yield return Canonicalize(candidate);
+                || raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (Uri.TryCreate(baseUri, raw, out var candidate))
+                yield return Canonicalize(candidate);
         }
     }
 
