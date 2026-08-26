@@ -5,7 +5,7 @@ namespace MunicipalPlatform.Api.Tests.Content;
 public sealed class PortalResourceTests
 {
     [Fact]
-    public void Update_requires_expected_version_to_be_checked_by_application_and_increments_version()
+    public void UpdateIncrementsVersionForOptimisticConcurrency()
     {
         var actor = Guid.NewGuid();
         var resource = new PortalResource(Guid.NewGuid(), "PAGE", "sobre", "Sobre", "Resumo", "{}", 1, actor);

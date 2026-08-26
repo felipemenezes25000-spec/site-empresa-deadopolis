@@ -7,7 +7,7 @@ namespace MunicipalPlatform.Api.Tests.Gazette;
 public sealed class GazetteDocumentServiceTests
 {
     [Fact]
-    public void Generate_is_deterministic_for_same_approved_snapshot()
+    public void GenerateIsDeterministicForSameApprovedSnapshot()
     {
         var actor = Guid.NewGuid();
         var edition = GazetteEdition.Create(Guid.NewGuid(), 12, 2026, GazetteEditionType.Ordinary, new DateOnly(2026, 8, 26), actor);

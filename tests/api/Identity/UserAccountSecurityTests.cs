@@ -5,7 +5,7 @@ namespace MunicipalPlatform.Api.Tests.Identity;
 public sealed class UserAccountSecurityTests
 {
     [Fact]
-    public void Five_failed_logins_lock_account_temporarily()
+    public void FiveFailedLoginsLockAccountTemporarily()
     {
         var user = new UserAccount(Guid.NewGuid(), "admin", "Admin", "SUPER_ADMIN", "hash");
         var now = DateTimeOffset.UtcNow;
@@ -15,9 +15,11 @@ public sealed class UserAccountSecurityTests
     }
 
     [Fact]
-    public void Revoking_sessions_changes_security_version()
+    public void RevokingSessionsChangesSecurityVersion()
     {
         var user = new UserAccount(Guid.NewGuid(), "admin", "Admin", "SUPER_ADMIN", "hash");
-        var before = user.SessionVersion; user.RevokeSessions(); Assert.Equal(before + 1, user.SessionVersion);
+        var before = user.SessionVersion;
+        user.RevokeSessions();
+        Assert.Equal(before + 1, user.SessionVersion);
     }
 }

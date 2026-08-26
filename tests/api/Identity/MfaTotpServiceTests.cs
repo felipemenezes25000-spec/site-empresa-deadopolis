@@ -6,7 +6,7 @@ namespace MunicipalPlatform.Api.Tests.Identity;
 public sealed class MfaTotpServiceTests
 {
     [Fact]
-    public void Enrollment_secret_can_be_verified_without_storing_plaintext()
+    public void EnrollmentSecretCanBeVerifiedWithoutStoringPlaintext()
     {
         using var directory = new TemporaryDirectory();
         var provider = DataProtectionProvider.Create(new DirectoryInfo(directory.Path));
@@ -18,8 +18,17 @@ public sealed class MfaTotpServiceTests
 
     private sealed class TemporaryDirectory : IDisposable
     {
-        public TemporaryDirectory() { Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mfa-tests-{Guid.NewGuid():N}"); Directory.CreateDirectory(Path); }
+        public TemporaryDirectory()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mfa-tests-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path);
+        }
+
         public string Path { get; }
-        public void Dispose() { if (Directory.Exists(Path)) Directory.Delete(Path, true); }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Path)) Directory.Delete(Path, true);
+        }
     }
 }
