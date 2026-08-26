@@ -79,7 +79,8 @@ public static class SafeHttpFetcher
         while (true)
         {
             var read = await input.ReadAsync(buffer.AsMemory(), cancellationToken);
-            if (read == 0) break;
+            if (read == 0)
+                break;
             if (output.Length + read > MaxResponseBytes)
                 throw new InvalidOperationException($"Resposta excede o limite de {MaxResponseBytes} bytes.");
             output.Write(buffer, 0, read);
