@@ -29,13 +29,16 @@ jobs:
       - run: dotnet restore MunicipalPlatform.sln
       - run: dotnet build MunicipalPlatform.sln -c Release --no-restore
       - run: dotnet test MunicipalPlatform.sln -c Release --no-build --logger "trx;LogFileName=tests.trx"
-      - run: dotnet tool install --global dotnet-ef --version 8.0.30
+      - name: Restore repository tools
+        run: dotnet tool restore
       - name: Fresh database migration
-        run: dotnet ef database update --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release
+        run: dotnet ef database update --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build
       - name: Migration script verification
         run: |
-          dotnet ef migrations script --idempotent --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release > /tmp/migrations.sql
+          dotnet ef migrations script --idempotent --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build > /tmp/migrations.sql
           test -s /tmp/migrations.sql
+      - name: EF model snapshot verification
+        run: dotnet ef migrations has-pending-model-changes --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build
       - name: Vulnerable NuGet packages
         run: dotnet list MunicipalPlatform.sln package --vulnerable --include-transitive
       - uses: actions/upload-artifact@v4
