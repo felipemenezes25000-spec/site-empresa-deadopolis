@@ -61,6 +61,7 @@ export async function getService(slug: string) { return request<ServiceDetail>(`
 export async function getNews() { return (await request<NewsSummary[]>("/api/v1/news"))!; }
 export async function getArticle(slug: string) { return request<NewsDetail>(`/api/v1/news/${encodeURIComponent(slug)}`, true); }
 export async function getDepartments() { return (await request<Department[]>("/api/v1/departments"))!; }
+export async function getDepartment(slug: string) { return request<Department>(`/api/v1/departments/${encodeURIComponent(slug)}`, true); }
 export async function getTransparency() { return (await request<TransparencyLink[]>("/api/v1/transparency"))!; }
 export async function searchPortal(q: string) { return (await request<{ query: string; results: SearchResult[] }>(`/api/v1/search?q=${encodeURIComponent(q)}`))!; }
 export async function getGazette() { return (await request<GazetteEdition[]>("/api/v1/gazette"))!; }
