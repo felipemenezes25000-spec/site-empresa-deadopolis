@@ -4,9 +4,39 @@ namespace MunicipalPlatform.Api.Modules.Transparency.Domain;
 
 public sealed class DatasetVersion : ITenantEntity
 {
-    private DatasetVersion() { }
-    public DatasetVersion(Guid municipalityId, Guid datasetId, int version, string fileName, string objectKey, string mimeType, long sizeBytes, string sha256, string format, string metadataJson, DateTimeOffset publishedAt)
-    { if(version<1)throw new ArgumentOutOfRangeException(nameof(version)); if(sizeBytes<0)throw new ArgumentOutOfRangeException(nameof(sizeBytes)); Id=Guid.NewGuid();MunicipalityId=municipalityId;DatasetId=datasetId;Version=version;FileName=fileName.Trim();ObjectKey=objectKey.Trim();MimeType=mimeType.Trim();SizeBytes=sizeBytes;Sha256=sha256.Trim().ToLowerInvariant();Format=format.Trim().ToUpperInvariant();MetadataJson=metadataJson;PublishedAt=publishedAt; }
+    private DatasetVersion()
+    {
+    }
+
+    public DatasetVersion(
+        Guid municipalityId,
+        Guid datasetId,
+        int version,
+        string fileName,
+        string objectKey,
+        string mimeType,
+        long sizeBytes,
+        string sha256,
+        string format,
+        string metadataJson,
+        DateTimeOffset publishedAt)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(sizeBytes);
+        Id = Guid.NewGuid();
+        MunicipalityId = municipalityId;
+        DatasetId = datasetId;
+        Version = version;
+        FileName = fileName.Trim();
+        ObjectKey = objectKey.Trim();
+        MimeType = mimeType.Trim();
+        SizeBytes = sizeBytes;
+        Sha256 = sha256.Trim().ToLowerInvariant();
+        Format = format.Trim().ToUpperInvariant();
+        MetadataJson = metadataJson;
+        PublishedAt = publishedAt;
+    }
+
     public Guid Id { get; private set; }
     public Guid MunicipalityId { get; private set; }
     public Guid DatasetId { get; private set; }
