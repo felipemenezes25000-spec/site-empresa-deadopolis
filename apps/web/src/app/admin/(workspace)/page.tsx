@@ -1,0 +1,1 @@
+import { DashboardClient } from "@/components/admin/dashboard-client";export default function Page(){return <><div className="admin-heading"><div><h1>Bom dia, equipe municipal.</h1><p>O que precisa da sua atenção agora.</p></div></div><DashboardClient/></>}

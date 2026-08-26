@@ -1,0 +1,1 @@
+import { ResourceManager } from "@/components/admin/resource-manager";export default function Page(){return <><div className="admin-heading"><div><h1>Páginas, banners e blocos</h1><p>CMS versionado para páginas institucionais, agenda, datasets, legislação, locais, menus, alertas e composição da home.</p></div></div><ResourceManager/></>}

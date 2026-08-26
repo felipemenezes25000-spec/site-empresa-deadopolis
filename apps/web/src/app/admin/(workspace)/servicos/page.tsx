@@ -1,0 +1,1 @@
+import { ServiceManager } from "@/components/admin/service-manager";export default function Page(){return <><div className="admin-heading"><div><h1>Carta de Serviços</h1><p>Crie e atualize serviços estruturados sem editar HTML.</p></div></div><ServiceManager/></>}

@@ -1,0 +1,1 @@
+import { NewsList } from "@/components/admin/news-list";export default function Page(){return <><div className="admin-heading"><div><h1>Comunicação</h1><p>Publique notícias, acompanhe workflow e mantenha o portal sem depender de deploy.</p></div></div><NewsList/></>}

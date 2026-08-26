@@ -1,0 +1,1 @@
+import { NewsEditor } from "@/components/admin/news-editor";export default function Page(){return <><div className="admin-heading"><div><h1>Nova notícia</h1><p>Editor com rascunho, revisão, aprovação, agendamento e publicação.</p></div></div><NewsEditor/></>}

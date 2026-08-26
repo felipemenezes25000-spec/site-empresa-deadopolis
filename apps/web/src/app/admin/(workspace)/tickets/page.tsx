@@ -1,0 +1,1 @@
+import { TicketManager } from "@/components/admin/ticket-manager";export default function Page(){return <><div className="admin-heading"><div><h1>Tickets e SLA</h1><p>Atendimento rastreável, prazos e respostas separadas de comentários internos.</p></div></div><TicketManager/></>}

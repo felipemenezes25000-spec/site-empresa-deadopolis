@@ -1,0 +1,1 @@
+import { GazetteComposer } from "@/components/admin/gazette-composer";export default function Page(){return <><div className="admin-heading"><div><h1>Diário Oficial</h1><p>Composição → revisão → aprovação → PDF → assinatura → publicação → verificação.</p></div></div><GazetteComposer/></>}

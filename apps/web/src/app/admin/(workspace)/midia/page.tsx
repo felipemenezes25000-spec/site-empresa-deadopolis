@@ -1,0 +1,1 @@
+import { MediaManager } from "@/components/admin/media-manager";export default function Page(){return <><div className="admin-heading"><div><h1>Biblioteca de mídia</h1><p>Upload seguro, metadados de acessibilidade, checksum e quarentena.</p></div></div><MediaManager/></>}
