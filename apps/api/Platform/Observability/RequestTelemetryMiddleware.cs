@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace MunicipalPlatform.Api.Platform.Observability;
 
-public sealed class RequestTelemetryMiddleware(RequestDelegate next, ILogger<RequestTelemetryMiddleware> logger)
+public sealed partial class RequestTelemetryMiddleware(RequestDelegate next, ILogger<RequestTelemetryMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -29,7 +29,10 @@ public sealed class RequestTelemetryMiddleware(RequestDelegate next, ILogger<Req
             PlatformTelemetry.HttpDurationMs.Record(elapsedMs, tags);
             if (status >= 500) PlatformTelemetry.HttpFailures.Add(1, tags);
             activity?.SetTag("http.response.status_code", status);
-            logger.LogInformation("HTTP {Method} {Path} -> {StatusCode} in {ElapsedMs:F1} ms correlation={CorrelationId}", context.Request.Method, context.Request.Path, status, elapsedMs, context.TraceIdentifier);
+            LogRequestCompleted(logger, context.Request.Method, context.Request.Path.Value ?? "/", status, elapsedMs, context.TraceIdentifier);
         }
     }
+
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "HTTP {Method} {Path} -> {StatusCode} in {ElapsedMs:F1} ms correlation={CorrelationId}")]
+    private static partial void LogRequestCompleted(ILogger logger, string method, string path, int statusCode, double elapsedMs, string correlationId);
 }

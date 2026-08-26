@@ -5,6 +5,7 @@ on:
     paths:
       - 'apps/api/Modules/**/Domain/**'
       - 'apps/api/Infrastructure/Persistence/ApplicationDbContext.cs'
+      - '.github/workflows/schema-preview.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,8 +21,10 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet restore MunicipalPlatform.sln
       - run: dotnet tool restore
+      - name: Build before schema generation
+        run: dotnet build MunicipalPlatform.sln -c Release --no-restore
       - name: Generate EF migration preview
-        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations
+        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations --no-build
       - uses: actions/upload-artifact@v4
         with:
           name: municipal-depth-migration
