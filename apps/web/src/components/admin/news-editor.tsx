@@ -1,7 +1,81 @@
 "use client";
-import { useEffect,useMemo,useState,type FormEvent,type ReactNode } from "react";
-type Draft={title:string;slug:string;summary:string;body:string;coverImageUrl:string;coverImageAlt:string;isFeatured:boolean};type Article={id:string;status:string;version:number;verificationCode?:string};const empty:Draft={title:"",slug:"",summary:"",body:"",coverImageUrl:"",coverImageAlt:"",isFeatured:false};
-export function NewsEditor(){const[draft,setDraft]=useState<Draft>(empty);const[article,setArticle]=useState<Article|null>(null);const[message,setMessage]=useState("");const[busy,setBusy]=useState(false);const storageKey="deodapolis.news.draft";useEffect(()=>{const saved=localStorage.getItem(storageKey);if(saved)try{setDraft(JSON.parse(saved) as Draft)}catch{}},[]);useEffect(()=>{localStorage.setItem(storageKey,JSON.stringify(draft))},[draft]);const canCreate=useMemo(()=>Boolean(draft.title&&draft.slug&&draft.summary&&draft.body),[draft]);async function create(event:FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);const response=await fetch("/api/v1/admin/news",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...draft,coverImageUrl:draft.coverImageUrl||null,coverImageAlt:draft.coverImageAlt||null})});if(response.ok){const created=await response.json() as Article;setArticle(created);setMessage("Rascunho salvo no servidor. Agora você pode enviar para revisão.");localStorage.removeItem(storageKey)}else setMessage(await errorText(response));setBusy(false)}async function action(name:string,body?:unknown){if(!article)return;setBusy(true);const response=await fetch(`/api/v1/admin/news/${article.id}/${name}`,{method:"POST",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});if(response.ok){setArticle(await response.json() as Article);setMessage(`Ação “${name}” concluída.`)}else setMessage(await errorText(response));setBusy(false)}return <div className="editor-grid"><form className="admin-panel editor-fields" onSubmit={create}><h2>Nova notícia</h2><Field label="Título"><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} maxLength={180} required/></Field><Field label="Slug"><input value={draft.slug} onChange={e=>setDraft({...draft,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"-")})} maxLength={180} required/></Field><Field label="Linha fina"><textarea value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})} maxLength={320} rows={3} required/></Field><Field label="Conteúdo"><textarea value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})} rows={12} required/></Field><Field label="URL da imagem de capa (opcional)"><input value={draft.coverImageUrl} onChange={e=>setDraft({...draft,coverImageUrl:e.target.value})}/></Field><Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={e=>setDraft({...draft,coverImageAlt:e.target.value})}/></Field><label><input type="checkbox" checked={draft.isFeatured} onChange={e=>setDraft({...draft,isFeatured:e.target.checked})}/> Destaque na home</label><small>Recuperação local do rascunho fica ativa enquanto a notícia ainda não foi criada no servidor.</small><button className="action-button" disabled={!canCreate||busy||Boolean(article)}>{busy?"Salvando…":"Criar rascunho"}</button></form><aside className="admin-panel"><h2>Workflow editorial</h2>{article?<><p><span className="status-pill">{article.status}</span> · versão {article.version}</p><div className="button-row"><button type="button" className="action-button secondary" disabled={busy||article.status!=="DRAFT"} onClick={()=>action("submit")}>Enviar para revisão</button><button type="button" className="action-button secondary" disabled={busy||article.status!=="IN_REVIEW"} onClick={()=>action("approve")}>Aprovar</button><button type="button" className="action-button" disabled={busy||!(["APPROVED","SCHEDULED"].includes(article.status))} onClick={()=>action("publish")}>Publicar agora</button></div><Schedule onSchedule={date=>action("schedule",{publishAt:date})} disabled={busy||article.status!=="APPROVED"}/></>:<p>Crie o rascunho para liberar as etapas de revisão e publicação.</p>}{message&&<div className="form-message" role="status">{message}</div>}<h3>Checklist de qualidade</h3><ul><li>Título objetivo</li><li>Linha fina preenchida</li><li>Imagem com ALT quando houver</li><li>Links revisados</li><li>Responsável e categoria definidos no processo editorial</li></ul></aside></div>}
-function Field({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
-function Schedule({onSchedule,disabled}:{onSchedule:(value:string)=>void;disabled:boolean}){const[value,setValue]=useState("");return <div className="field" style={{marginTop:18}}><label htmlFor="schedule">Agendar publicação</label><input id="schedule" type="datetime-local" value={value} onChange={e=>setValue(e.target.value)}/><button type="button" className="action-button secondary" disabled={disabled||!value} onClick={()=>onSchedule(new Date(value).toISOString())}>Agendar</button></div>}
-async function errorText(response:Response){const body=await response.json().catch(()=>null) as {title?:string;detail?:string;errors?:Record<string,string[]>}|null;const validation=Object.values(body?.errors??{}).flat().join(" ");return body?.detail??body?.title??(validation||`Erro ${response.status}`)}
+
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+
+type Draft = { title: string; slug: string; summary: string; body: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
+type Article = { id: string; status: string; version: number; verificationCode?: string };
+const EMPTY_DRAFT: Draft = { title: "", slug: "", summary: "", body: "", coverImageUrl: "", coverImageAlt: "", isFeatured: false };
+const STORAGE_KEY = "deodapolis.news.draft";
+
+export function NewsEditor() {
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [article, setArticle] = useState<Article | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const timer = window.setTimeout(() => {
+      try { setDraft(JSON.parse(saved) as Draft); }
+      catch { localStorage.removeItem(STORAGE_KEY); }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); }, [draft]);
+  const canCreate = useMemo(() => Boolean(draft.title && draft.slug && draft.summary && draft.body), [draft]);
+
+  async function create(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    const response = await fetch("/api/v1/admin/news", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, coverImageUrl: draft.coverImageUrl || null, coverImageAlt: draft.coverImageAlt || null }) });
+    if (response.ok) {
+      const created = await response.json() as Article;
+      setArticle(created);
+      setMessage("Rascunho salvo no servidor. Agora você pode enviar para revisão.");
+      localStorage.removeItem(STORAGE_KEY);
+    } else setMessage(await errorText(response));
+    setBusy(false);
+  }
+
+  async function action(name: string, body?: unknown) {
+    if (!article) return;
+    setBusy(true);
+    const response = await fetch(`/api/v1/admin/news/${article.id}/${name}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    if (response.ok) {
+      setArticle(await response.json() as Article);
+      setMessage(`Ação “${name}” concluída.`);
+    } else setMessage(await errorText(response));
+    setBusy(false);
+  }
+
+  return <div className="editor-grid">
+    <form className="admin-panel editor-fields" onSubmit={create}>
+      <h2>Nova notícia</h2>
+      <Field label="Título"><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={180} required /></Field>
+      <Field label="Slug"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} maxLength={180} required /></Field>
+      <Field label="Linha fina"><textarea value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} maxLength={320} rows={3} required /></Field>
+      <Field label="Conteúdo"><textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} rows={12} required /></Field>
+      <Field label="URL da imagem de capa (opcional)"><input value={draft.coverImageUrl} onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })} /></Field>
+      <Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={(event) => setDraft({ ...draft, coverImageAlt: event.target.value })} /></Field>
+      <label><input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft({ ...draft, isFeatured: event.target.checked })} /> Destaque na home</label>
+      <small>Recuperação local do rascunho fica ativa enquanto a notícia ainda não foi criada no servidor.</small>
+      <button className="action-button" disabled={!canCreate || busy || Boolean(article)}>{busy ? "Salvando…" : "Criar rascunho"}</button>
+    </form>
+    <aside className="admin-panel">
+      <h2>Workflow editorial</h2>
+      {article ? <><p><span className="status-pill">{article.status}</span> · versão {article.version}</p><div className="button-row">
+        <button type="button" className="action-button secondary" disabled={busy || article.status !== "DRAFT"} onClick={() => action("submit")}>Enviar para revisão</button>
+        <button type="button" className="action-button secondary" disabled={busy || article.status !== "IN_REVIEW"} onClick={() => action("approve")}>Aprovar</button>
+        <button type="button" className="action-button" disabled={busy || !["APPROVED", "SCHEDULED"].includes(article.status)} onClick={() => action("publish")}>Publicar agora</button>
+      </div><Schedule onSchedule={(date) => action("schedule", { publishAt: date })} disabled={busy || article.status !== "APPROVED"} /></> : <p>Crie o rascunho para liberar as etapas de revisão e publicação.</p>}
+      {message && <div className="form-message" role="status">{message}</div>}
+      <h3>Checklist de qualidade</h3><ul><li>Título objetivo</li><li>Linha fina preenchida</li><li>Imagem com ALT quando houver</li><li>Links revisados</li><li>Responsável e categoria definidos no processo editorial</li></ul>
+    </aside>
+  </div>;
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="field"><span>{label}</span>{children}</label>; }
+function Schedule({ onSchedule, disabled }: { onSchedule: (value: string) => void; disabled: boolean }) { const [value, setValue] = useState(""); return <div className="field" style={{ marginTop: 18 }}><label htmlFor="schedule">Agendar publicação</label><input id="schedule" type="datetime-local" value={value} onChange={(event) => setValue(event.target.value)} /><button type="button" className="action-button secondary" disabled={disabled || !value} onClick={() => onSchedule(new Date(value).toISOString())}>Agendar</button></div>; }
+async function errorText(response: Response) { const body = await response.json().catch(() => null) as { title?: string; detail?: string; errors?: Record<string, string[]> } | null; const validation = Object.values(body?.errors ?? {}).flat().join(" "); return body?.detail ?? body?.title ?? (validation || `Erro ${response.status}`); }
