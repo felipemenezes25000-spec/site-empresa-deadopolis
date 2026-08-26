@@ -2,20 +2,24 @@ name: ef-regenerate
 on:
   pull_request:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: ef-regenerate-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   generate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: 8.0.x }
       - run: dotnet restore MunicipalPlatform.sln
       - run: dotnet tool restore
-      - name: Remove handwritten post-initial migrations in workspace only
+      - name: Remove handwritten post-initial migrations
         run: |
           rm apps/api/Infrastructure/Persistence/Migrations/20260826032000_GazetteComposition.cs
           rm apps/api/Infrastructure/Persistence/Migrations/20260826033500_CmsResources.cs
@@ -23,9 +27,12 @@ jobs:
           rm apps/api/Infrastructure/Persistence/Migrations/20260826040500_IdentityHardening.cs
       - name: Generate consolidated EF migration and synchronized snapshot
         run: dotnet ef migrations add PlatformExpansion --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --output-dir Infrastructure/Persistence/Migrations
-      - name: Package generated evidence
-        run: tar -czf ef-generated-migrations.tar.gz apps/api/Infrastructure/Persistence/Migrations
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ef-generated-migrations
-          path: ef-generated-migrations.tar.gz
+      - name: Remove this temporary workflow before committing
+        run: rm .github/workflows/ef-regenerate.yml
+      - name: Commit generated EF artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(db): synchronize EF migrations and model snapshot"
+          git push origin HEAD:${{ github.head_ref }}
