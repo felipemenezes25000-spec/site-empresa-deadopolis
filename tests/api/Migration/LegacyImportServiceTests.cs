@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Migration.Domain;
@@ -36,8 +37,11 @@ public sealed class LegacyImportServiceTests
             Assert.Equal("PAGE", result.Resource.Kind);
             Assert.Equal("pagina-historica", result.Resource.Slug);
             Assert.Equal("Página histórica", result.Resource.Title);
-            Assert.Contains("Serviço antigo", result.Resource.PayloadJson, StringComparison.Ordinal);
-            Assert.DoesNotContain("alert(1)", result.Resource.PayloadJson, StringComparison.Ordinal);
+            using var payload = JsonDocument.Parse(result.Resource.PayloadJson);
+            var content = payload.RootElement.GetProperty("conteudo").GetString();
+            Assert.NotNull(content);
+            Assert.Contains("Serviço antigo", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("alert(1)", content, StringComparison.Ordinal);
             Assert.Equal(hash, result.ImportedContent.SourceSha256);
             Assert.NotNull(result.Redirect);
             Assert.Equal("/servicos", result.Redirect!.DestinationPath);
