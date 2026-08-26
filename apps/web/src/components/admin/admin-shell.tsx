@@ -13,6 +13,7 @@ const links = [
   ["/admin/midia", "Mídia"],
   ["/admin/dados-abertos", "Dados Abertos"],
   ["/admin/diario", "Diário Oficial"],
+  ["/admin/migracao", "Migração"],
   ["/admin/tickets", "Tickets e SLA"],
   ["/admin/integracoes", "Integrações"],
   ["/admin/compliance", "Compliance"],

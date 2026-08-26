@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("POC principal: cidadão, CMS, Dados Abertos, Diário e Ouvidoria", async ({ page }) => {
+test("POC principal: cidadão, CMS, Dados Abertos, Migração, Diário e Ouvidoria", async ({ page }) => {
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -57,6 +57,26 @@ test("POC principal: cidadão, CMS, Dados Abertos, Diário e Ouvidoria", async (
   await page.goto(`/dados-abertos/${datasetSlug}`);
   await expect(page.getByRole("heading", { name: new RegExp(`Dataset POC ${suffix}`) })).toBeVisible();
   await expect(page.getByText(/Versão 1/)).toBeVisible();
+
+  await page.goto("/admin/migracao");
+  await page.getByLabel("URL inicial").fill("http://127.0.0.1/");
+  await page.getByLabel("Profundidade máxima").fill("0");
+  await page.getByLabel("Máximo de páginas").fill("1");
+  await page.getByRole("button", { name: "Criar job de dry-run" }).click();
+  await expect(page.getByText(/Job criado para o host autorizado 127\.0\.0\.1/)).toBeVisible();
+  await page.getByRole("button", { name: "Executar dry-run seguro" }).click();
+  await expect(page.getByText(/Dry-run concluído: 1 URL\(s\) descoberta\(s\), 1 falha\(s\)/)).toBeVisible();
+  await expect(page.getByText(/endereço privado, local ou reservado|proteção SSRF/i)).toBeVisible();
+
+  const legacyPath = `/portal-antigo-${suffix}`;
+  const destinationPath = `/dados-abertos/${datasetSlug}`;
+  await page.getByLabel("URL ou caminho legado").fill(legacyPath);
+  await page.getByLabel("Destino interno").fill(destinationPath);
+  await page.getByRole("button", { name: "Adicionar redirect" }).click();
+  await expect(page.getByText("Redirect legado registrado e auditado.")).toBeVisible();
+  const resolved = await page.request.get(`/api/v1/legacy/resolve?url=${encodeURIComponent(legacyPath)}`);
+  expect(resolved.ok()).toBeTruthy();
+  await expect(resolved.json()).resolves.toMatchObject({ source: legacyPath, destination: destinationPath, statusCode: 301 });
 
   await page.goto("/admin/diario");
   const edition = Number(suffix.slice(-5));
