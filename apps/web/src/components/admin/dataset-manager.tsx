@@ -65,10 +65,7 @@ export function DatasetManager() {
 
   const selectedId = selected?.id;
   useEffect(() => {
-    if (!selectedId) {
-      setVersions([]);
-      return;
-    }
+    if (!selectedId) return;
     const controller = new AbortController();
     void fetch(`/api/v1/admin/datasets/${selectedId}/versions`, { signal: controller.signal })
       .then(async (response) => {
