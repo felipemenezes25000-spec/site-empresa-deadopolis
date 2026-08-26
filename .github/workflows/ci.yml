@@ -82,7 +82,7 @@ jobs:
       - run: docker build -f apps/api/Dockerfile -t municipal-api:ci .
       - run: docker build -f apps/web/Dockerfile -t municipal-web:ci .
       - name: Scan API image for fixable critical vulnerabilities
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: municipal-api:ci
           format: table
@@ -90,7 +90,7 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL
       - name: Scan web image for fixable critical vulnerabilities
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: municipal-web:ci
           format: table
