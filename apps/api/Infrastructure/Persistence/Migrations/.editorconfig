@@ -1,0 +1,5 @@
+# Entity Framework migrations are generated code. CA1861 flags array literals emitted by
+# EF's migration generator; changing generated migration semantics for this micro-optimization
+# makes migrations harder to reproduce and provides no runtime benefit in one-shot migration code.
+[*.cs]
+dotnet_diagnostic.CA1861.severity = none
