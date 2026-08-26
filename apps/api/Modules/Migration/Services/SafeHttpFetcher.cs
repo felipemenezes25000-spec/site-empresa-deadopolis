@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using MunicipalPlatform.Api.Modules.Media.Services;
 using MunicipalPlatform.Api.Modules.Migration.Security;
 
 namespace MunicipalPlatform.Api.Modules.Migration.Services;
@@ -12,7 +13,7 @@ public sealed record LegacyFetchResult(
 
 public static class SafeHttpFetcher
 {
-    public const long MaxResponseBytes = 10L * 1024 * 1024;
+    public const long MaxResponseBytes = DocumentFileInspector.MaxBytes;
 
     public static HttpClient CreateClient(string allowedHost)
     {
@@ -22,6 +23,8 @@ public static class SafeHttpFetcher
             AllowAutoRedirect = false,
             AutomaticDecompression = DecompressionMethods.None,
             ConnectTimeout = TimeSpan.FromSeconds(5),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
             MaxResponseHeadersLength = 64,
             ConnectCallback = async (context, cancellationToken) =>
             {

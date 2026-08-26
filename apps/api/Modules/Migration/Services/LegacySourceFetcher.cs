@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace MunicipalPlatform.Api.Modules.Migration.Services;
 
 public interface ILegacySourceFetcher
@@ -5,11 +7,21 @@ public interface ILegacySourceFetcher
     Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken);
 }
 
-public sealed class SafeLegacySourceFetcher : ILegacySourceFetcher
+public sealed class SafeLegacySourceFetcher : ILegacySourceFetcher, IDisposable
 {
-    public async Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken)
+    private readonly ConcurrentDictionary<string, HttpClient> _clients = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken)
     {
-        using var client = SafeHttpFetcher.CreateClient(allowedHost);
-        return await SafeHttpFetcher.FetchAsync(client, uri, allowedHost, cancellationToken);
+        var normalizedHost = allowedHost.Trim().ToLowerInvariant();
+        var client = _clients.GetOrAdd(normalizedHost, SafeHttpFetcher.CreateClient);
+        return SafeHttpFetcher.FetchAsync(client, uri, normalizedHost, cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        foreach (var client in _clients.Values)
+            client.Dispose();
+        _clients.Clear();
     }
 }

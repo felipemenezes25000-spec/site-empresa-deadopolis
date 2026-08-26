@@ -13,6 +13,7 @@ namespace MunicipalPlatform.Api.Modules.Migration.Services;
 
 public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
 {
+    private const int ProgressBatchSize = 50;
     public static JsonSerializerOptions SummaryJsonOptions { get; } = new(JsonSerializerDefaults.Web);
 
     public async Task<LegacyCrawlSummary> RunDryRunAsync(
@@ -51,6 +52,7 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
         Enqueue(root, 0, job, queued, queue);
         var failed = 0;
         var externalLinks = 0;
+        var externalUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var redirects = 0;
         var htmlCount = 0;
         var pdfCount = 0;
@@ -86,7 +88,12 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                         fetched.ContentType,
                         fetched.StatusCode,
                         fetched.RedirectLocation is not null);
-                    legacy.Classify(classification, fetched.ContentType, fetched.Body.LongLength, hash);
+                    var decisionReason = classification == "IGNORE_WITH_REASON"
+                        ? fetched.StatusCode >= 400
+                            ? $"HTTP {fetched.StatusCode}"
+                            : $"MIME não suportado: {fetched.ContentType ?? "ausente"}"
+                        : null;
+                    legacy.Classify(classification, fetched.ContentType, fetched.Body.LongLength, hash, decisionReason);
                     Increment(statusCodes, fetched.StatusCode.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     if (!string.IsNullOrWhiteSpace(fetched.ContentType))
                         Increment(mimeTypes, fetched.ContentType.ToLowerInvariant());
@@ -109,7 +116,10 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                         if (ExternalUrlSafety.IsAllowedUri(fetched.RedirectLocation, job.AllowedHost))
                             Enqueue(fetched.RedirectLocation, depth, job, queued, queue);
                         else
+                        {
                             externalLinks++;
+                            externalUrls.Add(fetched.RedirectLocation.AbsoluteUri);
+                        }
                     }
 
                     if (fetched.StatusCode is >= 200 and <= 299
@@ -126,6 +136,7 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                             else
                             {
                                 externalLinks++;
+                                externalUrls.Add(candidate.AbsoluteUri);
                             }
                         }
                     }
@@ -141,7 +152,8 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                 }
 
                 job.Transition(MigrationJobState.Discovering, existing.Count, 0, failed);
-                await database.SaveChangesAsync(cancellationToken);
+                if (visited.Count % ProgressBatchSize == 0)
+                    await database.SaveChangesAsync(cancellationToken);
             }
 
             var classifications = existing.Values
@@ -165,6 +177,7 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                 existing.Count,
                 failed,
                 externalLinks,
+                externalUrls.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
                 redirects,
                 htmlCount,
                 pdfCount + officeCount,
@@ -229,11 +242,19 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
 
     private static string GetPathFamily(string normalizedPath)
     {
-        var path = normalizedPath.Split('?', 2)[0].Trim('/');
-        if (path.Length == 0)
+        var path = normalizedPath.Split('?', 2)[0];
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
             return "/";
-        var separator = path.IndexOf('/');
-        return separator < 0 ? path : path[..separator];
+        if (segments[0].Equals("e-sic", StringComparison.OrdinalIgnoreCase))
+        {
+            if (segments.Length >= 3 && segments[1].Equals("uploads", StringComparison.OrdinalIgnoreCase))
+                return $"/e-sic/uploads/{segments[2]}";
+            return segments.Length >= 2 ? $"/e-sic/{segments[1]}" : "/e-sic";
+        }
+        if (segments[0].Equals("licitacoes", StringComparison.OrdinalIgnoreCase))
+            return segments.Length >= 2 ? $"/licitacoes/{segments[1]}" : "/licitacoes";
+        return $"/{segments[0]}";
     }
 
     private static void Enqueue(
@@ -294,6 +315,7 @@ public sealed record LegacyCrawlSummary(
     int Discovered,
     int Failed,
     int ExternalLinks,
+    string[] ExternalUrls,
     int Redirects,
     int Html,
     int Documents,
@@ -310,5 +332,5 @@ public sealed record LegacyCrawlSummary(
     Dictionary<string, int> Families,
     Dictionary<string, int> Depths)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 4;
 }

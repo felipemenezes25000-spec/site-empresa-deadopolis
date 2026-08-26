@@ -42,6 +42,7 @@ public sealed class LegacyCrawlerServiceTests
         Assert.Equal(6, summary.Discovered);
         Assert.Equal(0, summary.Failed);
         Assert.Equal(1, summary.ExternalLinks);
+        Assert.Contains("https://external.example.test/resource", summary.ExternalUrls);
         Assert.Equal(1, summary.Html);
         Assert.Equal(2, summary.Pdf);
         Assert.Equal(1, summary.Office);
@@ -54,6 +55,8 @@ public sealed class LegacyCrawlerServiceTests
         Assert.Equal(1, summary.StatusCodes["404"]);
         Assert.Equal(5, summary.Classifications["MIGRATE"]);
         Assert.Equal(1, summary.Classifications["IGNORE_WITH_REASON"]);
+        var ignored = await database.LegacyUrls.SingleAsync(item => item.NormalizedPath == "/missing");
+        Assert.Equal("HTTP 404", ignored.FailureReason);
 
         var evidence = await database.MigrationEvidences.SingleAsync();
         var persisted = JsonSerializer.Deserialize<LegacyCrawlSummary>(evidence.PayloadJson, LegacyCrawlerService.SummaryJsonOptions);
@@ -111,6 +114,33 @@ public sealed class LegacyCrawlerServiceTests
         Assert.Equal(2, fetcher.RequestCount);
         Assert.Single(await database.LegacyUrls.ToListAsync());
         Assert.Equal(2, await database.MigrationEvidences.CountAsync());
+    }
+
+    [Fact]
+    public async Task EvidenceSeparatesKnownSubsystemAndUploadFamilies()
+    {
+        var fetcher = new RecordingFetcher(new Dictionary<string, LegacyFetchResult>
+        {
+            ["/"] = Html("""
+                <a href="/e-sic/avisos-licitacoes.php?tipo=4">Avisos</a>
+                <a href="/e-sic/uploads/avisos/documento.pdf">Documento</a>
+                <a href="/licitacoes/contratos.php?tipo=3">Contratos</a>
+                """),
+            ["/e-sic/avisos-licitacoes.php"] = Html("<p>Avisos</p>"),
+            ["/e-sic/uploads/avisos/documento.pdf"] = Binary("application/pdf", "documento"),
+            ["/licitacoes/contratos.php"] = Html("<p>Contratos</p>")
+        });
+        await using var database = CreateDatabase();
+        var job = new MigrationJob(MunicipalityId, "https://legacy.example.test/", "legacy.example.test", 3, 20);
+        database.MigrationJobs.Add(job);
+        await database.SaveChangesAsync();
+
+        var summary = await new LegacyCrawlerService(fetcher)
+            .RunDryRunAsync(job, database, CancellationToken.None);
+
+        Assert.Equal(1, summary.Families["/e-sic/avisos-licitacoes.php"]);
+        Assert.Equal(1, summary.Families["/e-sic/uploads/avisos"]);
+        Assert.Equal(1, summary.Families["/licitacoes/contratos.php"]);
     }
 
     private static ApplicationDbContext CreateDatabase()

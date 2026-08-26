@@ -1,4 +1,5 @@
 using System.Net;
+using MunicipalPlatform.Api.Modules.Media.Services;
 using MunicipalPlatform.Api.Modules.Migration.Security;
 using MunicipalPlatform.Api.Modules.Migration.Services;
 
@@ -6,6 +7,12 @@ namespace MunicipalPlatform.Api.Tests.Migration;
 
 public sealed class ExternalUrlSafetyTests
 {
+    [Fact]
+    public void CrawlerCanInventoryEveryDocumentAcceptedByTheImportPipeline()
+    {
+        Assert.Equal(DocumentFileInspector.MaxBytes, SafeHttpFetcher.MaxResponseBytes);
+    }
+
     [Theory]
     [InlineData("127.0.0.1")]
     [InlineData("10.1.2.3")]
@@ -14,10 +21,18 @@ public sealed class ExternalUrlSafetyTests
     [InlineData("192.168.1.10")]
     [InlineData("169.254.1.1")]
     [InlineData("100.64.1.1")]
+    [InlineData("192.0.0.8")]
+    [InlineData("192.0.2.10")]
+    [InlineData("192.88.99.1")]
+    [InlineData("198.51.100.20")]
+    [InlineData("203.0.113.30")]
     [InlineData("224.0.0.1")]
     [InlineData("::1")]
     [InlineData("fc00::1")]
     [InlineData("fe80::1")]
+    [InlineData("100::1")]
+    [InlineData("2001:db8::1")]
+    [InlineData("3fff::1")]
     public void PrivateAndReservedAddressesAreRejected(string address)
     {
         Assert.False(ExternalUrlSafety.IsPublicAddress(IPAddress.Parse(address)));

@@ -33,7 +33,17 @@ public static class ExternalUrlSafety
             if (address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || address.IsIPv6Multicast)
                 return false;
             var bytes = address.GetAddressBytes();
-            return (bytes[0] & 0xFE) != 0xFC;
+            if ((bytes[0] & 0xFE) == 0xFC)
+                return false;
+            if (bytes.AsSpan(0, 8).SequenceEqual(new byte[8]))
+                return false;
+            if (bytes[0] == 0x01 && bytes.AsSpan(1, 7).SequenceEqual(new byte[7]))
+                return false;
+            if (bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] == 0x0D && bytes[3] == 0xB8)
+                return false;
+            if (bytes[0] == 0x3F && bytes[1] == 0xFF && (bytes[2] & 0xF0) == 0)
+                return false;
+            return true;
         }
 
         if (address.AddressFamily != AddressFamily.InterNetwork)
@@ -52,7 +62,15 @@ public static class ExternalUrlSafety
             return false;
         if (first == 192 && second == 168)
             return false;
+        if (first == 192 && second is 0 or 2)
+            return false;
+        if (first == 192 && second == 88 && octets[2] == 99)
+            return false;
         if (first == 198 && second is 18 or 19)
+            return false;
+        if (first == 198 && second == 51 && octets[2] == 100)
+            return false;
+        if (first == 203 && second == 0 && octets[2] == 113)
             return false;
         if (first >= 224)
             return false;

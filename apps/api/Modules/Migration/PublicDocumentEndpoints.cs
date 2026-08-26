@@ -158,10 +158,25 @@ public static class PublicDocumentEndpoints
 
     private static object ToPublicItem(Domain.PublicDocument item) => new
     {
-        item.Id, item.Category, item.Subcategory, item.Title, item.Description, item.DocumentNumber,
-        item.ProcessNumber, item.ReferencePeriod, item.PublicationDate, item.ResponsibleDepartment,
-        item.DocumentType, item.SourceUrl, item.OriginalFileName, item.MimeType, item.SizeBytes,
-        item.Sha256, item.SourceSystem, item.PublishedAt, downloadUrl = $"/api/v1/public/documents/{item.Id}/download"
+        item.Id,
+        item.Category,
+        item.Subcategory,
+        item.Title,
+        item.Description,
+        item.DocumentNumber,
+        item.ProcessNumber,
+        item.ReferencePeriod,
+        item.PublicationDate,
+        item.ResponsibleDepartment,
+        item.DocumentType,
+        item.SourceUrl,
+        item.OriginalFileName,
+        item.MimeType,
+        item.SizeBytes,
+        item.Sha256,
+        item.SourceSystem,
+        item.PublishedAt,
+        downloadUrl = $"/api/v1/public/documents/{item.Id}/download"
     };
 
     private static void AddAudit(ApplicationDbContext database, TenantContext tenant, ClaimsPrincipal principal, HttpContext context, string action, Domain.PublicDocument document) =>
