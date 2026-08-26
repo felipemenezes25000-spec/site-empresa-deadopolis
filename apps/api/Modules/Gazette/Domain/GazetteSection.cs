@@ -1,0 +1,3 @@
+using MunicipalPlatform.Api.Platform.Tenancy;
+namespace MunicipalPlatform.Api.Modules.Gazette.Domain;
+public sealed class GazetteSection:ITenantEntity{private GazetteSection(){} public GazetteSection(Guid municipalityId,Guid editionId,string title,int displayOrder){Id=Guid.NewGuid();MunicipalityId=municipalityId;GazetteEditionId=editionId;Title=title.Trim();DisplayOrder=displayOrder;CreatedAt=DateTimeOffset.UtcNow;}public Guid Id{get;private set;}public Guid MunicipalityId{get;private set;}public Guid GazetteEditionId{get;private set;}public string Title{get;private set;}=string.Empty;public int DisplayOrder{get;private set;}public DateTimeOffset CreatedAt{get;private set;}public void Update(string title,int order){Title=title.Trim();DisplayOrder=order;}}

@@ -1,0 +1,29 @@
+name: schema-preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/Modules/**/Domain/**'
+      - 'apps/api/Infrastructure/Persistence/ApplicationDbContext.cs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-migration-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore MunicipalPlatform.sln
+      - run: dotnet tool restore
+      - name: Generate EF migration preview
+        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations
+      - uses: actions/upload-artifact@v4
+        with:
+          name: municipal-depth-migration
+          path: apps/api/Infrastructure/Persistence/Migrations
+          if-no-files-found: error
