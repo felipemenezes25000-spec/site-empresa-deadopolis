@@ -14,20 +14,89 @@ public static class AdministrationEndpoints
     public static IEndpointRouteBuilder MapAdministrationEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/v1/admin/dashboard", DashboardAsync).RequireAuthorization().WithTags("Admin");
-        var services = endpoints.MapGroup("/api/v1/admin/services").RequireAuthorization(p => p.RequireClaim("capability", "services.manage")).WithTags("Admin", "Services"); services.MapGet("/", ListServicesAsync); services.MapPost("/", CreateServiceAsync); services.MapPut("/{id:guid}", UpdateServiceAsync);
-        var departments = endpoints.MapGroup("/api/v1/admin/departments").RequireAuthorization(p => p.RequireClaim("capability", "services.manage")).WithTags("Admin", "Departments"); departments.MapGet("/", ListDepartmentsAsync); departments.MapPost("/", CreateDepartmentAsync); departments.MapPut("/{id:guid}", UpdateDepartmentAsync);
+        var services = endpoints.MapGroup("/api/v1/admin/services").RequireAuthorization(p => p.RequireClaim("capability", "services.manage")).WithTags("Admin", "Services");
+        services.MapGet("/", ListServicesAsync); services.MapPost("/", CreateServiceAsync); services.MapPut("/{id:guid}", UpdateServiceAsync);
+        var departments = endpoints.MapGroup("/api/v1/admin/departments").RequireAuthorization(p => p.RequireClaim("capability", "services.manage")).WithTags("Admin", "Departments");
+        departments.MapGet("/", ListDepartmentsAsync); departments.MapPost("/", CreateDepartmentAsync); departments.MapPut("/{id:guid}", UpdateDepartmentAsync);
         endpoints.MapGet("/api/v1/admin/integrations", IntegrationsAsync).RequireAuthorization(p => p.RequireClaim("capability", "settings.manage")).WithTags("Admin", "Operations");
         return endpoints;
     }
-    private static async Task<IResult> DashboardAsync(ApplicationDbContext db, CancellationToken ct) { var now = DateTimeOffset.UtcNow; return Results.Ok(new { editorial = new { drafts = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.Draft, ct), review = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.InReview, ct), scheduled = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.Scheduled, ct) }, support = new { open = await db.Tickets.CountAsync(x => x.Status != "RESOLVED", ct), breached = await db.Tickets.CountAsync(x => x.Status != "RESOLVED" && x.ResolutionDueAt < now, ct) }, content = new { resources = await db.PortalResources.CountAsync(ct), services = await db.Services.CountAsync(ct), mediaQuarantined = await db.MediaAssets.CountAsync(x => x.Status == "QUARANTINED", ct) }, integrations = await db.IntegrationStatuses.AsNoTracking().Select(x => new { x.Provider, x.State, x.Message, x.LastCheckedAt }).ToListAsync(ct) }); }
+
+    private static async Task<IResult> DashboardAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return Results.Ok(new
+        {
+            editorial = new
+            {
+                drafts = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.Draft, ct),
+                review = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.InReview, ct),
+                scheduled = await db.NewsArticles.CountAsync(x => x.Status == EditorialStatus.Scheduled, ct)
+            },
+            support = new
+            {
+                open = await db.Tickets.CountAsync(x => x.Status != "RESOLVED", ct),
+                breached = await db.Tickets.CountAsync(x => x.Status != "RESOLVED" && x.ResolutionDueAt < now, ct)
+            },
+            content = new
+            {
+                resources = await db.PortalResources.CountAsync(ct),
+                services = await db.Services.CountAsync(ct),
+                mediaQuarantined = await db.MediaAssets.CountAsync(x => x.Status == "QUARANTINED", ct)
+            },
+            integrations = await db.IntegrationStatuses.AsNoTracking().Select(x => new { x.Provider, x.State, x.Message, x.LastCheckedAt }).ToListAsync(ct)
+        });
+    }
+
     private static async Task<IResult> ListServicesAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.Services.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct));
-    private static async Task<IResult> CreateServiceAsync(ServiceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')) return Results.ValidationProblem(new Dictionary<string, string[]> { ["slug"] = ["Slug inválido."] }); if (await db.Services.AnyAsync(x => x.Slug == request.Slug.Trim().ToLower(), ct)) return Results.Conflict(new { title = "Slug já usado", status = 409 }); try { var service = new ServiceItem(tenant.RequireMunicipalityId(), request.Name, request.Slug, request.Description, request.Area, request.Audience, request.IsOnline, request.OnlineUrl); service.Update(request.ToDetails()); service.SetPublished(request.Published); db.Services.Add(service); Audit(db, tenant, principal, context, "service.created", service.Id, new { service.Slug, service.Status }); await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/services/{service.Id}", service); } catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["service"] = [ex.Message] }); } }
-    private static async Task<IResult> UpdateServiceAsync(Guid id, ServiceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var service = await db.Services.SingleOrDefaultAsync(x => x.Id == id, ct); if (service is null) return Results.NotFound(); try { service.Update(request.ToDetails()); service.SetPublished(request.Published); Audit(db, tenant, principal, context, "service.updated", service.Id, new { service.Status, service.IsFeatured }); await db.SaveChangesAsync(ct); return Results.Ok(service); } catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["service"] = [ex.Message] }); } }
+
+    private static async Task<IResult> CreateServiceAsync(ServiceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')) return Results.ValidationProblem(new Dictionary<string, string[]> { ["slug"] = ["Slug inválido."] });
+        var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
+        if (await db.Services.AnyAsync(x => x.Slug == normalizedSlug, ct)) return Results.Conflict(new { title = "Slug já usado", status = 409 });
+        try
+        {
+            var service = new ServiceItem(tenant.RequireMunicipalityId(), request.Name, normalizedSlug, request.Description, request.Area, request.Audience, request.IsOnline, request.OnlineUrl);
+            service.Update(request.ToDetails()); service.SetPublished(request.Published); db.Services.Add(service);
+            Audit(db, tenant, principal, context, "service.created", service.Id, new { service.Slug, service.Status });
+            await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/services/{service.Id}", service);
+        }
+        catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["service"] = [ex.Message] }); }
+    }
+
+    private static async Task<IResult> UpdateServiceAsync(Guid id, ServiceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        var service = await db.Services.SingleOrDefaultAsync(x => x.Id == id, ct); if (service is null) return Results.NotFound();
+        try { service.Update(request.ToDetails()); service.SetPublished(request.Published); Audit(db, tenant, principal, context, "service.updated", service.Id, new { service.Status, service.IsFeatured }); await db.SaveChangesAsync(ct); return Results.Ok(service); }
+        catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["service"] = [ex.Message] }); }
+    }
+
     private static async Task<IResult> ListDepartmentsAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.Departments.AsNoTracking().OrderBy(x => x.DisplayOrder).ToListAsync(ct));
-    private static async Task<IResult> CreateDepartmentAsync(DepartmentRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { if (await db.Departments.AnyAsync(x => x.Slug == request.Slug.Trim().ToLower(), ct)) return Results.Conflict(new { title = "Slug já usado", status = 409 }); var item = new Department(tenant.RequireMunicipalityId(), request.Name, request.Slug, request.Acronym, request.DisplayOrder); item.Update(request.Name, request.Acronym, request.ManagerName, request.Phone, request.Email, request.Address, request.OpeningHours, request.DisplayOrder); db.Departments.Add(item); Audit(db, tenant, principal, context, "department.created", item.Id, new { item.Slug }); await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/departments/{item.Id}", item); }
-    private static async Task<IResult> UpdateDepartmentAsync(Guid id, DepartmentRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var item = await db.Departments.SingleOrDefaultAsync(x => x.Id == id, ct); if (item is null) return Results.NotFound(); try { item.Update(request.Name, request.Acronym, request.ManagerName, request.Phone, request.Email, request.Address, request.OpeningHours, request.DisplayOrder); item.SetActive(request.Active); Audit(db, tenant, principal, context, "department.updated", item.Id, new { item.Name, item.IsActive }); await db.SaveChangesAsync(ct); return Results.Ok(item); } catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["department"] = [ex.Message] }); } }
+
+    private static async Task<IResult> CreateDepartmentAsync(DepartmentRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
+        if (await db.Departments.AnyAsync(x => x.Slug == normalizedSlug, ct)) return Results.Conflict(new { title = "Slug já usado", status = 409 });
+        var item = new Department(tenant.RequireMunicipalityId(), request.Name, normalizedSlug, request.Acronym, request.DisplayOrder);
+        item.Update(request.Name, request.Acronym, request.ManagerName, request.Phone, request.Email, request.Address, request.OpeningHours, request.DisplayOrder);
+        db.Departments.Add(item); Audit(db, tenant, principal, context, "department.created", item.Id, new { item.Slug }); await db.SaveChangesAsync(ct);
+        return Results.Created($"/api/v1/admin/departments/{item.Id}", item);
+    }
+
+    private static async Task<IResult> UpdateDepartmentAsync(Guid id, DepartmentRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        var item = await db.Departments.SingleOrDefaultAsync(x => x.Id == id, ct); if (item is null) return Results.NotFound();
+        try { item.Update(request.Name, request.Acronym, request.ManagerName, request.Phone, request.Email, request.Address, request.OpeningHours, request.DisplayOrder); item.SetActive(request.Active); Audit(db, tenant, principal, context, "department.updated", item.Id, new { item.Name, item.IsActive }); await db.SaveChangesAsync(ct); return Results.Ok(item); }
+        catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["department"] = [ex.Message] }); }
+    }
+
     private static async Task<IResult> IntegrationsAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.IntegrationStatuses.AsNoTracking().OrderBy(x => x.Provider).ToListAsync(ct));
     private static void Audit(ApplicationDbContext db, TenantContext tenant, ClaimsPrincipal principal, HttpContext context, string action, Guid id, object diff) { var actor = Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : throw new InvalidOperationException("Sessão inválida."); db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "Administration", id.ToString(), JsonSerializer.Serialize(diff), context.TraceIdentifier)); }
-    public sealed record ServiceRequest(string Name, string Slug, string Description, string Area, string Audience, Guid? DepartmentId, string? Requirements, string? Documents, string? Steps, string? ExpectedDuration, string? Cost, string? Channels, bool IsOnline, string? OnlineUrl, string? Phone, string? Address, string? OpeningHours, string? LegalBasis, bool IsFeatured, bool Published) { public ServiceDetails ToDetails() => new(Name, Description, Area, Audience, DepartmentId, Requirements, Documents, Steps, ExpectedDuration, Cost, Channels, IsOnline, OnlineUrl, Phone, Address, OpeningHours, LegalBasis, IsFeatured); }
+
+    public sealed record ServiceRequest(string Name, string Slug, string Description, string Area, string Audience, Guid? DepartmentId, string? Requirements, string? Documents, string? Steps, string? ExpectedDuration, string? Cost, string? Channels, bool IsOnline, string? OnlineUrl, string? Phone, string? Address, string? OpeningHours, string? LegalBasis, bool IsFeatured, bool Published)
+    {
+        public ServiceDetails ToDetails() => new(Name, Description, Area, Audience, DepartmentId, Requirements, Documents, Steps, ExpectedDuration, Cost, Channels, IsOnline, OnlineUrl, Phone, Address, OpeningHours, LegalBasis, IsFeatured);
+    }
     public sealed record DepartmentRequest(string Name, string Slug, string Acronym, string ManagerName, string Phone, string Email, string Address, string OpeningHours, int DisplayOrder, bool Active);
 }

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,6 +37,7 @@ public sealed class MfaTotpService(IDataProtectionProvider dataProtectionProvide
         return false;
     }
 
+    [SuppressMessage("Security", "CA5350:Do Not Use Weak Cryptographic Algorithms", Justification = "RFC 6238 TOTP interoperability uses HMAC-SHA1 by default; this keyed MAC use does not rely on SHA-1 collision resistance.")]
     internal static string GenerateCode(byte[] secret, long counter)
     {
         Span<byte> counterBytes = stackalloc byte[8];

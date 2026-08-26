@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -30,13 +31,120 @@ var databaseConnection = builder.Configuration.GetConnectionString("Database") ?
 var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"] ?? Path.Combine(Path.GetTempPath(), "municipal-dp-keys");
 Directory.CreateDirectory(keyRingPath);
 builder.Services.AddDataProtection().SetApplicationName("MunicipalPlatform").PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
-builder.Services.AddScoped<TenantContext>(); builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(databaseConnection)); builder.Services.AddProblemDetails(); builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>(); builder.Services.AddSingleton<MfaTotpService>(); builder.Services.AddSingleton<GazetteDocumentService>(); builder.Services.AddHostedService<ScheduledPublicationWorker>();
-builder.Services.AddRateLimiter(options => { options.RejectionStatusCode = StatusCodes.Status429TooManyRequests; options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true })); });
-builder.Services.AddSingleton<IObjectStorageProvider>(services => { var env = services.GetRequiredService<IHostEnvironment>(); var config = services.GetRequiredService<IConfiguration>(); return env.IsDevelopment() || env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode") ? new LocalObjectStorageProvider(config) : new NotConfiguredObjectStorageProvider(); });
-builder.Services.AddSingleton<IDigitalSigner>(services => { var env = services.GetRequiredService<IHostEnvironment>(); var config = services.GetRequiredService<IConfiguration>(); return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode") ? new DemoDigitalSigner() : new NotConfiguredDigitalSigner(); }); builder.Services.AddSingleton<ICertificateProvider>(services => (ICertificateProvider)services.GetRequiredService<IDigitalSigner>()); builder.Services.AddSingleton<ISignatureValidator>(services => (ISignatureValidator)services.GetRequiredService<IDigitalSigner>()); builder.Services.AddSingleton<ITimestampProvider, NotConfiguredTimestampProvider>();
-builder.Services.AddSingleton<IInstitutionalEmailProvider>(services => { var env = services.GetRequiredService<IHostEnvironment>(); var config = services.GetRequiredService<IConfiguration>(); return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode") ? new DemoInstitutionalEmailProvider() : new NotConfiguredInstitutionalEmailProvider(); }); builder.Services.AddSingleton<IMalwareScanner>(services => { var env = services.GetRequiredService<IHostEnvironment>(); var config = services.GetRequiredService<IConfiguration>(); return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode") ? new DemoMalwareScanner() : new NotConfiguredMalwareScanner(); });
-builder.Services.AddEndpointsApiExplorer(); builder.Services.AddSwaggerGen();
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.Cookie.Name = "municipal.session"; options.Cookie.HttpOnly = true; options.Cookie.SameSite = SameSiteMode.Strict; options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing") ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always; options.SlidingExpiration = true; options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = 401; return Task.CompletedTask; }; options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = 403; return Task.CompletedTask; }; options.Events.OnValidatePrincipal = async context => { var idValue = context.Principal?.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier); var versionValue = context.Principal?.FindFirstValue("session_version"); if (!Guid.TryParse(idValue, out var id) || !int.TryParse(versionValue, NumberStyles.None, CultureInfo.InvariantCulture, out var version)) { context.RejectPrincipal(); return; } var database = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>(); var valid = await database.Users.AsNoTracking().AnyAsync(user => user.Id == id && user.IsActive && user.SessionVersion == version, context.HttpContext.RequestAborted); if (!valid) context.RejectPrincipal(); }; });
+builder.Services.AddScoped<TenantContext>();
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(databaseConnection));
+builder.Services.AddProblemDetails();
+builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
+builder.Services.AddSingleton<MfaTotpService>();
+builder.Services.AddSingleton<GazetteDocumentService>();
+builder.Services.AddHostedService<ScheduledPublicationWorker>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+builder.Services.AddSingleton<IObjectStorageProvider>(services =>
+{
+    var env = services.GetRequiredService<IHostEnvironment>();
+    var config = services.GetRequiredService<IConfiguration>();
+    return env.IsDevelopment() || env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode")
+        ? new LocalObjectStorageProvider(config)
+        : new NotConfiguredObjectStorageProvider();
+});
+builder.Services.AddSingleton<IDigitalSigner>(services =>
+{
+    var env = services.GetRequiredService<IHostEnvironment>();
+    var config = services.GetRequiredService<IConfiguration>();
+    return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode")
+        ? new DemoDigitalSigner()
+        : new NotConfiguredDigitalSigner();
+});
+builder.Services.AddSingleton<ICertificateProvider>(services => (ICertificateProvider)services.GetRequiredService<IDigitalSigner>());
+builder.Services.AddSingleton<ISignatureValidator>(services => (ISignatureValidator)services.GetRequiredService<IDigitalSigner>());
+builder.Services.AddSingleton<ITimestampProvider, NotConfiguredTimestampProvider>();
+builder.Services.AddSingleton<IInstitutionalEmailProvider>(services =>
+{
+    var env = services.GetRequiredService<IHostEnvironment>();
+    var config = services.GetRequiredService<IConfiguration>();
+    return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode")
+        ? new DemoInstitutionalEmailProvider()
+        : new NotConfiguredInstitutionalEmailProvider();
+});
+builder.Services.AddSingleton<IMalwareScanner>(services =>
+{
+    var env = services.GetRequiredService<IHostEnvironment>();
+    var config = services.GetRequiredService<IConfiguration>();
+    return env.IsEnvironment("Testing") || config.GetValue<bool>("PresentationMode")
+        ? new DemoMalwareScanner()
+        : new NotConfiguredMalwareScanner();
+});
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
+{
+    options.Cookie.Name = "municipal.session";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    options.SlidingExpiration = true;
+    options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+    options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        var idValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var versionValue = context.Principal?.FindFirstValue("session_version");
+        if (!Guid.TryParse(idValue, out var id)
+            || !int.TryParse(versionValue, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
+        {
+            context.RejectPrincipal();
+            return;
+        }
+
+        var database = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+        var valid = await database.Users.AsNoTracking().AnyAsync(
+            user => user.Id == id && user.IsActive && user.SessionVersion == version,
+            context.HttpContext.RequestAborted);
+        if (!valid) context.RejectPrincipal();
+    };
+});
 builder.Services.AddAuthorization();
-var app = builder.Build(); if (!app.Environment.IsEnvironment("Testing")) await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment); app.UseMiddleware<CorrelationIdMiddleware>(); app.UseMiddleware<SecurityHeadersMiddleware>(); app.UseExceptionHandler(); app.MapPlatformHealth(); if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) { app.UseSwagger(); app.UseSwaggerUI(); } app.UseMiddleware<TenantResolutionMiddleware>(); app.UseMiddleware<LegacyRedirectMiddleware>(); app.UseRateLimiter(); app.UseAuthentication(); app.UseAuthorization(); app.MapIdentityEndpoints(); app.MapPortalEndpoints(); app.MapContentEndpoints(); app.MapResourceEndpoints(); app.MapSupportEndpoints(); app.MapGazetteEndpoints(); app.MapAdministrationEndpoints(); app.MapMailEndpoints(); app.MapMediaEndpoints(); app.MapMigrationEndpoints(); app.Run();
+
+var app = builder.Build();
+if (!app.Environment.IsEnvironment("Testing")) await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment);
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseExceptionHandler();
+app.MapPlatformHealth();
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseMiddleware<LegacyRedirectMiddleware>();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapIdentityEndpoints();
+app.MapPortalEndpoints();
+app.MapContentEndpoints();
+app.MapResourceEndpoints();
+app.MapSupportEndpoints();
+app.MapGazetteEndpoints();
+app.MapAdministrationEndpoints();
+app.MapMailEndpoints();
+app.MapMediaEndpoints();
+app.MapMigrationEndpoints();
+app.Run();
+
 public partial class Program;

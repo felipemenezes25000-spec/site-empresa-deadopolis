@@ -19,7 +19,6 @@ public static class ResourceEndpoints
     {
         endpoints.MapGet("/api/v1/resources", PublicListAsync).AllowAnonymous().WithTags("Portal", "Resources");
         endpoints.MapGet("/api/v1/resources/{kind}/{slug}", PublicGetAsync).AllowAnonymous().WithTags("Portal", "Resources");
-
         var admin = endpoints.MapGroup("/api/v1/admin/resources").WithTags("Admin", "CMS");
         admin.MapGet("/", AdminListAsync).RequireAuthorization(p => p.RequireClaim("capability", "resources.manage"));
         admin.MapPost("/", CreateAsync).RequireAuthorization(p => p.RequireClaim("capability", "resources.manage"));
@@ -35,14 +34,18 @@ public static class ResourceEndpoints
     {
         var now = DateTimeOffset.UtcNow;
         var query = database.PortalResources.AsNoTracking().Where(item => item.Status == "PUBLISHED" && (!item.StartsAt.HasValue || item.StartsAt <= now) && (!item.EndsAt.HasValue || item.EndsAt > now));
-        if (!string.IsNullOrWhiteSpace(kind)) query = query.Where(item => item.Kind == kind.Trim().ToUpper());
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            var normalizedKind = kind.Trim().ToUpperInvariant();
+            query = query.Where(item => item.Kind == normalizedKind);
+        }
         if (!string.IsNullOrWhiteSpace(q))
         {
             var term = $"%{q.Trim()}%";
             query = query.Where(item => EF.Functions.ILike(item.Title, term) || EF.Functions.ILike(item.Summary, term));
         }
-        var items = await query.OrderBy(item => item.DisplayOrder).ThenByDescending(item => item.PublishedAt).Select(item => new { item.Id, item.Kind, item.Slug, item.Title, item.Summary, item.PayloadJson, item.DisplayOrder, item.StartsAt, item.EndsAt, item.PublishedAt, item.Version }).ToListAsync(cancellationToken);
-        return Results.Ok(items.Select(ToPublicResponse));
+        var items = await query.OrderBy(item => item.DisplayOrder).ThenByDescending(item => item.PublishedAt).ToListAsync(cancellationToken);
+        return Results.Ok(items.Select(item => ToPublicResponse(item)));
     }
 
     private static async Task<IResult> PublicGetAsync(string kind, string slug, ApplicationDbContext database, CancellationToken cancellationToken)
@@ -57,9 +60,13 @@ public static class ResourceEndpoints
     private static async Task<IResult> AdminListAsync(string? kind, ApplicationDbContext database, CancellationToken cancellationToken)
     {
         var query = database.PortalResources.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(kind)) query = query.Where(item => item.Kind == kind.Trim().ToUpper());
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            var normalizedKind = kind.Trim().ToUpperInvariant();
+            query = query.Where(item => item.Kind == normalizedKind);
+        }
         var items = await query.OrderBy(item => item.Kind).ThenBy(item => item.DisplayOrder).ThenBy(item => item.Title).ToListAsync(cancellationToken);
-        return Results.Ok(items.Select(ToAdminResponse));
+        return Results.Ok(items.Select(item => ToAdminResponse(item)));
     }
 
     private static async Task<IResult> CreateAsync(ResourceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
@@ -80,7 +87,10 @@ public static class ResourceEndpoints
             await database.SaveChangesAsync(cancellationToken);
             return Results.Created($"/api/v1/admin/resources/{resource.Id}", ToAdminResponse(resource));
         }
-        catch (Exception exception) when (exception is ArgumentException or JsonException) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["resource"] = [exception.Message] }); }
+        catch (Exception exception) when (exception is ArgumentException or JsonException)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["resource"] = [exception.Message] });
+        }
     }
 
     private static async Task<IResult> UpdateAsync(Guid id, ResourceUpdateRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
@@ -97,7 +107,10 @@ public static class ResourceEndpoints
             await database.SaveChangesAsync(cancellationToken);
             return Results.Ok(ToAdminResponse(resource));
         }
-        catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["resource"] = [exception.Message] }); }
+        catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["resource"] = [exception.Message] });
+        }
     }
 
     private static Task<IResult> PublishAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) => ChangeStatusAsync(id, "resource.published", principal, context, database, tenant, (item, actor, at) => item.Publish(actor, at), true, cancellationToken);
@@ -118,7 +131,10 @@ public static class ResourceEndpoints
             await database.SaveChangesAsync(cancellationToken);
             return Results.Ok(ToAdminResponse(resource));
         }
-        catch (InvalidOperationException exception) { return Results.Conflict(new { title = "Transição inválida", detail = exception.Message, status = 409 }); }
+        catch (InvalidOperationException exception)
+        {
+            return Results.Conflict(new { title = "Transição inválida", detail = exception.Message, status = 409 });
+        }
     }
 
     private static async Task<IResult> RevisionsAsync(Guid id, ApplicationDbContext database, CancellationToken cancellationToken)
@@ -129,7 +145,7 @@ public static class ResourceEndpoints
 
     private static string? ValidateRequest(ResourceRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Kind) || !AllowedKinds.Contains(request.Kind.Trim())) return $"Tipo inválido. Use: {string.Join(", ", AllowedKinds.Order())}.";
+        if (string.IsNullOrWhiteSpace(request.Kind) || !AllowedKinds.Contains(request.Kind.Trim())) return $"Tipo inválido. Use: {string.Join(", ", AllowedKinds.OrderBy(value => value, StringComparer.Ordinal))}.";
         if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-')) return "Slug deve conter apenas letras sem acento, números e hífen.";
         if (string.IsNullOrWhiteSpace(request.Title)) return "Título obrigatório.";
         return null;

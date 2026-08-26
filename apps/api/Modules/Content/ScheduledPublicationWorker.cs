@@ -9,13 +9,18 @@ namespace MunicipalPlatform.Api.Modules.Content;
 
 public sealed class ScheduledPublicationWorker(IServiceScopeFactory scopeFactory, ILogger<ScheduledPublicationWorker> logger) : BackgroundService
 {
+    private static readonly Action<ILogger, Exception?> LogSchedulerFailure = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(1001, nameof(ScheduledPublicationWorker)),
+        "Falha no scheduler editorial; o job será tentado novamente.");
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
             try { await PublishDueAsync(stoppingToken); }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception exception) { logger.LogError(exception, "Falha no scheduler editorial; o job será tentado novamente."); }
+            catch (Exception exception) { LogSchedulerFailure(logger, exception); }
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
     }
