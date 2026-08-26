@@ -17,9 +17,17 @@ public static partial class LegacyUrlNormalizer
     public static string Normalize(string input)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(input);
-        var uri = Uri.TryCreate(input, UriKind.Absolute, out var absolute)
-            ? absolute
-            : new Uri(new Uri("https://www.deodapolis.ms.gov.br"), input);
+        var trimmed = input.Trim();
+        Uri uri;
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var absolute)
+            && (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps))
+        {
+            uri = absolute;
+        }
+        else
+        {
+            uri = new Uri(new Uri("https://www.deodapolis.ms.gov.br", UriKind.Absolute), trimmed);
+        }
 
         var path = DuplicateSlashRegex().Replace(uri.AbsolutePath, "/");
         var parameters = uri.Query.TrimStart('?')
