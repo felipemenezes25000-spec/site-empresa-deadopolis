@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Identity;
 using MunicipalPlatform.Api.Modules.Identity.Domain;
+using MunicipalPlatform.Api.Modules.Content;
 using MunicipalPlatform.Api.Modules.Portal;
+using MunicipalPlatform.Api.Modules.Support;
 using MunicipalPlatform.Api.Platform.Observability;
 using MunicipalPlatform.Api.Platform.Security;
 using MunicipalPlatform.Api.Platform.Tenancy;
@@ -44,8 +46,14 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment);
+}
+
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseExceptionHandler();
 app.MapPlatformHealth();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
@@ -58,6 +66,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapIdentityEndpoints();
 app.MapPortalEndpoints();
+app.MapContentEndpoints();
+app.MapSupportEndpoints();
 
 app.Run();
 

@@ -47,6 +47,7 @@ button, input { font: inherit; }
 .utility-links a:hover { color: var(--primary); }
 .brand-row { display: flex; align-items: center; justify-content: space-between; min-height: 104px; gap: 24px; }
 .municipal-brand { display: flex; align-items: center; gap: 14px; color: var(--primary-strong); text-decoration: none; }
+.municipal-brand img { display: block; width: 278px; height: auto; border-radius: 8px; }
 .municipal-brand strong { display: block; font-family: Georgia, 'Times New Roman', serif; font-size: 1.34rem; letter-spacing: -.01em; }
 .municipal-brand small { display: block; color: var(--muted); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
 .brand-mark { display: grid; place-items: center; width: 54px; height: 62px; border: 2px solid var(--primary); border-radius: 28px 28px 17px 17px; background: var(--lime-soft); color: var(--primary-strong); font-family: Georgia, serif; font-size: 1.9rem; font-weight: 800; }
@@ -172,6 +173,7 @@ button, input { font: inherit; }
   .utility-inner p, .utility-links a:not(:last-child) { display: none; }
   .brand-row { min-height: 88px; }
   .municipal-brand strong { font-size: 1.05rem; }
+  .municipal-brand img { width: min(230px, 64vw); }
   .brand-mark { width: 45px; height: 52px; font-size: 1.55rem; }
   .emergency-link { padding-inline: 6px; font-size: .78rem; }
   .hero-content { padding-top: 52px; padding-bottom: 54px; }

@@ -1,4 +1,5 @@
 import { ArrowRight, BookOpenText, Building2, CalendarDays, ChevronRight, CircleHelp, FileCheck2, Headphones, Landmark, MapPin, Menu, Search, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { PortalHomeContent } from "@/lib/portal-api";
@@ -25,7 +26,7 @@ export function PortalHome({ content, presentationMode = false }: { content: Por
       <header className="site-header">
         <div className="utility-bar"><div className="page-shell utility-inner"><p>Deodápolis · Mato Grosso do Sul</p><div className="utility-links"><Link href="/acessibilidade">Acessibilidade</Link><Link href="/contatos">Contatos</Link><Link href="/admin/login">Área administrativa</Link></div></div></div>
         <div className="page-shell brand-row">
-          <Link className="municipal-brand" href="/" aria-label="Prefeitura de Deodápolis — início"><span className="brand-mark" aria-hidden="true">D</span><span><strong>Prefeitura de Deodápolis</strong><small>Governo municipal</small></span></Link>
+          <Link className="municipal-brand" href="/" aria-label="Prefeitura de Deodápolis — início"><Image src="/brand/deodapolis-logo.png" width={278} height={74} priority alt="Prefeitura de Deodápolis — Juntos por um futuro ainda melhor" /></Link>
           <div className="header-actions"><Link className="header-shortcut" href="/acesso-a-informacao"><CircleHelp size={18} aria-hidden="true" /> Acesso à informação</Link><Link className="header-shortcut" href="/ouvidoria"><Headphones size={18} aria-hidden="true" /> Ouvidoria</Link></div>
         </div>
         <nav className="main-nav" aria-label="Navegação principal"><div className="page-shell nav-inner"><details className="mobile-navigation"><summary><Menu size={22} aria-hidden="true" /> Menu</summary><div>{primaryNavigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}</div></details><div className="desktop-nav-links">{primaryNavigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}</div><Link className="emergency-link" href="/contatos#emergencia">Telefones úteis</Link></div></nav>

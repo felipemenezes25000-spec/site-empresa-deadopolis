@@ -80,7 +80,12 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
             "Administração Demo",
             "SUPER_ADMIN",
             passwordHash));
-        database.RoleCapabilities.Add(new RoleCapability(MunicipalityId, "SUPER_ADMIN", "audit.read"));
+        database.RoleCapabilities.AddRange(
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "audit.read"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.write"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.review"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.publish"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"));
         var article = NewsArticle.Create(MunicipalityId, "Feira de serviços aproxima Prefeitura e moradores", "feira-de-servicos", actor);
         article.UpdateDraft(
             "Feira de serviços aproxima Prefeitura e moradores",

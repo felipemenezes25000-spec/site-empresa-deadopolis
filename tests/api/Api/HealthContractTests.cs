@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace MunicipalPlatform.Api.Tests.Api;
 
-public sealed class HealthContractTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HealthContractTests : IClassFixture<MunicipalApiFactory>
 {
     private readonly HttpClient _client;
 
-    public HealthContractTests(WebApplicationFactory<Program> factory)
+    public HealthContractTests(MunicipalApiFactory factory)
     {
         _client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {

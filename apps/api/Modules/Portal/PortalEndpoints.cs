@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Content.Domain;
 using MunicipalPlatform.Api.Modules.Operations.Domain;
+using MunicipalPlatform.Api.Modules.Search.Domain;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
 namespace MunicipalPlatform.Api.Modules.Portal;
@@ -20,10 +21,40 @@ public static class PortalEndpoints
             .WithName("GetServices")
             .WithTags("Services");
 
+        endpoints.MapGet("/api/v1/services/{slug}", GetServiceAsync)
+            .AllowAnonymous()
+            .WithName("GetService")
+            .WithTags("Services");
+
         endpoints.MapGet("/api/v1/news", GetNewsAsync)
             .AllowAnonymous()
             .WithName("GetNews")
             .WithTags("News");
+
+        endpoints.MapGet("/api/v1/news/{slug}", GetArticleAsync)
+            .AllowAnonymous()
+            .WithName("GetArticle")
+            .WithTags("News");
+
+        endpoints.MapGet("/api/v1/departments", GetDepartmentsAsync)
+            .AllowAnonymous()
+            .WithName("GetDepartments")
+            .WithTags("Departments");
+
+        endpoints.MapGet("/api/v1/transparency", GetTransparencyAsync)
+            .AllowAnonymous()
+            .WithName("GetTransparency")
+            .WithTags("Transparency");
+
+        endpoints.MapGet("/api/v1/search", SearchAsync)
+            .AllowAnonymous()
+            .WithName("UniversalSearch")
+            .WithTags("Search");
+
+        endpoints.MapGet("/api/v1/gazette", GetGazetteAsync)
+            .AllowAnonymous()
+            .WithName("GetGazette")
+            .WithTags("Gazette");
 
         endpoints.MapGet("/api/v1/gazette/verify/{code}", VerifyGazetteAsync)
             .AllowAnonymous()
@@ -184,6 +215,125 @@ public static class PortalEndpoints
             })
             .ToListAsync(cancellationToken);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetServiceAsync(
+        string slug,
+        ApplicationDbContext database,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSlug = slug.ToLowerInvariant();
+        var service = await database.Services.AsNoTracking()
+            .Where(item => item.Slug == normalizedSlug && item.Status == "PUBLISHED")
+            .Select(item => new
+            {
+                item.Name,
+                item.Slug,
+                item.Description,
+                item.Area,
+                item.Audience,
+                item.Requirements,
+                item.Documents,
+                item.Steps,
+                item.ExpectedDuration,
+                item.Cost,
+                item.Channels,
+                item.IsOnline,
+                item.OnlineUrl,
+                item.Phone,
+                item.Address,
+                item.OpeningHours,
+                item.LegalBasis,
+                item.LastReviewedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        return service is null ? Results.NotFound() : Results.Ok(service);
+    }
+
+    private static async Task<IResult> GetArticleAsync(
+        string slug,
+        ApplicationDbContext database,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSlug = slug.ToLowerInvariant();
+        var article = await database.NewsArticles.AsNoTracking()
+            .Where(item => item.Slug == normalizedSlug && item.Status == EditorialStatus.Published)
+            .Select(item => new
+            {
+                item.Title,
+                item.Slug,
+                item.Summary,
+                item.Body,
+                item.CoverImageUrl,
+                item.CoverImageAlt,
+                item.PublishedAt,
+                item.UpdatedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        return article is null ? Results.NotFound() : Results.Ok(article);
+    }
+
+    private static async Task<IResult> GetDepartmentsAsync(ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var items = await database.Departments.AsNoTracking()
+            .Where(item => item.IsActive)
+            .OrderBy(item => item.DisplayOrder)
+            .Select(item => new { item.Name, item.Slug, item.Acronym, item.ManagerName, item.Phone, item.Email, item.Address, item.OpeningHours })
+            .ToListAsync(cancellationToken);
+        return Results.Ok(items);
+    }
+
+    private static async Task<IResult> GetTransparencyAsync(ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var items = await database.TransparencyLinks.AsNoTracking()
+            .Where(item => item.IsActive)
+            .OrderBy(item => item.Category)
+            .ThenBy(item => item.DisplayOrder)
+            .Select(item => new { item.Title, item.Category, item.Url, item.Description, item.IsExternal })
+            .ToListAsync(cancellationToken);
+        return Results.Ok(items);
+    }
+
+    private static async Task<IResult> SearchAsync(string? q, ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Digite ao menos dois caracteres."] });
+        }
+
+        var normalized = SearchNormalizer.Normalize(q);
+        var services = await database.Services.AsNoTracking()
+            .Where(item => item.Status == "PUBLISHED")
+            .OrderBy(item => item.Name)
+            .Take(500)
+            .Select(item => new { item.Name, item.Slug, item.Description, item.Area })
+            .ToListAsync(cancellationToken);
+        var news = await database.NewsArticles.AsNoTracking()
+            .Where(item => item.Status == EditorialStatus.Published)
+            .OrderByDescending(item => item.PublishedAt)
+            .Take(500)
+            .Select(item => new { item.Title, item.Slug, item.Summary, item.PublishedAt })
+            .ToListAsync(cancellationToken);
+
+        var serviceResults = services
+            .Where(item => SearchNormalizer.Normalize($"{item.Name} {item.Description} {item.Area}").Contains(normalized, StringComparison.Ordinal))
+            .Take(20)
+            .Select(item => new { type = "SERVICE", title = item.Name, description = item.Description, url = $"/servicos/{item.Slug}" });
+        var newsResults = news
+            .Where(item => SearchNormalizer.Normalize($"{item.Title} {item.Summary}").Contains(normalized, StringComparison.Ordinal))
+            .Take(20)
+            .Select(item => new { type = "NEWS", title = item.Title, description = item.Summary, url = $"/noticias/{item.Slug}" });
+        return Results.Ok(new { query = q.Trim(), results = serviceResults.Concat(newsResults) });
+    }
+
+    private static async Task<IResult> GetGazetteAsync(ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var editions = await database.GazetteEditions.AsNoTracking()
+            .Where(item => item.Status == Modules.Gazette.Domain.GazetteStatus.Published)
+            .OrderByDescending(item => item.PublicationDate)
+            .Select(item => new { item.Number, item.Year, item.Type, item.PublicationDate, item.VerificationCode, item.Sha256, item.DocumentObjectKey })
+            .ToListAsync(cancellationToken);
+        return Results.Ok(editions);
     }
 
     private static async Task<IResult> VerifyGazetteAsync(
