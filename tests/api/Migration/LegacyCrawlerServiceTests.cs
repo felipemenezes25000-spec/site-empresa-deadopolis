@@ -143,6 +143,30 @@ public sealed class LegacyCrawlerServiceTests
         Assert.Equal(1, summary.Families["/licitacoes/contratos.php"]);
     }
 
+    [Fact]
+    public async Task CrawlDrainsQueueWhenLegacyNewsPaginationBecomesEmpty()
+    {
+        var fetcher = new ExactRecordingFetcher(new Dictionary<string, LegacyFetchResult>
+        {
+            ["/"] = Html("<a href='/noticias.php?page=1'>Notícias</a>"),
+            ["/noticias.php?page=1"] = Html("<a href='/exibe23.php?id=7'>Notícia</a><a href='/noticias.php?page=2'>Próxima</a>"),
+            ["/exibe23.php?id=7"] = Html("<article>Notícia</article>"),
+            ["/noticias.php?page=2"] = Html("<a href='/noticias.php?page=3'>Próxima</a>")
+        });
+        await using var database = CreateDatabase();
+        var job = new MigrationJob(MunicipalityId, "https://legacy.example.test/", "legacy.example.test", 3, 20);
+        database.MigrationJobs.Add(job);
+        await database.SaveChangesAsync();
+
+        var summary = await new LegacyCrawlerService(fetcher)
+            .RunDryRunAsync(job, database, CancellationToken.None);
+
+        Assert.Equal(4, summary.Discovered);
+        Assert.Equal(0, summary.QueueRemaining);
+        Assert.False(summary.TruncatedByLimit);
+        Assert.DoesNotContain("/noticias.php?page=3", fetcher.RequestedPaths);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         var tenant = new TenantContext();
@@ -175,6 +199,18 @@ public sealed class LegacyCrawlerServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             RequestCount++;
             return Task.FromResult(responses[uri.AbsolutePath]);
+        }
+    }
+
+    private sealed class ExactRecordingFetcher(IReadOnlyDictionary<string, LegacyFetchResult> responses) : ILegacySourceFetcher
+    {
+        public List<string> RequestedPaths { get; } = [];
+
+        public Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestedPaths.Add(uri.PathAndQuery);
+            return Task.FromResult(responses[uri.PathAndQuery]);
         }
     }
 }

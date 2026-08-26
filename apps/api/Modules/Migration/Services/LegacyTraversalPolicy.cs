@@ -2,6 +2,22 @@ namespace MunicipalPlatform.Api.Modules.Migration.Services;
 
 public static class LegacyTraversalPolicy
 {
+    public static bool ShouldContinuePagination(Uri current, string html)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(html);
+
+        var isNewsListing = current.AbsolutePath.EndsWith("/noticias.php", StringComparison.OrdinalIgnoreCase)
+            || current.AbsolutePath.EndsWith("/noticias25.php", StringComparison.OrdinalIgnoreCase);
+        var isPagination = current.Query.Contains("page=", StringComparison.OrdinalIgnoreCase)
+            || current.Query.Contains("pagina=", StringComparison.OrdinalIgnoreCase);
+        if (!isNewsListing || !isPagination)
+            return true;
+
+        return html.Contains("exibe.php?id=", StringComparison.OrdinalIgnoreCase)
+            || html.Contains("exibe23.php?id=", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static int GetNextDepth(Uri current, Uri candidate, int currentDepth)
     {
         ArgumentNullException.ThrowIfNull(current);

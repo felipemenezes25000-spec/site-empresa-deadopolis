@@ -126,10 +126,14 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
                         && fetched.ContentType?.Equals("text/html", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         var html = DecodeHtml(fetched.Body);
+                        var continuePagination = LegacyTraversalPolicy.ShouldContinuePagination(uri, html);
                         foreach (var candidate in ExtractLinks(uri, html))
                         {
                             if (ExternalUrlSafety.IsAllowedUri(candidate, job.AllowedHost))
                             {
+                                if (!continuePagination
+                                    && string.Equals(uri.AbsolutePath, candidate.AbsolutePath, StringComparison.OrdinalIgnoreCase))
+                                    continue;
                                 var candidateDepth = LegacyTraversalPolicy.GetNextDepth(uri, candidate, depth);
                                 Enqueue(candidate, candidateDepth, job, queued, queue);
                             }
