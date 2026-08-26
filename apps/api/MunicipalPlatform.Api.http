@@ -1,0 +1,6 @@
+@MunicipalPlatform.Api_HostAddress = http://localhost:5241
+
+GET {{MunicipalPlatform.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
