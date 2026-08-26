@@ -13,173 +13,120 @@ public static class ContentEndpoints
     public static IEndpointRouteBuilder MapContentEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/admin/news").WithTags("Admin", "Content");
-        group.MapGet("/", ListAsync).RequireAuthorization(policy => policy.RequireClaim("capability", "content.write"));
-        group.MapPost("/", CreateAsync).RequireAuthorization(policy => policy.RequireClaim("capability", "content.write"));
-        group.MapPost("/{id:guid}/submit", SubmitAsync).RequireAuthorization(policy => policy.RequireClaim("capability", "content.write"));
-        group.MapPost("/{id:guid}/approve", ApproveAsync).RequireAuthorization(policy => policy.RequireClaim("capability", "content.review"));
-        group.MapPost("/{id:guid}/publish", PublishAsync).RequireAuthorization(policy => policy.RequireClaim("capability", "content.publish"));
+        group.MapGet("/", ListAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
+        group.MapPost("/", CreateAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
+        group.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
+        group.MapPost("/{id:guid}/submit", SubmitAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
+        group.MapPost("/{id:guid}/approve", ApproveAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.review"));
+        group.MapPost("/{id:guid}/schedule", ScheduleAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.publish"));
+        group.MapPost("/{id:guid}/publish", PublishAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.publish"));
+        group.MapGet("/{id:guid}/revisions", RevisionsAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
         return endpoints;
     }
 
     private static async Task<IResult> ListAsync(ApplicationDbContext database, CancellationToken cancellationToken)
     {
-        var items = await database.NewsArticles.AsNoTracking()
-            .OrderByDescending(article => article.UpdatedAt)
-            .Select(article => new
-            {
-                article.Id,
-                article.Title,
-                article.Slug,
-                article.Summary,
-                article.Status,
-                article.Version,
-                article.IsFeatured,
-                article.UpdatedAt,
-                article.ScheduledFor,
-                article.PublishedAt
-            })
-            .ToListAsync(cancellationToken);
-        return Results.Ok(items.Select(item => new
-        {
-            item.Id,
-            item.Title,
-            item.Slug,
-            item.Summary,
-            Status = ToWireStatus(item.Status),
-            item.Version,
-            item.IsFeatured,
-            item.UpdatedAt,
-            item.ScheduledFor,
-            item.PublishedAt
-        }));
+        var items = await database.NewsArticles.AsNoTracking().OrderByDescending(article => article.UpdatedAt).ToListAsync(cancellationToken);
+        return Results.Ok(items.Select(ToResponse));
     }
 
-    private static async Task<IResult> CreateAsync(
-        NewsDraftRequest request,
-        ClaimsPrincipal principal,
-        HttpContext context,
-        ApplicationDbContext database,
-        TenantContext tenant,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> CreateAsync(NewsDraftRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
     {
-        var errors = Validate(request);
-        if (errors.Count > 0)
-        {
-            return Results.ValidationProblem(errors);
-        }
-
+        var errors = Validate(request.Title, request.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt);
+        if (errors.Count > 0) return Results.ValidationProblem(errors);
         var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
-        if (await database.NewsArticles.AnyAsync(article => article.Slug == normalizedSlug, cancellationToken))
-        {
-            return Results.Conflict(new { title = "Slug já utilizado", status = StatusCodes.Status409Conflict });
-        }
-
-        var actorId = RequireActor(principal);
-        var article = NewsArticle.Create(tenant.RequireMunicipalityId(), request.Title, request.Slug, actorId);
-        article.UpdateDraft(
-            request.Title,
-            request.Summary,
-            request.Body,
-            request.CoverImageUrl,
-            request.CoverImageAlt,
-            request.IsFeatured,
-            actorId,
-            DateTimeOffset.UtcNow);
+        if (await database.NewsArticles.AnyAsync(article => article.Slug == normalizedSlug, cancellationToken)) return Results.Conflict(new { title = "Slug já utilizado", status = 409 });
+        var actor = RequireActor(principal);
+        var article = NewsArticle.Create(tenant.RequireMunicipalityId(), request.Title, request.Slug, actor);
+        article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.IsFeatured, actor, DateTimeOffset.UtcNow);
         database.NewsArticles.Add(article);
-        AddAudit(database, tenant, actorId, "content.news.created", article.Id, context.TraceIdentifier, new { article.Title, article.Slug });
+        AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
+        AddAudit(database, tenant, actor, "content.news.created", article.Id, context.TraceIdentifier, new { article.Title, article.Slug, article.Version });
         await database.SaveChangesAsync(cancellationToken);
         return Results.Created($"/api/v1/admin/news/{article.Id}", ToResponse(article));
     }
 
-    private static Task<IResult> SubmitAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) =>
-        TransitionAsync(id, "content.news.submitted", principal, context, database, tenant,
-            (article, actor, at) => article.SubmitForReview(actor, at), cancellationToken);
-
-    private static Task<IResult> ApproveAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) =>
-        TransitionAsync(id, "content.news.approved", principal, context, database, tenant,
-            (article, actor, at) => article.Approve(actor, at), cancellationToken);
-
-    private static Task<IResult> PublishAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) =>
-        TransitionAsync(id, "content.news.published", principal, context, database, tenant,
-            (article, actor, at) => article.Publish(actor, at), cancellationToken);
-
-    private static async Task<IResult> TransitionAsync(
-        Guid id,
-        string action,
-        ClaimsPrincipal principal,
-        HttpContext context,
-        ApplicationDbContext database,
-        TenantContext tenant,
-        Action<NewsArticle, Guid, DateTimeOffset> transition,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateAsync(Guid id, NewsUpdateRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
     {
         var article = await database.NewsArticles.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-        if (article is null)
-        {
-            return Results.NotFound();
-        }
-
-        var actorId = RequireActor(principal);
+        if (article is null) return Results.NotFound();
+        if (article.Version != request.ExpectedVersion) return Results.Conflict(new { title = "Notícia alterada por outra pessoa", currentVersion = article.Version, status = 409 });
+        var errors = Validate(request.Title, article.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt);
+        if (errors.Count > 0) return Results.ValidationProblem(errors);
+        var actor = RequireActor(principal);
         try
         {
-            transition(article, actorId, DateTimeOffset.UtcNow);
+            AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
+            article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.IsFeatured, actor, DateTimeOffset.UtcNow);
+            AddAudit(database, tenant, actor, "content.news.updated", article.Id, context.TraceIdentifier, new { article.Version });
+            await database.SaveChangesAsync(cancellationToken);
+            return Results.Ok(ToResponse(article));
         }
-        catch (EditorialTransitionException exception)
-        {
-            return Results.Conflict(new { title = "Transição editorial inválida", detail = exception.Message, status = StatusCodes.Status409Conflict });
-        }
-
-        AddAudit(database, tenant, actorId, action, article.Id, context.TraceIdentifier, new { status = ToWireStatus(article.Status), article.Version });
-        await database.SaveChangesAsync(cancellationToken);
-        return Results.Ok(ToResponse(article));
+        catch (EditorialTransitionException exception) { return Results.Conflict(new { title = "Notícia não editável", detail = exception.Message, status = 409 }); }
     }
 
-    private static Dictionary<string, string[]> Validate(NewsDraftRequest request)
+    private static Task<IResult> SubmitAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) => TransitionAsync(id, "content.news.submitted", principal, context, database, tenant, (article, actor, at) => article.SubmitForReview(actor, at), false, cancellationToken);
+    private static Task<IResult> ApproveAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) => TransitionAsync(id, "content.news.approved", principal, context, database, tenant, (article, actor, at) => article.Approve(actor, at), false, cancellationToken);
+    private static Task<IResult> PublishAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) => TransitionAsync(id, "content.news.published", principal, context, database, tenant, (article, actor, at) => article.Publish(actor, at), true, cancellationToken);
+
+    private static async Task<IResult> ScheduleAsync(Guid id, ScheduleRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
+    {
+        var article = await database.NewsArticles.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (article is null) return Results.NotFound();
+        var actor = RequireActor(principal);
+        try
+        {
+            AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
+            article.Schedule(request.PublishAt, actor, DateTimeOffset.UtcNow);
+            database.OutboxMessages.Add(new OutboxMessage(tenant.RequireMunicipalityId(), "content.news.scheduled", JsonSerializer.Serialize(new { article.Id, article.Slug, request.PublishAt })));
+            AddAudit(database, tenant, actor, "content.news.scheduled", article.Id, context.TraceIdentifier, new { request.PublishAt, article.Version });
+            await database.SaveChangesAsync(cancellationToken);
+            return Results.Ok(ToResponse(article));
+        }
+        catch (Exception exception) when (exception is EditorialTransitionException or ArgumentOutOfRangeException) { return Results.Conflict(new { title = "Agendamento inválido", detail = exception.Message, status = 409 }); }
+    }
+
+    private static async Task<IResult> TransitionAsync(Guid id, string action, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, Action<NewsArticle, Guid, DateTimeOffset> transition, bool enqueuePublished, CancellationToken cancellationToken)
+    {
+        var article = await database.NewsArticles.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (article is null) return Results.NotFound();
+        var actor = RequireActor(principal);
+        try
+        {
+            AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
+            transition(article, actor, DateTimeOffset.UtcNow);
+            if (enqueuePublished) database.OutboxMessages.Add(new OutboxMessage(tenant.RequireMunicipalityId(), "content.news.published", JsonSerializer.Serialize(new { article.Id, article.Slug, article.Version })));
+            AddAudit(database, tenant, actor, action, article.Id, context.TraceIdentifier, new { status = ToWireStatus(article.Status), article.Version });
+            await database.SaveChangesAsync(cancellationToken);
+            return Results.Ok(ToResponse(article));
+        }
+        catch (EditorialTransitionException exception) { return Results.Conflict(new { title = "Transição editorial inválida", detail = exception.Message, status = 409 }); }
+    }
+
+    private static async Task<IResult> RevisionsAsync(Guid id, ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var revisions = await database.ContentRevisions.AsNoTracking().Where(item => item.ResourceKind == "NEWS" && item.ResourceId == id).OrderByDescending(item => item.CreatedAt).Select(item => new { item.Id, item.Version, item.SnapshotJson, item.CreatedBy, item.CreatedAt }).ToListAsync(cancellationToken);
+        return Results.Ok(revisions);
+    }
+
+    private static Dictionary<string, string[]> Validate(string title, string slug, string summary, string body, string? coverImageUrl, string? coverImageAlt)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 180) errors["title"] = ["Informe um título com até 180 caracteres."];
-        if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-')) errors["slug"] = ["Use somente letras sem acento, números e hífen no slug."];
-        if (string.IsNullOrWhiteSpace(request.Summary) || request.Summary.Trim().Length > 320) errors["summary"] = ["Informe uma linha fina com até 320 caracteres."];
-        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 100_000) errors["body"] = ["Informe o conteúdo da notícia."];
-        if (!string.IsNullOrWhiteSpace(request.CoverImageUrl) && string.IsNullOrWhiteSpace(request.CoverImageAlt)) errors["coverImageAlt"] = ["Texto alternativo é obrigatório para imagem de capa."];
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 180) errors["title"] = ["Informe um título com até 180 caracteres."];
+        if (string.IsNullOrWhiteSpace(slug) || slug.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-')) errors["slug"] = ["Use somente letras sem acento, números e hífen no slug."];
+        if (string.IsNullOrWhiteSpace(summary) || summary.Trim().Length > 320) errors["summary"] = ["Informe uma linha fina com até 320 caracteres."];
+        if (string.IsNullOrWhiteSpace(body) || body.Trim().Length > 100_000) errors["body"] = ["Informe o conteúdo da notícia."];
+        if (!string.IsNullOrWhiteSpace(coverImageUrl) && string.IsNullOrWhiteSpace(coverImageAlt)) errors["coverImageAlt"] = ["Texto alternativo é obrigatório para imagem de capa."];
         return errors;
     }
 
-    private static Guid RequireActor(ClaimsPrincipal principal) =>
-        Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)
-            ? actorId
-            : throw new InvalidOperationException("A sessão autenticada não possui identificador de usuário.");
+    private static Guid RequireActor(ClaimsPrincipal principal) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) ? actor : throw new InvalidOperationException("Sessão sem identificador de usuário.");
+    private static void AddAudit(ApplicationDbContext database, TenantContext tenant, Guid actor, string action, Guid id, string correlationId, object diff) => database.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "NewsArticle", id.ToString(), JsonSerializer.Serialize(diff), correlationId));
+    private static void AddRevision(ApplicationDbContext database, Guid municipalityId, NewsArticle article, Guid actor) => database.ContentRevisions.Add(new ContentRevision(municipalityId, "NEWS", article.Id, article.Version, JsonSerializer.Serialize(ToResponse(article)), actor));
+    private static object ToResponse(NewsArticle article) => new { article.Id, article.Title, article.Slug, article.Summary, article.Body, article.CoverImageUrl, article.CoverImageAlt, Status = ToWireStatus(article.Status), article.Version, article.IsFeatured, article.UpdatedAt, article.ScheduledFor, article.PublishedAt };
+    private static string ToWireStatus(EditorialStatus status) => status switch { EditorialStatus.Draft => "DRAFT", EditorialStatus.InReview => "IN_REVIEW", EditorialStatus.Approved => "APPROVED", EditorialStatus.Scheduled => "SCHEDULED", EditorialStatus.Published => "PUBLISHED", EditorialStatus.Archived => "ARCHIVED", _ => throw new ArgumentOutOfRangeException(nameof(status)) };
 
-    private static void AddAudit(ApplicationDbContext database, TenantContext tenant, Guid actorId, string action, Guid id, string correlationId, object diff) =>
-        database.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actorId, action, "NewsArticle", id.ToString(), JsonSerializer.Serialize(diff), correlationId));
-
-    private static object ToResponse(NewsArticle article) => new
-    {
-        article.Id,
-        article.Title,
-        article.Slug,
-        Status = ToWireStatus(article.Status),
-        article.Version,
-        article.UpdatedAt
-    };
-
-    private static string ToWireStatus(EditorialStatus status) => status switch
-    {
-        EditorialStatus.Draft => "DRAFT",
-        EditorialStatus.InReview => "IN_REVIEW",
-        EditorialStatus.Approved => "APPROVED",
-        EditorialStatus.Scheduled => "SCHEDULED",
-        EditorialStatus.Published => "PUBLISHED",
-        EditorialStatus.Archived => "ARCHIVED",
-        _ => throw new ArgumentOutOfRangeException(nameof(status))
-    };
-
-    public sealed record NewsDraftRequest(
-        string Title,
-        string Slug,
-        string Summary,
-        string Body,
-        string? CoverImageUrl,
-        string? CoverImageAlt,
-        bool IsFeatured);
+    public sealed record NewsDraftRequest(string Title, string Slug, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, bool IsFeatured);
+    public sealed record NewsUpdateRequest(string Title, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, bool IsFeatured, int ExpectedVersion);
+    public sealed record ScheduleRequest(DateTimeOffset PublishAt);
 }

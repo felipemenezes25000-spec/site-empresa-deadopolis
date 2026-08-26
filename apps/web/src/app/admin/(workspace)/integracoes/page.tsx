@@ -1,0 +1,1 @@
+import { IntegrationManager } from "@/components/admin/integration-manager";export default function Page(){return <><div className="admin-heading"><div><h1>Integrações</h1><p>Estado real dos fornecedores e dependências externas — sem sucesso falso.</p></div></div><IntegrationManager/></>}

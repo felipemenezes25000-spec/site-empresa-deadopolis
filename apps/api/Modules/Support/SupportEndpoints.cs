@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -12,119 +13,19 @@ public static class SupportEndpoints
 {
     public static IEndpointRouteBuilder MapSupportEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/v1/tickets", CreateAsync).AllowAnonymous().WithTags("Support");
-        endpoints.MapGet("/api/v1/tickets/{protocol}", TrackAsync).AllowAnonymous().WithTags("Support");
-        endpoints.MapGet("/api/v1/admin/tickets", ListAsync)
-            .RequireAuthorization(policy => policy.RequireClaim("capability", "support.write"))
-            .WithTags("Admin", "Support");
-        return endpoints;
+        endpoints.MapPost("/api/v1/tickets", CreateAsync).AllowAnonymous().WithTags("Support"); endpoints.MapGet("/api/v1/tickets/{protocol}", TrackAsync).AllowAnonymous().WithTags("Support");
+        var admin = endpoints.MapGroup("/api/v1/admin/tickets").RequireAuthorization(p => p.RequireClaim("capability", "support.write")).WithTags("Admin", "Support"); admin.MapGet("/", ListAsync); admin.MapPost("/{id:guid}/comments", AddCommentAsync); admin.MapPost("/{id:guid}/priority", SetPriorityAsync); admin.MapPost("/{id:guid}/resolve", ResolveAsync); admin.MapPost("/{id:guid}/reopen", ReopenAsync); admin.MapGet("/sla/violations", ViolationsAsync); return endpoints;
     }
-
-    private static async Task<IResult> CreateAsync(
-        TicketRequest request,
-        HttpContext context,
-        ApplicationDbContext database,
-        TenantContext tenant,
-        CancellationToken cancellationToken)
-    {
-        var errors = Validate(request);
-        if (errors.Count > 0)
-        {
-            return Results.ValidationProblem(errors);
-        }
-
-        var policy = await database.SlaPolicies.SingleOrDefaultAsync(cancellationToken);
-        if (policy is null)
-        {
-            policy = SlaPolicy.CreateDefault(tenant.RequireMunicipalityId());
-            database.SlaPolicies.Add(policy);
-        }
-
-        var openedAt = DateTimeOffset.UtcNow;
-        var protocol = $"DEO-{openedAt:yyyyMMdd}-{Convert.ToHexString(RandomNumberGenerator.GetBytes(4))}";
-        var ticket = new Ticket(
-            tenant.RequireMunicipalityId(),
-            protocol,
-            request.RequesterName,
-            request.Contact,
-            request.Category,
-            TicketPriority.Normal,
-            request.Description,
-            policy.CalculateDeadlines(TicketPriority.Normal, openedAt));
-        database.Tickets.Add(ticket);
-        database.AuditEvents.Add(new AuditEvent(
-            tenant.RequireMunicipalityId(),
-            null,
-            "support.ticket.created",
-            "Ticket",
-            ticket.Id.ToString(),
-            JsonSerializer.Serialize(new { ticket.Protocol, ticket.Category, privacyConsent = true }),
-            context.TraceIdentifier));
-        await database.SaveChangesAsync(cancellationToken);
-
-        return Results.Created($"/api/v1/tickets/{ticket.Protocol}", new
-        {
-            ticket.Protocol,
-            ticket.TrackingCode,
-            ticket.Status,
-            ticket.FirstResponseDueAt,
-            ticket.ResolutionDueAt
-        });
-    }
-
-    private static async Task<IResult> TrackAsync(
-        string protocol,
-        string? code,
-        ApplicationDbContext database,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return Results.BadRequest(new { title = "Código de acompanhamento obrigatório", status = StatusCodes.Status400BadRequest });
-        }
-
-        var ticket = await database.Tickets.AsNoTracking()
-            .Where(item => item.Protocol == protocol && item.TrackingCode == code)
-            .Select(item => new { item.Protocol, item.Category, item.Status, item.OpenedAt, item.FirstResponseDueAt, item.ResolutionDueAt, item.FirstResponseAt, item.ResolvedAt })
-            .SingleOrDefaultAsync(cancellationToken);
-        return ticket is null ? Results.NotFound() : Results.Ok(ticket);
-    }
-
-    private static async Task<IResult> ListAsync(ApplicationDbContext database, CancellationToken cancellationToken)
-    {
-        var tickets = await database.Tickets.AsNoTracking()
-            .OrderBy(item => item.ResolutionDueAt)
-            .Select(item => new
-            {
-                item.Id,
-                item.Protocol,
-                item.RequesterName,
-                item.Category,
-                item.Priority,
-                item.Status,
-                item.OpenedAt,
-                item.FirstResponseDueAt,
-                item.ResolutionDueAt
-            })
-            .ToListAsync(cancellationToken);
-        return Results.Ok(tickets);
-    }
-
-    private static Dictionary<string, string[]> Validate(TicketRequest request)
-    {
-        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        if (string.IsNullOrWhiteSpace(request.RequesterName) || request.RequesterName.Trim().Length > 160) errors["requesterName"] = ["Informe um nome com até 160 caracteres."];
-        if (string.IsNullOrWhiteSpace(request.Contact) || request.Contact.Trim().Length > 200) errors["contact"] = ["Informe um meio de contato válido."];
-        if (string.IsNullOrWhiteSpace(request.Category) || request.Category.Trim().Length > 80) errors["category"] = ["Informe a categoria."];
-        if (string.IsNullOrWhiteSpace(request.Description) || request.Description.Trim().Length is < 20 or > 4_000) errors["description"] = ["Descreva a solicitação entre 20 e 4.000 caracteres."];
-        if (!request.PrivacyConsent) errors["privacyConsent"] = ["É necessário concordar com o tratamento dos dados para atendimento."];
-        return errors;
-    }
-
-    public sealed record TicketRequest(
-        string RequesterName,
-        string Contact,
-        string Category,
-        string Description,
-        bool PrivacyConsent);
+    private static async Task<IResult> CreateAsync(TicketRequest request, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken) { var errors = Validate(request); if (errors.Count > 0) return Results.ValidationProblem(errors); var policy = await database.SlaPolicies.SingleOrDefaultAsync(cancellationToken); if (policy is null) { policy = SlaPolicy.CreateDefault(tenant.RequireMunicipalityId()); database.SlaPolicies.Add(policy); } var openedAt = DateTimeOffset.UtcNow; var protocol = $"DEO-{openedAt:yyyyMMdd}-{Convert.ToHexString(RandomNumberGenerator.GetBytes(4))}"; var ticket = new Ticket(tenant.RequireMunicipalityId(), protocol, request.RequesterName, request.Contact, request.Category, TicketPriority.Normal, request.Description, policy.CalculateDeadlines(TicketPriority.Normal, openedAt)); database.Tickets.Add(ticket); database.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), null, "support.ticket.created", "Ticket", ticket.Id.ToString(), JsonSerializer.Serialize(new { ticket.Protocol, ticket.Category, privacyConsent = true }), context.TraceIdentifier)); await database.SaveChangesAsync(cancellationToken); return Results.Created($"/api/v1/tickets/{ticket.Protocol}", new { ticket.Protocol, ticket.TrackingCode, ticket.Status, ticket.FirstResponseDueAt, ticket.ResolutionDueAt }); }
+    private static async Task<IResult> TrackAsync(string protocol, string? code, ApplicationDbContext database, CancellationToken ct) { if (string.IsNullOrWhiteSpace(code)) return Results.BadRequest(new { title = "Código de acompanhamento obrigatório", status = 400 }); var ticket = await database.Tickets.AsNoTracking().SingleOrDefaultAsync(x => x.Protocol == protocol && x.TrackingCode == code, ct); if (ticket is null) return Results.NotFound(); var comments = await database.TicketComments.AsNoTracking().Where(x => x.TicketId == ticket.Id && !x.IsInternal).OrderBy(x => x.CreatedAt).Select(x => new { x.Body, x.CreatedAt }).ToListAsync(ct); return Results.Ok(new { ticket.Protocol, ticket.Category, ticket.Status, ticket.OpenedAt, ticket.FirstResponseDueAt, ticket.ResolutionDueAt, ticket.FirstResponseAt, ticket.ResolvedAt, comments }); }
+    private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.Tickets.AsNoTracking().OrderBy(x => x.ResolutionDueAt).Select(x => new { x.Id, x.Protocol, x.RequesterName, x.Category, x.Priority, x.Status, x.OpenedAt, x.FirstResponseDueAt, x.ResolutionDueAt, x.FirstResponseAt, x.ResolvedAt }).ToListAsync(ct));
+    private static async Task<IResult> AddCommentAsync(Guid id, CommentRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var ticket = await db.Tickets.SingleOrDefaultAsync(x => x.Id == id, ct); if (ticket is null) return Results.NotFound(); var actor = RequireActor(principal); TicketComment comment; try { comment = new TicketComment(tenant.RequireMunicipalityId(), ticket.Id, actor, request.Body, request.Internal); } catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["body"] = [ex.Message] }); } db.TicketComments.Add(comment); if (!request.Internal) ticket.RecordResponse(DateTimeOffset.UtcNow); Audit(db, tenant, actor, "ticket.comment.added", ticket.Id, context.TraceIdentifier, new { request.Internal }); await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/tickets/{id}/comments/{comment.Id}", comment); }
+    private static async Task<IResult> SetPriorityAsync(Guid id, PriorityRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { if (!Enum.TryParse<TicketPriority>(request.Priority, true, out var priority)) return Results.ValidationProblem(new Dictionary<string, string[]> { ["priority"] = ["Use CRITICAL, HIGH, NORMAL ou LOW."] }); var ticket = await db.Tickets.SingleOrDefaultAsync(x => x.Id == id, ct); if (ticket is null) return Results.NotFound(); var policy = await db.SlaPolicies.SingleAsync(ct); ticket.SetPriority(priority, policy.CalculateDeadlines(priority, ticket.OpenedAt)); Audit(db, tenant, RequireActor(principal), "ticket.priority.changed", ticket.Id, context.TraceIdentifier, new { priority = priority.ToString() }); await db.SaveChangesAsync(ct); return Results.Ok(ticket); }
+    private static async Task<IResult> ResolveAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var ticket = await db.Tickets.SingleOrDefaultAsync(x => x.Id == id, ct); if (ticket is null) return Results.NotFound(); ticket.Resolve(DateTimeOffset.UtcNow); Audit(db, tenant, RequireActor(principal), "ticket.resolved", ticket.Id, context.TraceIdentifier, new { ticket.ResolvedAt }); await db.SaveChangesAsync(ct); return Results.Ok(ticket); }
+    private static async Task<IResult> ReopenAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var ticket = await db.Tickets.SingleOrDefaultAsync(x => x.Id == id, ct); if (ticket is null) return Results.NotFound(); ticket.Reopen(); Audit(db, tenant, RequireActor(principal), "ticket.reopened", ticket.Id, context.TraceIdentifier, new { ticket.Status }); await db.SaveChangesAsync(ct); return Results.Ok(ticket); }
+    private static async Task<IResult> ViolationsAsync(ApplicationDbContext db, CancellationToken ct) { var now = DateTimeOffset.UtcNow; var items = await db.Tickets.AsNoTracking().Where(x => x.Status != "RESOLVED" && (x.ResolutionDueAt < now || (!x.FirstResponseAt.HasValue && x.FirstResponseDueAt < now))).OrderBy(x => x.ResolutionDueAt).Select(x => new { x.Id, x.Protocol, x.Priority, x.Status, x.FirstResponseDueAt, x.ResolutionDueAt, firstResponseBreached = !x.FirstResponseAt.HasValue && x.FirstResponseDueAt < now, resolutionBreached = x.ResolutionDueAt < now }).ToListAsync(ct); return Results.Ok(items); }
+    private static Dictionary<string, string[]> Validate(TicketRequest request) { var e = new Dictionary<string, string[]>(StringComparer.Ordinal); if (string.IsNullOrWhiteSpace(request.RequesterName) || request.RequesterName.Trim().Length > 160) e["requesterName"] = ["Informe um nome com até 160 caracteres."]; if (string.IsNullOrWhiteSpace(request.Contact) || request.Contact.Trim().Length > 200) e["contact"] = ["Informe um meio de contato válido."]; if (string.IsNullOrWhiteSpace(request.Category) || request.Category.Trim().Length > 80) e["category"] = ["Informe a categoria."]; if (string.IsNullOrWhiteSpace(request.Description) || request.Description.Trim().Length is < 20 or > 4000) e["description"] = ["Descreva a solicitação entre 20 e 4.000 caracteres."]; if (!request.PrivacyConsent) e["privacyConsent"] = ["É necessário concordar com o tratamento dos dados para atendimento."]; return e; }
+    private static Guid RequireActor(ClaimsPrincipal p) => Guid.TryParse(p.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new InvalidOperationException("Sessão inválida.");
+    private static void Audit(ApplicationDbContext db, TenantContext tenant, Guid actor, string action, Guid id, string correlation, object diff) => db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "Ticket", id.ToString(), JsonSerializer.Serialize(diff), correlation));
+    public sealed record TicketRequest(string RequesterName, string Contact, string Category, string Description, bool PrivacyConsent); public sealed record CommentRequest(string Body, bool Internal); public sealed record PriorityRequest(string Priority);
 }

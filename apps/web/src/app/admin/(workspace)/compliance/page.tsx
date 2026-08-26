@@ -1,0 +1,1 @@
+import { CompliancePanel } from "@/components/admin/compliance-panel";export default function Page(){return <><div className="admin-heading"><div><h1>Evidence Center</h1><p>Evidências operacionais sem fabricar certificações nem validação de produção.</p></div></div><CompliancePanel/></>}

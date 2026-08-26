@@ -1,5 +1,4 @@
 name: municipal-platform
-
 services:
   postgres:
     image: postgres:17-alpine
@@ -8,22 +7,12 @@ services:
       POSTGRES_DB: municipal_platform
       POSTGRES_USER: municipal
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
-    ports:
-      - "127.0.0.1:54329:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U municipal -d municipal_platform"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-    security_opt:
-      - no-new-privileges:true
-
+    ports: ["127.0.0.1:54329:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U municipal -d municipal_platform"], interval: 5s, timeout: 3s, retries: 12 }
+    security_opt: ["no-new-privileges:true"]
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    build: { context: ., dockerfile: apps/api/Dockerfile }
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -31,35 +20,25 @@ services:
       DefaultMunicipalitySlug: deodapolis
       PresentationMode: "true"
       Demo__Password: ${DEMO_PASSWORD:?Defina DEMO_PASSWORD no arquivo .env}
-    ports:
-      - "127.0.0.1:5080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      Storage__LocalRoot: /tmp/municipal-objects
+      DataProtection__KeyRingPath: /tmp/municipal-dp-keys
+      PublicPortalBaseUrl: http://localhost:3000
+    ports: ["127.0.0.1:5080:8080"]
+    depends_on: { postgres: { condition: service_healthy } }
     read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+    build: { context: ., dockerfile: apps/web/Dockerfile }
     restart: unless-stopped
     environment:
       API_URL: http://api:8080
       MUNICIPALITY_SLUG: deodapolis
       PRESENTATION_MODE: "true"
-    ports:
-      - "127.0.0.1:3000:3000"
-    depends_on:
-      - api
+      PUBLIC_PORTAL_URL: http://localhost:3000
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
     read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-
-volumes:
-  postgres_data:
+    tmpfs: ["/tmp", "/app/.next/cache"]
+    security_opt: ["no-new-privileges:true"]
+volumes: { postgres_data: {} }

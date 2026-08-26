@@ -15,215 +15,24 @@ using MunicipalPlatform.Api.Platform.Tenancy;
 
 namespace MunicipalPlatform.Api.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext(
-    DbContextOptions<ApplicationDbContext> options,
-    TenantContext tenantContext) : DbContext(options)
+public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TenantContext tenantContext) : DbContext(options)
 {
-    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
-    public DbSet<GazetteEdition> GazetteEditions => Set<GazetteEdition>();
-    public DbSet<Municipality> Municipalities => Set<Municipality>();
-    public DbSet<UserAccount> Users => Set<UserAccount>();
-    public DbSet<RoleCapability> RoleCapabilities => Set<RoleCapability>();
-    public DbSet<Department> Departments => Set<Department>();
-    public DbSet<ServiceItem> Services => Set<ServiceItem>();
-    public DbSet<TransparencyLink> TransparencyLinks => Set<TransparencyLink>();
-    public DbSet<IntegrationStatus> IntegrationStatuses => Set<IntegrationStatus>();
-    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
-    public DbSet<RedirectRule> RedirectRules => Set<RedirectRule>();
-    public DbSet<Ticket> Tickets => Set<Ticket>();
-    public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
-    public DbSet<Mailbox> Mailboxes => Set<Mailbox>();
-    public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
-
-    private Guid CurrentMunicipalityId => tenantContext.RequireMunicipalityId();
-
-    public override int SaveChanges(bool acceptAllChangesOnSuccess)
-    {
-        EnforceTenantBoundary();
-        return base.SaveChanges(acceptAllChangesOnSuccess);
-    }
-
-    public override Task<int> SaveChangesAsync(
-        bool acceptAllChangesOnSuccess,
-        CancellationToken cancellationToken = default)
-    {
-        EnforceTenantBoundary();
-        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
-    }
-
+    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>(); public DbSet<PortalResource> PortalResources => Set<PortalResource>(); public DbSet<ContentRevision> ContentRevisions => Set<ContentRevision>(); public DbSet<GazetteEdition> GazetteEditions => Set<GazetteEdition>(); public DbSet<Municipality> Municipalities => Set<Municipality>(); public DbSet<UserAccount> Users => Set<UserAccount>(); public DbSet<RoleCapability> RoleCapabilities => Set<RoleCapability>(); public DbSet<Department> Departments => Set<Department>(); public DbSet<ServiceItem> Services => Set<ServiceItem>(); public DbSet<TransparencyLink> TransparencyLinks => Set<TransparencyLink>(); public DbSet<IntegrationStatus> IntegrationStatuses => Set<IntegrationStatus>(); public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>(); public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>(); public DbSet<RedirectRule> RedirectRules => Set<RedirectRule>(); public DbSet<Ticket> Tickets => Set<Ticket>(); public DbSet<TicketComment> TicketComments => Set<TicketComment>(); public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>(); public DbSet<Mailbox> Mailboxes => Set<Mailbox>(); public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>(); private Guid CurrentMunicipalityId => tenantContext.RequireMunicipalityId();
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) { EnforceTenantBoundary(); return base.SaveChanges(acceptAllChangesOnSuccess); }
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) { EnforceTenantBoundary(); return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken); }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<NewsArticle>(entity =>
-        {
-            entity.ToTable("news_articles");
-            entity.HasKey(article => article.Id);
-            entity.Property(article => article.Title).HasMaxLength(180);
-            entity.Property(article => article.Slug).HasMaxLength(180);
-            entity.Property(article => article.Summary).HasMaxLength(320);
-            entity.Property(article => article.Body).HasColumnType("text");
-            entity.Property(article => article.Status).HasConversion<string>().HasMaxLength(24);
-            entity.HasIndex(article => new { article.MunicipalityId, article.Slug }).IsUnique();
-            entity.HasIndex(article => new { article.MunicipalityId, article.Status, article.PublishedAt });
-        });
-
-        modelBuilder.Entity<GazetteEdition>(entity =>
-        {
-            entity.ToTable("gazette_editions");
-            entity.HasKey(edition => edition.Id);
-            entity.Property(edition => edition.Status).HasConversion<string>().HasMaxLength(24);
-            entity.Property(edition => edition.Type).HasConversion<string>().HasMaxLength(24);
-            entity.Property(edition => edition.Sha256).HasMaxLength(64);
-            entity.Property(edition => edition.VerificationCode).HasMaxLength(64);
-            entity.HasIndex(edition => new { edition.MunicipalityId, edition.Year, edition.Number }).IsUnique();
-            entity.HasIndex(edition => new { edition.MunicipalityId, edition.VerificationCode }).IsUnique();
-        });
-
-        modelBuilder.Entity<Municipality>(entity =>
-        {
-            entity.ToTable("municipalities");
-            entity.HasKey(municipality => municipality.Id);
-            entity.Property(municipality => municipality.Name).HasMaxLength(160);
-            entity.Property(municipality => municipality.Slug).HasMaxLength(100);
-            entity.Property(municipality => municipality.StateCode).HasMaxLength(2);
-            entity.Property(municipality => municipality.PrimaryColor).HasMaxLength(32);
-            entity.HasIndex(municipality => municipality.Slug).IsUnique();
-            entity.HasIndex(municipality => municipality.Domain).IsUnique();
-        });
-
-        modelBuilder.Entity<UserAccount>(entity =>
-        {
-            entity.ToTable("users");
-            entity.HasKey(user => user.Id);
-            entity.Property(user => user.Username).HasMaxLength(100);
-            entity.Property(user => user.DisplayName).HasMaxLength(160);
-            entity.Property(user => user.Role).HasMaxLength(64);
-            entity.Property(user => user.PasswordHash).HasMaxLength(512);
-            entity.HasIndex(user => new { user.MunicipalityId, user.Username }).IsUnique();
-        });
-
-        modelBuilder.Entity<RoleCapability>(entity =>
-        {
-            entity.ToTable("role_capabilities");
-            entity.HasKey(capability => capability.Id);
-            entity.Property(capability => capability.Role).HasMaxLength(64);
-            entity.Property(capability => capability.Capability).HasMaxLength(100);
-            entity.HasIndex(capability => new { capability.MunicipalityId, capability.Role, capability.Capability }).IsUnique();
-        });
-
-        modelBuilder.Entity<Department>(entity =>
-        {
-            entity.ToTable("departments");
-            entity.HasKey(department => department.Id);
-            entity.HasIndex(department => new { department.MunicipalityId, department.Slug }).IsUnique();
-        });
-
-        modelBuilder.Entity<ServiceItem>(entity =>
-        {
-            entity.ToTable("services");
-            entity.HasKey(service => service.Id);
-            entity.Property(service => service.Description).HasColumnType("text");
-            entity.Property(service => service.Requirements).HasColumnType("text");
-            entity.Property(service => service.Documents).HasColumnType("text");
-            entity.Property(service => service.Steps).HasColumnType("text");
-            entity.HasIndex(service => new { service.MunicipalityId, service.Slug }).IsUnique();
-            entity.HasIndex(service => new { service.MunicipalityId, service.Area, service.Status });
-        });
-
-        modelBuilder.Entity<TransparencyLink>(entity =>
-        {
-            entity.ToTable("transparency_links");
-            entity.HasKey(link => link.Id);
-            entity.HasIndex(link => new { link.MunicipalityId, link.Category, link.DisplayOrder });
-        });
-
-        modelBuilder.Entity<IntegrationStatus>(entity =>
-        {
-            entity.ToTable("integration_statuses");
-            entity.HasKey(status => status.Id);
-            entity.Property(status => status.State).HasConversion<string>().HasMaxLength(24);
-            entity.HasIndex(status => new { status.MunicipalityId, status.Provider }).IsUnique();
-        });
-
-        modelBuilder.Entity<AuditEvent>(entity =>
-        {
-            entity.ToTable("audit_events");
-            entity.HasKey(audit => audit.Id);
-            entity.Property(audit => audit.SemanticDiff).HasColumnType("jsonb");
-            entity.HasIndex(audit => new { audit.MunicipalityId, audit.OccurredAt });
-            entity.HasIndex(audit => audit.CorrelationId);
-        });
-
-        modelBuilder.Entity<RedirectRule>(entity =>
-        {
-            entity.ToTable("redirect_rules");
-            entity.HasKey(rule => rule.Id);
-            entity.HasIndex(rule => new { rule.MunicipalityId, rule.LegacyPath }).IsUnique();
-        });
-
-        modelBuilder.Entity<Ticket>(entity =>
-        {
-            entity.ToTable("tickets");
-            entity.HasKey(ticket => ticket.Id);
-            entity.Property(ticket => ticket.Priority).HasConversion<string>().HasMaxLength(16);
-            entity.Property(ticket => ticket.Description).HasColumnType("text");
-            entity.HasIndex(ticket => new { ticket.MunicipalityId, ticket.Protocol }).IsUnique();
-            entity.HasIndex(ticket => new { ticket.MunicipalityId, ticket.Status, ticket.ResolutionDueAt });
-        });
-
-        modelBuilder.Entity<SlaPolicy>(entity =>
-        {
-            entity.ToTable("sla_policies");
-            entity.HasKey(policy => policy.Id);
-            entity.HasIndex(policy => policy.MunicipalityId).IsUnique();
-        });
-
-        modelBuilder.Entity<Mailbox>(entity =>
-        {
-            entity.ToTable("mailboxes");
-            entity.HasKey(mailbox => mailbox.Id);
-            entity.HasIndex(mailbox => new { mailbox.MunicipalityId, mailbox.Address }).IsUnique();
-        });
-
-        modelBuilder.Entity<MediaAsset>(entity =>
-        {
-            entity.ToTable("media_assets");
-            entity.HasKey(asset => asset.Id);
-            entity.HasIndex(asset => new { asset.MunicipalityId, asset.Sha256 });
-            entity.HasIndex(asset => new { asset.MunicipalityId, asset.Status, asset.UploadedAt });
-        });
-
-        ApplyTenantFilters(modelBuilder);
+        modelBuilder.Entity<NewsArticle>(e => { e.ToTable("news_articles"); e.HasKey(x => x.Id); e.Property(x => x.Title).HasMaxLength(180); e.Property(x => x.Slug).HasMaxLength(180); e.Property(x => x.Summary).HasMaxLength(320); e.Property(x => x.Body).HasColumnType("text"); e.Property(x => x.Status).HasConversion<string>().HasMaxLength(24); e.HasIndex(x => new { x.MunicipalityId, x.Slug }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Status, x.PublishedAt }); });
+        modelBuilder.Entity<PortalResource>(e => { e.ToTable("portal_resources"); e.HasKey(x => x.Id); e.Property(x => x.Kind).HasMaxLength(32); e.Property(x => x.Slug).HasMaxLength(180); e.Property(x => x.Title).HasMaxLength(220); e.Property(x => x.Summary).HasMaxLength(500); e.Property(x => x.PayloadJson).HasColumnType("jsonb"); e.Property(x => x.Status).HasMaxLength(24); e.HasIndex(x => new { x.MunicipalityId, x.Kind, x.Slug }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Kind, x.Status, x.DisplayOrder }); });
+        modelBuilder.Entity<ContentRevision>(e => { e.ToTable("content_revisions"); e.HasKey(x => x.Id); e.Property(x => x.ResourceKind).HasMaxLength(32); e.Property(x => x.SnapshotJson).HasColumnType("jsonb"); e.HasIndex(x => new { x.MunicipalityId, x.ResourceKind, x.ResourceId, x.CreatedAt }); });
+        modelBuilder.Entity<GazetteEdition>(e => { e.ToTable("gazette_editions"); e.HasKey(x => x.Id); e.Property(x => x.Status).HasConversion<string>().HasMaxLength(24); e.Property(x => x.Type).HasConversion<string>().HasMaxLength(24); e.Property(x => x.CompositionJson).HasColumnType("text"); e.Property(x => x.Sha256).HasMaxLength(64); e.Property(x => x.VerificationCode).HasMaxLength(64); e.HasIndex(x => new { x.MunicipalityId, x.Year, x.Number }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.VerificationCode }).IsUnique(); });
+        modelBuilder.Entity<Municipality>(e => { e.ToTable("municipalities"); e.HasKey(x => x.Id); e.Property(x => x.Name).HasMaxLength(160); e.Property(x => x.Slug).HasMaxLength(100); e.Property(x => x.StateCode).HasMaxLength(2); e.Property(x => x.PrimaryColor).HasMaxLength(32); e.HasIndex(x => x.Slug).IsUnique(); e.HasIndex(x => x.Domain).IsUnique(); });
+        modelBuilder.Entity<UserAccount>(e => { e.ToTable("users"); e.HasKey(x => x.Id); e.Property(x => x.Username).HasMaxLength(100); e.Property(x => x.DisplayName).HasMaxLength(160); e.Property(x => x.Role).HasMaxLength(64); e.Property(x => x.PasswordHash).HasMaxLength(512); e.Property(x => x.MfaSecretProtected).HasMaxLength(4096); e.Property(x => x.MfaPendingSecretProtected).HasMaxLength(4096); e.HasIndex(x => new { x.MunicipalityId, x.Username }).IsUnique(); }); modelBuilder.Entity<RoleCapability>(e => { e.ToTable("role_capabilities"); e.HasKey(x => x.Id); e.Property(x => x.Role).HasMaxLength(64); e.Property(x => x.Capability).HasMaxLength(100); e.HasIndex(x => new { x.MunicipalityId, x.Role, x.Capability }).IsUnique(); });
+        modelBuilder.Entity<Department>(e => { e.ToTable("departments"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.MunicipalityId, x.Slug }).IsUnique(); }); modelBuilder.Entity<ServiceItem>(e => { e.ToTable("services"); e.HasKey(x => x.Id); e.Property(x => x.Description).HasColumnType("text"); e.Property(x => x.Requirements).HasColumnType("text"); e.Property(x => x.Documents).HasColumnType("text"); e.Property(x => x.Steps).HasColumnType("text"); e.HasIndex(x => new { x.MunicipalityId, x.Slug }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Area, x.Status }); }); modelBuilder.Entity<TransparencyLink>(e => { e.ToTable("transparency_links"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.MunicipalityId, x.Category, x.DisplayOrder }); });
+        modelBuilder.Entity<IntegrationStatus>(e => { e.ToTable("integration_statuses"); e.HasKey(x => x.Id); e.Property(x => x.State).HasConversion<string>().HasMaxLength(24); e.HasIndex(x => new { x.MunicipalityId, x.Provider }).IsUnique(); }); modelBuilder.Entity<AuditEvent>(e => { e.ToTable("audit_events"); e.HasKey(x => x.Id); e.Property(x => x.SemanticDiff).HasColumnType("jsonb"); e.HasIndex(x => new { x.MunicipalityId, x.OccurredAt }); e.HasIndex(x => x.CorrelationId); }); modelBuilder.Entity<OutboxMessage>(e => { e.ToTable("outbox_messages"); e.HasKey(x => x.Id); e.Property(x => x.Type).HasMaxLength(120); e.Property(x => x.PayloadJson).HasColumnType("jsonb"); e.HasIndex(x => new { x.MunicipalityId, x.ProcessedAt, x.OccurredAt }); });
+        modelBuilder.Entity<RedirectRule>(e => { e.ToTable("redirect_rules"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.MunicipalityId, x.LegacyPath }).IsUnique(); }); modelBuilder.Entity<Ticket>(e => { e.ToTable("tickets"); e.HasKey(x => x.Id); e.Property(x => x.Priority).HasConversion<string>().HasMaxLength(16); e.Property(x => x.Description).HasColumnType("text"); e.HasIndex(x => new { x.MunicipalityId, x.Protocol }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Status, x.ResolutionDueAt }); }); modelBuilder.Entity<TicketComment>(e => { e.ToTable("ticket_comments"); e.HasKey(x => x.Id); e.Property(x => x.Body).HasColumnType("text"); e.HasIndex(x => new { x.MunicipalityId, x.TicketId, x.CreatedAt }); }); modelBuilder.Entity<SlaPolicy>(e => { e.ToTable("sla_policies"); e.HasKey(x => x.Id); e.HasIndex(x => x.MunicipalityId).IsUnique(); }); modelBuilder.Entity<Mailbox>(e => { e.ToTable("mailboxes"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.MunicipalityId, x.Address }).IsUnique(); }); modelBuilder.Entity<MediaAsset>(e => { e.ToTable("media_assets"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.MunicipalityId, x.Sha256 }); e.HasIndex(x => new { x.MunicipalityId, x.Status, x.UploadedAt }); }); ApplyTenantFilters(modelBuilder);
     }
-
-    private void EnforceTenantBoundary()
-    {
-        var municipalityId = tenantContext.RequireMunicipalityId();
-        var invalidEntry = ChangeTracker.Entries<ITenantEntity>()
-            .FirstOrDefault(entry =>
-                entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted
-                && entry.Entity.MunicipalityId != municipalityId);
-
-        if (invalidEntry is not null)
-        {
-            throw new TenantPersistenceException(
-                $"A operação tentou alterar {invalidEntry.Metadata.ClrType.Name} de outro município.");
-        }
-    }
-
-    private void ApplyTenantFilters(ModelBuilder modelBuilder)
-    {
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
-                     .Where(type => typeof(ITenantEntity).IsAssignableFrom(type.ClrType)))
-        {
-            var parameter = Expression.Parameter(entityType.ClrType, "entity");
-            var municipalityProperty = Expression.Property(parameter, nameof(ITenantEntity.MunicipalityId));
-            var contextMunicipality = Expression.Property(
-                Expression.Constant(this),
-                nameof(CurrentMunicipalityId));
-            var body = Expression.Equal(municipalityProperty, contextMunicipality);
-            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
-        }
-    }
+    private void EnforceTenantBoundary() { var id = tenantContext.RequireMunicipalityId(); var bad = ChangeTracker.Entries<ITenantEntity>().FirstOrDefault(entry => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted && entry.Entity.MunicipalityId != id); if (bad is not null) throw new TenantPersistenceException($"A operação tentou alterar {bad.Metadata.ClrType.Name} de outro município."); }
+    private void ApplyTenantFilters(ModelBuilder modelBuilder) { foreach (var type in modelBuilder.Model.GetEntityTypes().Where(t => typeof(ITenantEntity).IsAssignableFrom(t.ClrType))) { var p = Expression.Parameter(type.ClrType, "entity"); var municipality = Expression.Property(p, nameof(ITenantEntity.MunicipalityId)); var current = Expression.Property(Expression.Constant(this), nameof(CurrentMunicipalityId)); modelBuilder.Entity(type.ClrType).HasQueryFilter(Expression.Lambda(Expression.Equal(municipality, current), p)); } }
 }

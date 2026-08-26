@@ -7,15 +7,14 @@ public sealed class GazetteEditionTests
     [Fact]
     public void RegisterGeneratedDocumentStoresSha256AndVerificationCode()
     {
-        var edition = GazetteEdition.Create(Guid.NewGuid(), 42, 2026, GazetteEditionType.Ordinary, new DateOnly(2026, 8, 25), Guid.NewGuid());
-        edition.SubmitForReview(Guid.NewGuid(), DateTimeOffset.UtcNow);
-        edition.Approve(Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var actor = Guid.NewGuid();
+        var edition = CreateApprovedEdition(actor);
 
         edition.RegisterGeneratedDocument(
             "gazette/2026/42.pdf",
             "D7A8FBB307D7809469CA9ABCB0082E4F8D5651E46D3CDB762D02D0BF37C9E592",
             "DEO-2026-0042-A1B2C3",
-            Guid.NewGuid(),
+            actor,
             DateTimeOffset.UtcNow);
 
         Assert.Equal(GazetteStatus.Generated, edition.Status);
@@ -49,12 +48,34 @@ public sealed class GazetteEditionTests
             DateTimeOffset.UtcNow));
     }
 
+    [Fact]
+    public void ReviewRejectsEmptyComposition()
+    {
+        var edition = GazetteEdition.Create(Guid.NewGuid(), 43, 2026, GazetteEditionType.Ordinary, new DateOnly(2026, 8, 25), Guid.NewGuid());
+
+        var error = Assert.Throws<GazetteTransitionException>(() =>
+            edition.SubmitForReview(Guid.NewGuid(), DateTimeOffset.UtcNow));
+
+        Assert.Contains("seção", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static GazetteEdition GeneratedEdition()
     {
-        var edition = GazetteEdition.Create(Guid.NewGuid(), 42, 2026, GazetteEditionType.Ordinary, new DateOnly(2026, 8, 25), Guid.NewGuid());
-        edition.SubmitForReview(Guid.NewGuid(), DateTimeOffset.UtcNow);
-        edition.Approve(Guid.NewGuid(), DateTimeOffset.UtcNow);
-        edition.RegisterGeneratedDocument("gazette/42.pdf", new string('b', 64), "DEO-2026-0042-A1B2C3", Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var actor = Guid.NewGuid();
+        var edition = CreateApprovedEdition(actor);
+        edition.RegisterGeneratedDocument("gazette/42.pdf", new string('b', 64), "DEO-2026-0042-A1B2C3", actor, DateTimeOffset.UtcNow);
+        return edition;
+    }
+
+    private static GazetteEdition CreateApprovedEdition(Guid actor)
+    {
+        var edition = GazetteEdition.Create(Guid.NewGuid(), 42, 2026, GazetteEditionType.Ordinary, new DateOnly(2026, 8, 25), actor);
+        edition.SetComposition(
+            "{\"sections\":[{\"title\":\"Administração\",\"acts\":[{\"title\":\"Ato de teste\",\"body\":\"Conteúdo sintético de teste.\"}]}]}",
+            actor,
+            DateTimeOffset.UtcNow);
+        edition.SubmitForReview(actor, DateTimeOffset.UtcNow);
+        edition.Approve(actor, DateTimeOffset.UtcNow);
         return edition;
     }
 }

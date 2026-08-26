@@ -22,6 +22,43 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MunicipalPlatform.Api.Modules.Content.Domain.ContentRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MunicipalityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResourceKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MunicipalityId", "ResourceKind", "ResourceId", "CreatedAt");
+
+                    b.ToTable("content_revisions", (string)null);
+                });
+
             modelBuilder.Entity("MunicipalPlatform.Api.Modules.Content.Domain.NewsArticle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -101,6 +138,84 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                     b.ToTable("news_articles", (string)null);
                 });
 
+            modelBuilder.Entity("MunicipalPlatform.Api.Modules.Content.Domain.PortalResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MunicipalityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.Property<DateTimeOffset?>("StartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(220)
+                        .HasColumnType("character varying(220)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MunicipalityId", "Kind", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("MunicipalityId", "Kind", "Status", "DisplayOrder");
+
+                    b.ToTable("portal_resources", (string)null);
+                });
+
             modelBuilder.Entity("MunicipalPlatform.Api.Modules.Gazette.Domain.GazetteEdition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -114,6 +229,10 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("CertificateSubject")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CompositionJson")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -222,11 +341,28 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<int>("FailedLoginCount")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("MfaEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MfaPendingSecretProtected")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<string>("MfaSecretProtected")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
 
                     b.Property<Guid>("MunicipalityId")
                         .HasColumnType("uuid");
@@ -240,6 +376,9 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -469,6 +608,40 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("integration_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("MunicipalPlatform.Api.Modules.Operations.Domain.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("MunicipalityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MunicipalityId", "ProcessedAt", "OccurredAt");
+
+                    b.ToTable("outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("MunicipalPlatform.Api.Modules.Platform.Domain.Municipality", b =>
@@ -758,6 +931,38 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence.Migrations
                     b.HasIndex("MunicipalityId", "Status", "ResolutionDueAt");
 
                     b.ToTable("tickets", (string)null);
+                });
+
+            modelBuilder.Entity("MunicipalPlatform.Api.Modules.Support.Domain.TicketComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsInternal")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("MunicipalityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MunicipalityId", "TicketId", "CreatedAt");
+
+                    b.ToTable("ticket_comments", (string)null);
                 });
 
             modelBuilder.Entity("MunicipalPlatform.Api.Modules.Transparency.Domain.TransparencyLink", b =>

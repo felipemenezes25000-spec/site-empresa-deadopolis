@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { PageIntro, PublicShell } from "@/components/portal/public-shell";
+import { verifyGazette } from "@/lib/portal-api";
+export const metadata:Metadata={title:"Verificar documento"};
+export default async function VerifyPage({params}:{params:Promise<{codigo:string}>}){const {codigo}=await params;const item=await verifyGazette(codigo);if(!item)notFound();return <PublicShell><PageIntro eyebrow="Verificação pública" title={`Edição ${item.number}/${item.year}`} description="Confira os metadados registrados para este documento."/><section className="content-section"><div className="page-shell"><div className="verification-box"><span className="status-pill">{item.status}</span><h2>Documento localizado</h2><dl className="definition-list"><dt>Data</dt><dd>{item.publicationDate}</dd><dt>Código</dt><dd>{item.verificationCode}</dd><dt>SHA-256</dt><dd className="verification-hash">{item.sha256}</dd><dt>Assinatura</dt><dd>{item.certificateSubject??"Sem certificado registrado"}</dd><dt>Emissor</dt><dd>{item.certificateIssuer??"—"}</dd></dl>{item.certificateSubject?.includes("NÃO ICP")&&<p className="warning-box"><strong>Ambiente de demonstração:</strong> esta assinatura não é ICP-Brasil e não deve ser interpretada como assinatura oficial.</p>}</div></div></section></PublicShell>}

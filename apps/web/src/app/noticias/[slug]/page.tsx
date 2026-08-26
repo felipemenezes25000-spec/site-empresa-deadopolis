@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { PageIntro, PublicShell } from "@/components/portal/public-shell";
+import { getArticle } from "@/lib/portal-api";
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const article=await getArticle(slug);return{title:article?.title??"Notícia",description:article?.summary}}
+export default async function ArticlePage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const article=await getArticle(slug);if(!article)notFound();return <PublicShell><PageIntro eyebrow="Notícia" title={article.title} description={article.summary}/><section className="content-section"><div className="page-shell detail-grid"><article className="prose-card"><p><strong>Publicado em:</strong> {article.publishedAt?new Intl.DateTimeFormat("pt-BR",{dateStyle:"long"}).format(new Date(article.publishedAt)):"—"}</p><div style={{whiteSpace:"pre-wrap"}}>{article.body}</div></article><aside className="side-card"><h2>Informação pública</h2><p>Conteúdo sujeito ao fluxo editorial e trilha de auditoria do portal.</p><small>Atualizado em {new Intl.DateTimeFormat("pt-BR").format(new Date(article.updatedAt))}</small></aside></div></section></PublicShell>}
