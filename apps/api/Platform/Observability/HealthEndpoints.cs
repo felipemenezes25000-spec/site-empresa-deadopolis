@@ -1,3 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using MunicipalPlatform.Api.Infrastructure.Persistence;
+using MunicipalPlatform.Api.Modules.Gazette.Providers;
+using MunicipalPlatform.Api.Modules.Mail.Providers;
+using MunicipalPlatform.Api.Modules.Media.Providers;
+using MunicipalPlatform.Api.Platform.Storage;
+
 namespace MunicipalPlatform.Api.Platform.Observability;
 
 public static class HealthEndpoints
@@ -11,6 +18,43 @@ public static class HealthEndpoints
         }))
         .AllowAnonymous()
         .WithName("LiveHealth")
+        .WithTags("Operations");
+
+        endpoints.MapGet("/health/ready", async (
+            ApplicationDbContext database,
+            IObjectStorageProvider storage,
+            IDigitalSigner signer,
+            ITimestampProvider timestamp,
+            IInstitutionalEmailProvider email,
+            IMalwareScanner malware,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var databaseReady = false;
+            try { databaseReady = await database.Database.CanConnectAsync(cancellationToken); }
+            catch { databaseReady = false; }
+
+            var payload = new
+            {
+                status = databaseReady ? "ready" : "not_ready",
+                checks = new
+                {
+                    database = databaseReady ? "CONFIGURED" : "UNAVAILABLE",
+                    storage = storage.State,
+                    digitalSignature = signer.State,
+                    timestamp = timestamp.State,
+                    institutionalEmail = email.State,
+                    malwareScanner = malware.State
+                },
+                correlationId = context.TraceIdentifier
+            };
+
+            return databaseReady
+                ? Results.Ok(payload)
+                : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+        })
+        .AllowAnonymous()
+        .WithName("ReadyHealth")
         .WithTags("Operations");
 
         return endpoints;

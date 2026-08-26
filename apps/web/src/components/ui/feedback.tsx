@@ -1,0 +1,7 @@
+import type { ReactNode } from "react";
+
+export function Badge({ children }: { children: ReactNode }) { return <span className="inline-flex rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-bold">{children}</span>; }
+export function StatusBadge({ status }: { status: string }) { const normalized=status.toUpperCase(); const risky=normalized.includes("NOT_")||normalized.includes("FAILED")||normalized.includes("UNAVAILABLE"); return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-extrabold ${risky?"border-amber-500 bg-amber-50 text-amber-900":"border-emerald-600 bg-emerald-50 text-emerald-900"}`}>{status}</span>; }
+export function Alert({ title, children, role = "status" }: { title: string; children: ReactNode; role?: "status" | "alert" }) { return <div role={role} className="rounded-xl border border-border bg-surface p-4"><strong className="block">{title}</strong><div className="mt-1 text-sm text-muted">{children}</div></div>; }
+export function EmptyState({ title, children }: { title: string; children?: ReactNode }) { return <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center"><strong>{title}</strong>{children && <div className="mt-2 text-sm text-muted">{children}</div>}</div>; }
+export function Skeleton({ className = "" }: { className?: string }) { return <span aria-hidden="true" className={`block animate-pulse rounded bg-surface-muted ${className}`} />; }

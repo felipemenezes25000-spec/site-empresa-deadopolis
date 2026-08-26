@@ -1,0 +1,3 @@
+import type { ReactNode } from "react";
+export function DataTable({ caption, headers, children }: { caption: string; headers: string[]; children: ReactNode }) { return <div className="overflow-x-auto"><table className="w-full min-w-[640px] border-collapse"><caption className="sr-only">{caption}</caption><thead><tr>{headers.map(header=><th key={header} scope="col" className="border-b border-border p-3 text-left text-sm">{header}</th>)}</tr></thead><tbody>{children}</tbody></table></div>; }
+export function DataCell({ children }: { children: ReactNode }) { return <td className="border-b border-border p-3 align-top text-sm">{children}</td>; }

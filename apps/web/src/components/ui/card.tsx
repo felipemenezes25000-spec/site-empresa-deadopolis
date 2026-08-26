@@ -1,0 +1,2 @@
+import type { ReactNode } from "react";
+export function Card({ title, description, children, className = "" }: { title?: string; description?: string; children: ReactNode; className?: string }) { return <section className={`rounded-xl border border-border bg-surface p-5 ${className}`}>{title && <h2 className="m-0 text-lg font-bold">{title}</h2>}{description && <p className="mt-1 text-sm text-muted">{description}</p>}<div className={title || description ? "mt-4" : ""}>{children}</div></section>; }

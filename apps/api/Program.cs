@@ -122,6 +122,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 if (!app.Environment.IsEnvironment("Testing")) await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment);
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<RequestTelemetryMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseExceptionHandler();
 app.MapPlatformHealth();

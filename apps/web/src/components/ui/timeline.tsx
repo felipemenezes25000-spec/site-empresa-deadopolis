@@ -1,0 +1,2 @@
+import type { ReactNode } from "react";
+export function Timeline({ items }: { items:{ id:string; title:string; timestamp?:string; detail?:ReactNode }[] }) { return <ol className="grid gap-4">{items.map(item=><li key={item.id} className="border-l-2 border-border pl-4"><strong className="block">{item.title}</strong>{item.timestamp&&<time className="text-xs text-muted">{item.timestamp}</time>}{item.detail&&<div className="mt-1 text-sm">{item.detail}</div>}</li>)}</ol>; }
