@@ -8,6 +8,8 @@
   background: var(--primary-strong);
   color: #fff;
 }
+.archive-filters--locked { grid-template-columns: minmax(260px, 2fr) repeat(2, minmax(130px, .7fr)) auto; }
+.archive-filters--procurement { grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(130px, .7fr)) auto; }
 .archive-filters > div { display: grid; gap: 6px; }
 .archive-filters label { color: #d7e6df; font-size: .72rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .archive-filters input, .archive-filters select { width: 100%; min-height: 46px; padding: 9px 11px; border: 1px solid #719083; background: #fff; color: var(--foreground); }

@@ -78,7 +78,7 @@ export async function getResources(kind?: string) { const suffix = kind ? `?kind
 export async function getResource(kind: string, slug: string) { return request<PortalResource>(`/api/v1/resources/${encodeURIComponent(kind)}/${encodeURIComponent(slug)}`, true); }
 export async function getOpenDatasets() { return (await request<OpenDatasetSummary[]>("/api/v1/public/datasets"))!; }
 export async function getOpenDataset(slug: string) { return request<OpenDatasetDetail>(`/api/v1/public/datasets/${encodeURIComponent(slug)}`, true); }
-export async function getPublicDocuments(filters: { q?: string; category?: string; type?: string; year?: string; page?: string }) {
+export async function getPublicDocuments(filters: { q?: string; category?: string; subcategory?: string; type?: string; year?: string; page?: string }) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) if (value) search.set(key, value);
   return (await request<PublicDocumentPage>(`/api/v1/public/documents${search.size ? `?${search}` : ""}`))!;

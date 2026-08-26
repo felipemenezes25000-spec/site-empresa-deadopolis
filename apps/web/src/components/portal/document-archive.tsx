@@ -1,19 +1,42 @@
 import { Download, ExternalLink, FileCheck2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { getPublicDocuments, type PublicDocument } from "@/lib/portal-api";
 import { EmptyPanel, PageIntro, PublicShell } from "./public-shell";
 
-type ArchiveSearch = { q?: string; category?: string; type?: string; year?: string; page?: string };
+export type ArchiveSearch = { q?: string; category?: string; subcategory?: string; type?: string; year?: string; page?: string };
+type ArchiveIntro = { eyebrow: string; title: string; description: string };
+type DocumentArchiveProps = {
+  search: ArchiveSearch;
+  category?: string;
+  subcategory?: string;
+  action?: string;
+  intro?: ArchiveIntro;
+  children?: ReactNode;
+};
 
-export async function DocumentArchive({ search }: { search: ArchiveSearch }) {
-  const documents = await getPublicDocuments(search);
+const defaultIntro: ArchiveIntro = {
+  eyebrow: "Memória administrativa",
+  title: "Acervo público de documentos",
+  description: "Pesquise documentos preservados do portal anterior. Cada arquivo publicado conserva origem, contexto e impressão digital SHA-256.",
+};
+
+export async function DocumentArchive({ search, category, subcategory, action = "/transparencia/documentos", intro = defaultIntro, children }: DocumentArchiveProps) {
+  const effectiveSearch = { ...search, ...(category ? { category } : {}), ...(subcategory ? { subcategory } : {}) };
+  const documents = await getPublicDocuments(effectiveSearch);
   return <PublicShell>
-    <PageIntro eyebrow="Memória administrativa" title="Acervo público de documentos" description="Pesquise documentos preservados do portal anterior. Cada arquivo publicado conserva origem, contexto e impressão digital SHA-256." />
+    <PageIntro {...intro} />
+    {children}
     <section className="content-section document-archive">
       <div className="page-shell">
-        <form className="archive-filters" role="search" action="/transparencia/documentos">
+        <form className={`archive-filters${subcategory ? " archive-filters--locked" : category ? " archive-filters--procurement" : ""}`} role="search" action={action}>
           <div className="archive-query"><label htmlFor="document-q">Buscar no acervo</label><input id="document-q" name="q" type="search" defaultValue={search.q} placeholder="Título, número ou processo" /></div>
-          <div><label htmlFor="document-category">Categoria</label><select id="document-category" name="category" defaultValue={search.category ?? ""}><option value="">Todas</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option><option value="DOCUMENTOS">Documentos gerais</option></select></div>
+          {category
+            ? <input type="hidden" name="category" value={category} />
+            : <div><label htmlFor="document-category">Categoria</label><select id="document-category" name="category" defaultValue={search.category ?? ""}><option value="">Todas</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option><option value="DOCUMENTOS">Documentos gerais</option></select></div>}
+          {subcategory
+            ? <input type="hidden" name="subcategory" value={subcategory} />
+            : category === "LICITACOES" && <div><label htmlFor="document-subcategory">Etapa</label><select id="document-subcategory" name="subcategory" defaultValue={search.subcategory ?? ""}><option value="">Todas</option><option value="AVISOS">Avisos</option><option value="EDITAIS">Editais</option><option value="RESULTADOS">Resultados</option><option value="CONTRATOS">Contratos</option></select></div>}
           <div><label htmlFor="document-type">Tipo</label><select id="document-type" name="type" defaultValue={search.type ?? ""}><option value="">Todos</option><option value="PDF">PDF</option><option value="REPORT">Relatório</option><option value="EDITAL">Edital</option><option value="CONTRATO">Contrato</option><option value="OFFICE">Office</option></select></div>
           <div><label htmlFor="document-year">Ano</label><input id="document-year" name="year" inputMode="numeric" pattern="[0-9]{4}" defaultValue={search.year} placeholder="2025" /></div>
           <button type="submit">Pesquisar</button>
@@ -26,9 +49,9 @@ export async function DocumentArchive({ search }: { search: ArchiveSearch }) {
           : <div className="document-ledger">{documents.items.map(document => <DocumentRow key={document.id} document={document} />)}</div>}
 
         {documents.totalPages > 1 && <nav className="archive-pagination" aria-label="Paginação do acervo">
-          {documents.page > 1 && <Link href={pageHref(search, documents.page - 1)}>Página anterior</Link>}
+          {documents.page > 1 && <Link href={pageHref(search, documents.page - 1, action)}>Página anterior</Link>}
           <span>Página {documents.page} de {documents.totalPages}</span>
-          {documents.page < documents.totalPages && <Link href={pageHref(search, documents.page + 1)}>Próxima página</Link>}
+          {documents.page < documents.totalPages && <Link href={pageHref(search, documents.page + 1, action)}>Próxima página</Link>}
         </nav>}
       </div>
     </section>
@@ -55,11 +78,11 @@ function DocumentRow({ document }: { document: PublicDocument }) {
   </article>;
 }
 
-function pageHref(search: ArchiveSearch, page: number) {
+function pageHref(search: ArchiveSearch, page: number, action: string) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(search)) if (value && key !== "page") params.set(key, value);
   params.set("page", String(page));
-  return `/transparencia/documentos?${params}`;
+  return `${action}?${params}`;
 }
 
 function label(value: string) { return value.toLocaleLowerCase("pt-BR").replaceAll("_", " ").replace(/^./, character => character.toLocaleUpperCase("pt-BR")); }

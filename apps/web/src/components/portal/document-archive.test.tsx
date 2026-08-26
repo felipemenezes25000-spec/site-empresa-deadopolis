@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { getPublicDocuments } from "@/lib/portal-api";
 import { DocumentArchive } from "./document-archive";
 
 vi.mock("@/lib/portal-api", () => ({
@@ -42,5 +43,36 @@ describe("DocumentArchive", () => {
     expect(screen.getByText(/sha-256 abcdef0123456789/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /baixar documento/i })).toHaveAttribute("href", "/api/v1/public/documents/11111111-1111-1111-1111-111111111111/download");
     expect(screen.getByRole("link", { name: /ver origem/i })).toHaveAttribute("href", "https://legacy.example.test/report.pdf");
+  });
+
+  it("locks a dedicated archive to its governed category", async () => {
+    const view = render(await DocumentArchive({
+      search: { q: "contrato", subcategory: "CONTRATOS" },
+      category: "LICITACOES",
+      action: "/licitacoes",
+      intro: {
+        eyebrow: "Compras públicas",
+        title: "Licitações e contratos",
+        description: "Acervo histórico e acesso ao sistema oficial.",
+      },
+    }));
+
+    expect(getPublicDocuments).toHaveBeenLastCalledWith({ q: "contrato", subcategory: "CONTRATOS", category: "LICITACOES" });
+    expect(screen.queryByRole("combobox", { name: /categoria/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /etapa/i })).toHaveValue("CONTRATOS");
+    expect(view.container.querySelector("form")).toHaveAttribute("action", "/licitacoes");
+    expect(view.container.querySelector('input[name="category"]')).toHaveValue("LICITACOES");
+  });
+
+  it("forces a verified transparency family instead of trusting query parameters", async () => {
+    const view = render(await DocumentArchive({
+      search: { subcategory: "OUTRA" },
+      category: "PRESTACAO_CONTAS",
+      subcategory: "RREO",
+      action: "/transparencia/rreo",
+    }));
+
+    expect(getPublicDocuments).toHaveBeenLastCalledWith({ subcategory: "RREO", category: "PRESTACAO_CONTAS" });
+    expect(view.container.querySelector('input[name="subcategory"]')).toHaveValue("RREO");
   });
 });
