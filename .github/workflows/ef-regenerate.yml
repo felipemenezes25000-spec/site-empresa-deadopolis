@@ -1,0 +1,31 @@
+name: ef-regenerate
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ef-regenerate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 8.0.x }
+      - run: dotnet restore MunicipalPlatform.sln
+      - run: dotnet tool restore
+      - name: Remove handwritten post-initial migrations in workspace only
+        run: |
+          rm apps/api/Infrastructure/Persistence/Migrations/20260826032000_GazetteComposition.cs
+          rm apps/api/Infrastructure/Persistence/Migrations/20260826033500_CmsResources.cs
+          rm apps/api/Infrastructure/Persistence/Migrations/20260826035000_TicketComments.cs
+          rm apps/api/Infrastructure/Persistence/Migrations/20260826040500_IdentityHardening.cs
+      - name: Generate consolidated EF migration and synchronized snapshot
+        run: dotnet ef migrations add PlatformExpansion --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --output-dir Infrastructure/Persistence/Migrations
+      - name: Package generated evidence
+        run: tar -czf ef-generated-migrations.tar.gz apps/api/Infrastructure/Persistence/Migrations
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ef-generated-migrations
+          path: ef-generated-migrations.tar.gz
