@@ -28,8 +28,7 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.RemoveAll<ApplicationDbContext>();
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseInMemoryDatabase(_databaseName));
+            services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(_databaseName));
         });
     }
 
@@ -40,65 +39,29 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
         tenant.SetMunicipality(MunicipalityId, "deodapolis");
         var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await database.Database.EnsureCreatedAsync();
-        if (await database.Municipalities.AnyAsync())
-        {
-            return;
-        }
+        if (await database.Municipalities.AnyAsync()) return;
 
         var actor = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        database.Municipalities.Add(Municipality.Create(
-            MunicipalityId,
-            "Prefeitura Municipal de Deodápolis",
-            "deodapolis",
-            "MS",
-            "#176B4D"));
-        database.Services.Add(new ServiceItem(
-            MunicipalityId,
-            "Emitir guia do IPTU",
-            "emitir-guia-iptu",
-            "Emita ou consulte a guia do IPTU no sistema tributário municipal.",
-            "Tributos",
-            "Cidadão",
-            true,
-            "https://example.test/iptu"));
-        database.TransparencyLinks.Add(new TransparencyLink(
-            MunicipalityId,
-            "Portal da Transparência",
-            "Transparência",
-            "https://example.test/transparencia",
-            1));
-        database.IntegrationStatuses.Add(new IntegrationStatus(
-            MunicipalityId,
-            "Email institucional",
-            IntegrationState.NotConfigured,
-            "Credencial do provedor ainda não configurada."));
+        database.Municipalities.Add(Municipality.Create(MunicipalityId, "Prefeitura Municipal de Deodápolis", "deodapolis", "MS", "#176B4D"));
+        database.Services.Add(new ServiceItem(MunicipalityId, "Emitir guia do IPTU", "emitir-guia-iptu", "Emita ou consulte a guia do IPTU no sistema tributário municipal.", "Tributos", "Cidadão", true, "https://example.test/iptu"));
+        database.TransparencyLinks.Add(new TransparencyLink(MunicipalityId, "Portal da Transparência", "Transparência", "https://example.test/transparencia", 1));
+        database.IntegrationStatuses.Add(new IntegrationStatus(MunicipalityId, "Email institucional", IntegrationState.NotConfigured, "Credencial do provedor ainda não configurada."));
         var temporaryUser = new UserAccount(MunicipalityId, "admin.demo", "Administração Demo", "SUPER_ADMIN", "pending");
         var passwordHash = new PasswordHasher<UserAccount>().HashPassword(temporaryUser, "Demo-Local-2026!");
-        database.Users.Add(new UserAccount(
-            MunicipalityId,
-            "admin.demo",
-            "Administração Demo",
-            "SUPER_ADMIN",
-            passwordHash));
+        database.Users.Add(new UserAccount(MunicipalityId, "admin.demo", "Administração Demo", "SUPER_ADMIN", passwordHash));
         database.RoleCapabilities.AddRange(
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "audit.read"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.write"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.review"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "content.publish"),
-            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"));
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.write"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.sign"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.publish"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "settings.manage"));
         var article = NewsArticle.Create(MunicipalityId, "Feira de serviços aproxima Prefeitura e moradores", "feira-de-servicos", actor);
-        article.UpdateDraft(
-            "Feira de serviços aproxima Prefeitura e moradores",
-            "Atendimentos municipais reunidos em um único local.",
-            "Conteúdo sintético de demonstração.",
-            null,
-            null,
-            true,
-            actor,
-            DateTimeOffset.UtcNow);
-        article.SubmitForReview(actor, DateTimeOffset.UtcNow);
-        article.Approve(actor, DateTimeOffset.UtcNow);
-        article.Publish(actor, DateTimeOffset.UtcNow);
+        article.UpdateDraft("Feira de serviços aproxima Prefeitura e moradores", "Atendimentos municipais reunidos em um único local.", "Conteúdo sintético de demonstração.", null, null, true, actor, DateTimeOffset.UtcNow);
+        article.SubmitForReview(actor, DateTimeOffset.UtcNow); article.Approve(actor, DateTimeOffset.UtcNow); article.Publish(actor, DateTimeOffset.UtcNow);
         database.NewsArticles.Add(article);
         await database.SaveChangesAsync();
 
@@ -106,10 +69,6 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
         var verificationTenant = verificationScope.ServiceProvider.GetRequiredService<TenantContext>();
         verificationTenant.SetMunicipality(MunicipalityId, "deodapolis");
         var verificationDatabase = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var municipalityCount = await verificationDatabase.Municipalities.CountAsync();
-        if (municipalityCount != 1)
-        {
-            throw new InvalidOperationException($"O seed não foi compartilhado entre escopos; contagem: {municipalityCount}.");
-        }
+        if (await verificationDatabase.Municipalities.CountAsync() != 1) throw new InvalidOperationException("O seed não foi compartilhado entre escopos.");
     }
 }

@@ -2,65 +2,64 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
+using MunicipalPlatform.Api.Modules.Content;
+using MunicipalPlatform.Api.Modules.Gazette;
+using MunicipalPlatform.Api.Modules.Gazette.Providers;
+using MunicipalPlatform.Api.Modules.Gazette.Services;
 using MunicipalPlatform.Api.Modules.Identity;
 using MunicipalPlatform.Api.Modules.Identity.Domain;
-using MunicipalPlatform.Api.Modules.Content;
 using MunicipalPlatform.Api.Modules.Portal;
 using MunicipalPlatform.Api.Modules.Support;
 using MunicipalPlatform.Api.Platform.Observability;
 using MunicipalPlatform.Api.Platform.Security;
+using MunicipalPlatform.Api.Platform.Storage;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
-var databaseConnection = builder.Configuration.GetConnectionString("Database")
-    ?? "Host=localhost;Port=5432;Database=municipal_platform;Username=municipal";
+var databaseConnection = builder.Configuration.GetConnectionString("Database") ?? "Host=localhost;Port=5432;Database=municipal_platform;Username=municipal";
 
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(databaseConnection));
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
+builder.Services.AddSingleton<GazetteDocumentService>();
+builder.Services.AddSingleton<IObjectStorageProvider>(services =>
+{
+    var environment = services.GetRequiredService<IHostEnvironment>();
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var localAllowed = environment.IsDevelopment() || environment.IsEnvironment("Testing") || configuration.GetValue<bool>("PresentationMode");
+    return localAllowed ? new LocalObjectStorageProvider(configuration) : new NotConfiguredObjectStorageProvider();
+});
+builder.Services.AddSingleton<IDigitalSigner>(services =>
+{
+    var environment = services.GetRequiredService<IHostEnvironment>();
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var demoAllowed = environment.IsEnvironment("Testing") || configuration.GetValue<bool>("PresentationMode");
+    return demoAllowed ? new DemoDigitalSigner() : new NotConfiguredDigitalSigner();
+});
+builder.Services.AddSingleton<ICertificateProvider>(services => (ICertificateProvider)services.GetRequiredService<IDigitalSigner>());
+builder.Services.AddSingleton<ISignatureValidator>(services => (ISignatureValidator)services.GetRequiredService<IDigitalSigner>());
+builder.Services.AddSingleton<ITimestampProvider, NotConfiguredTimestampProvider>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.Cookie.Name = "municipal.session";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            || builder.Environment.IsEnvironment("Testing")
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
-        options.Events.OnRedirectToLogin = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        };
-        options.Events.OnRedirectToAccessDenied = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
-        };
-    });
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
+{
+    options.Cookie.Name = "municipal.session";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing") ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+    options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+});
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
-
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment);
-}
-
+if (!app.Environment.IsEnvironment("Testing")) await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration, app.Environment);
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseExceptionHandler();
 app.MapPlatformHealth();
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) { app.UseSwagger(); app.UseSwaggerUI(); }
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -68,7 +67,7 @@ app.MapIdentityEndpoints();
 app.MapPortalEndpoints();
 app.MapContentEndpoints();
 app.MapSupportEndpoints();
-
+app.MapGazetteEndpoints();
 app.Run();
 
 public partial class Program;
