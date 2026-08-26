@@ -21,18 +21,6 @@ export function MailManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadAll(controller.signal)
-      .catch((error) => {
-        if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar o e-mail institucional.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
-
   async function loadAll(signal?: AbortSignal) {
     const [mailboxesResponse, domainsResponse, aliasesResponse, migrationsResponse] = await Promise.all([
       fetch("/api/v1/admin/mailboxes", { signal }),
@@ -51,6 +39,18 @@ export function MailManager() {
     setAliases(await aliasesResponse.json() as MailAlias[]);
     setMigrationJobs(await migrationsResponse.json() as MailMigrationJob[]);
   }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadAll(controller.signal)
+      .catch((error) => {
+        if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar o e-mail institucional.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   async function refreshMailboxes(preferredId?: string) {
     const response = await fetch("/api/v1/admin/mailboxes");
