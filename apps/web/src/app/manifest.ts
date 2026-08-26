@@ -1,0 +1,1 @@
+import type { MetadataRoute } from "next";export default function manifest():MetadataRoute.Manifest{return{name:"Prefeitura de Deodápolis",short_name:"Deodápolis",description:"Serviços e informações municipais",start_url:"/",display:"standalone",background_color:"#f6f7f3",theme_color:"#155f45",lang:"pt-BR"}}

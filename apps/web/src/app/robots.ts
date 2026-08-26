@@ -1,0 +1,1 @@
+import type { MetadataRoute } from "next";export default function robots():MetadataRoute.Robots{return{rules:{userAgent:"*",allow:"/",disallow:["/admin/","/api/"]},sitemap:`${process.env.PUBLIC_PORTAL_URL??"http://localhost:3000"}/sitemap.xml`}}

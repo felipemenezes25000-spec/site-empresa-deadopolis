@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { EmptyPanel, PageIntro, PublicShell } from "@/components/portal/public-shell";
+import { getGazette } from "@/lib/portal-api";
+export const metadata:Metadata={title:"Diário Oficial"};
+export default async function GazettePage(){const editions=await getGazette();return <PublicShell><PageIntro eyebrow="Atos oficiais" title="Diário Oficial Eletrônico" description="Consulte edições publicadas, o hash SHA-256 e a página pública de verificação."/><section className="content-section"><div className="page-shell">{editions.length===0?<EmptyPanel title="Nenhuma edição publicada" description="O acervo importado e as novas edições aparecerão aqui após validação."/>:<div className="news-list">{editions.map(item=><article className="news-row" key={`${item.year}-${item.number}`}><time>{new Intl.DateTimeFormat("pt-BR").format(new Date(`${item.publicationDate}T12:00:00Z`))}</time><div><h2>Edição {item.number}/{item.year}</h2><p>{item.type} · {item.sha256?`SHA-256 ${item.sha256.slice(0,16)}…`:"Hash indisponível"}</p></div>{item.verificationCode?<Link href={`/verificar/${item.verificationCode}`}>Verificar</Link>:<span>Sem código</span>}</article>)}</div>}</div></section></PublicShell>}
