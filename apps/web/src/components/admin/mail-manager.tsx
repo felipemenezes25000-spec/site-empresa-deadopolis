@@ -21,28 +21,29 @@ export function MailManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  async function loadAll(signal?: AbortSignal) {
-    const [mailboxesResponse, domainsResponse, aliasesResponse, migrationsResponse] = await Promise.all([
-      fetch("/api/v1/admin/mailboxes", { signal }),
-      fetch("/api/v1/admin/mail/domains", { signal }),
-      fetch("/api/v1/admin/mail/aliases", { signal }),
-      fetch("/api/v1/admin/mail/migration-jobs", { signal }),
-    ]);
-    for (const response of [mailboxesResponse, domainsResponse, aliasesResponse, migrationsResponse]) {
-      if (!response.ok) throw new Error(await errorText(response));
-    }
-    const mailboxData = await mailboxesResponse.json() as MailboxList;
-    const domainData = await domainsResponse.json() as DomainList;
-    setProvider(mailboxData.provider ?? domainData.provider);
-    setMailboxes(mailboxData.mailboxes);
-    setDomains(domainData.domains);
-    setAliases(await aliasesResponse.json() as MailAlias[]);
-    setMigrationJobs(await migrationsResponse.json() as MailMigrationJob[]);
-  }
-
   useEffect(() => {
     const controller = new AbortController();
-    void loadAll(controller.signal)
+    void Promise.all([
+      fetch("/api/v1/admin/mailboxes", { signal: controller.signal }),
+      fetch("/api/v1/admin/mail/domains", { signal: controller.signal }),
+      fetch("/api/v1/admin/mail/aliases", { signal: controller.signal }),
+      fetch("/api/v1/admin/mail/migration-jobs", { signal: controller.signal }),
+    ])
+      .then(async ([mailboxesResponse, domainsResponse, aliasesResponse, migrationsResponse]) => {
+        for (const response of [mailboxesResponse, domainsResponse, aliasesResponse, migrationsResponse]) {
+          if (!response.ok) throw new Error(await errorText(response));
+        }
+        const mailboxData = await mailboxesResponse.json() as MailboxList;
+        const domainData = await domainsResponse.json() as DomainList;
+        const aliasData = await aliasesResponse.json() as MailAlias[];
+        const migrationData = await migrationsResponse.json() as MailMigrationJob[];
+        if (controller.signal.aborted) return;
+        setProvider(mailboxData.provider ?? domainData.provider);
+        setMailboxes(mailboxData.mailboxes);
+        setDomains(domainData.domains);
+        setAliases(aliasData);
+        setMigrationJobs(migrationData);
+      })
       .catch((error) => {
         if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar o e-mail institucional.");
       })
