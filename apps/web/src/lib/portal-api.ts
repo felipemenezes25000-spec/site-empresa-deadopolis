@@ -15,6 +15,35 @@ export type SearchResult = { type: string; title: string; description: string; u
 export type GazetteEdition = { id?: string; number: number; year: number; type: string; publicationDate: string; verificationCode: string | null; sha256: string | null; documentObjectKey: string | null };
 export type GazetteVerification = { number: number; year: number; publicationDate: string; sha256: string; verificationCode: string; certificateSubject: string | null; certificateIssuer: string | null; signedAt: string | null; status: string };
 export type PortalResource = { id: string; kind: string; slug: string; title: string; summary: string; payload: unknown; displayOrder: number; startsAt: string | null; endsAt: string | null; publishedAt: string | null; version: number };
+export type OpenDatasetSummary = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  category: string;
+  responsibleDepartment: string;
+  license: string;
+  updateFrequency: string;
+  referencePeriod: string | null;
+  lastUpdatedAt: string | null;
+  nextExpectedUpdateAt: string | null;
+  source: string | null;
+  latestVersion: number;
+};
+export type OpenDatasetVersion = {
+  version: number;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  format: string;
+  metadataJson: string;
+  publishedAt: string;
+};
+export type OpenDatasetDetail = {
+  dataset: OpenDatasetSummary & { status?: string | number; createdAt?: string; updatedAt?: string; publishedAt?: string | null };
+  versions: OpenDatasetVersion[];
+};
 
 const API_URL = process.env.API_URL ?? "http://localhost:5080";
 const MUNICIPALITY = process.env.MUNICIPALITY_SLUG ?? "deodapolis";
@@ -38,3 +67,5 @@ export async function getGazette() { return (await request<GazetteEdition[]>("/a
 export async function verifyGazette(code: string) { return request<GazetteVerification>(`/api/v1/gazette/verify/${encodeURIComponent(code)}`, true); }
 export async function getResources(kind?: string) { const suffix = kind ? `?kind=${encodeURIComponent(kind)}` : ""; return (await request<PortalResource[]>(`/api/v1/resources${suffix}`))!; }
 export async function getResource(kind: string, slug: string) { return request<PortalResource>(`/api/v1/resources/${encodeURIComponent(kind)}/${encodeURIComponent(slug)}`, true); }
+export async function getOpenDatasets() { return (await request<OpenDatasetSummary[]>("/api/v1/public/datasets"))!; }
+export async function getOpenDataset(slug: string) { return request<OpenDatasetDetail>(`/api/v1/public/datasets/${encodeURIComponent(slug)}`, true); }

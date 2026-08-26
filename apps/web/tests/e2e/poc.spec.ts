@@ -1,17 +1,90 @@
 import { expect, test } from "@playwright/test";
 
-test("POC principal: cidadão, CMS, Diário e Ouvidoria",async({page})=>{
-  const password=process.env.DEMO_PASSWORD;if(!password)throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
-  await page.goto("/");await expect(page.getByRole("heading",{name:/Olá! O que você precisa/i})).toBeVisible();
-  await page.goto("/servicos");await page.getByRole("link",{name:/Emitir guia do IPTU/i}).click();await expect(page.getByRole("heading",{name:/Emitir guia do IPTU/i})).toBeVisible();
+test("POC principal: cidadão, CMS, Dados Abertos, Diário e Ouvidoria", async ({ page }) => {
+  const password = process.env.DEMO_PASSWORD;
+  if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
-  await page.goto("/admin/login");await page.getByLabel("Usuário").fill("admin.demo");await page.getByLabel("Senha").fill(password);await page.getByRole("button",{name:"Entrar"}).click();await page.waitForURL(/\/admin$/);await expect(page.getByRole("heading",{name:/Bom dia/i})).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /Olá! O que você precisa/i })).toBeVisible();
+  await page.goto("/servicos");
+  await page.getByRole("link", { name: /Emitir guia do IPTU/i }).click();
+  await expect(page.getByRole("heading", { name: /Emitir guia do IPTU/i })).toBeVisible();
 
-  const suffix=Date.now().toString().slice(-8);const slug=`poc-noticia-${suffix}`;
-  await page.goto("/admin/noticias/nova");await page.getByLabel("Título").fill(`[DEMONSTRAÇÃO] Notícia POC ${suffix}`);await page.getByLabel("Slug").fill(slug);await page.getByLabel("Linha fina").fill("Publicação sintética criada pelo teste E2E.");await page.getByLabel("Conteúdo").fill("Conteúdo de demonstração sem valor de comunicado oficial. Este texto comprova persistência e workflow editorial.");await page.getByRole("button",{name:"Criar rascunho"}).click();await expect(page.getByText(/Rascunho salvo no servidor/)).toBeVisible();await page.getByRole("button",{name:"Enviar para revisão"}).click();await expect(page.getByText(/Ação “submit” concluída/)).toBeVisible();await page.getByRole("button",{name:"Aprovar"}).click();await expect(page.getByText(/Ação “approve” concluída/)).toBeVisible();await page.getByRole("button",{name:"Publicar agora"}).click();await expect(page.getByText(/Ação “publish” concluída/)).toBeVisible();
-  await page.goto(`/noticias/${slug}`);await expect(page.getByRole("heading",{name:new RegExp(`Notícia POC ${suffix}`)})).toBeVisible();
+  await page.goto("/admin/login");
+  await page.getByLabel("Usuário").fill("admin.demo");
+  await page.getByLabel("Senha").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.waitForURL(/\/admin$/);
+  await expect(page.getByRole("heading", { name: /Bom dia/i })).toBeVisible();
 
-  await page.goto("/admin/diario");const edition=Number(suffix.slice(-5));await page.getByLabel("Número").fill(String(edition));await page.getByRole("button",{name:"Criar edição"}).click();await expect(page.getByText(/Edição criada em DRAFT/)).toBeVisible();await page.getByRole("button",{name:"Salvar composição"}).click();await expect(page.getByText(/Composição persistida/)).toBeVisible();await page.getByRole("button",{name:"Revisão"}).click();await page.getByRole("button",{name:"Aprovar"}).click();await page.getByRole("button",{name:"Gerar PDF"}).click();await expect(page.getByText(/Ação generate concluída/)).toBeVisible();await page.getByRole("button",{name:"Assinar"}).click();await expect(page.getByText(/NÃO possui valor de assinatura ICP-Brasil|Ação sign concluída/)).toBeVisible();await page.getByRole("button",{name:"Publicar"}).click();const verificationLink=page.getByRole("link",{name:/Abrir verificação pública/});await expect(verificationLink).toBeVisible();const href=await verificationLink.getAttribute("href");expect(href).toMatch(/^\/verificar\//);await page.goto(href!);await expect(page.getByText("Documento localizado")).toBeVisible();
+  const suffix = Date.now().toString().slice(-8);
+  const newsSlug = `poc-noticia-${suffix}`;
+  await page.goto("/admin/noticias/nova");
+  await page.getByLabel("Título").fill(`[DEMONSTRAÇÃO] Notícia POC ${suffix}`);
+  await page.getByLabel("Slug").fill(newsSlug);
+  await page.getByLabel("Linha fina").fill("Publicação sintética criada pelo teste E2E.");
+  await page.getByLabel("Conteúdo").fill("Conteúdo de demonstração sem valor de comunicado oficial. Este texto comprova persistência e workflow editorial.");
+  await page.getByRole("button", { name: "Criar rascunho" }).click();
+  await expect(page.getByText(/Rascunho salvo no servidor/)).toBeVisible();
+  await page.getByRole("button", { name: "Enviar para revisão" }).click();
+  await expect(page.getByText(/Ação “submit” concluída/)).toBeVisible();
+  await page.getByRole("button", { name: "Aprovar" }).click();
+  await expect(page.getByText(/Ação “approve” concluída/)).toBeVisible();
+  await page.getByRole("button", { name: "Publicar agora" }).click();
+  await expect(page.getByText(/Ação “publish” concluída/)).toBeVisible();
+  await page.goto(`/noticias/${newsSlug}`);
+  await expect(page.getByRole("heading", { name: new RegExp(`Notícia POC ${suffix}`) })).toBeVisible();
 
-  await page.goto("/ouvidoria");await page.getByLabel("Nome").fill("Pessoa Demonstração");await page.getByLabel("E-mail ou telefone").fill("poc@example.test");await page.getByLabel("Descrição").fill("Solicitação sintética criada pelo teste automatizado para validar protocolo e acompanhamento.");await page.getByRole("checkbox").check();await page.getByRole("button",{name:"Registrar manifestação"}).click();await expect(page.getByText("Manifestação registrada")).toBeVisible();await expect(page.getByText(/DEO-/)).toBeVisible();
+  const datasetSlug = `poc-dataset-${suffix}`;
+  await page.goto("/admin/dados-abertos");
+  await page.getByLabel("Título do dataset").fill(`[DEMONSTRAÇÃO] Dataset POC ${suffix}`);
+  await page.getByLabel("Slug do dataset").fill(datasetSlug);
+  await page.getByLabel("Descrição").first().fill("Base sintética para validar versionamento e publicação de Dados Abertos.");
+  await page.getByLabel("Categoria").first().fill("Demonstração");
+  await page.getByLabel("Órgão responsável").first().fill("Secretaria Municipal de Administração");
+  await page.getByLabel("Periodicidade de atualização").first().fill("Mensal");
+  await page.getByRole("button", { name: "Criar dataset" }).click();
+  await expect(page.getByText("Dataset criado como rascunho.")).toBeVisible();
+  await page.getByLabel("Arquivo da versão").setInputFiles({
+    name: `dataset-${suffix}.json`,
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ demonstration: true, suffix, municipality: "Deodápolis" })),
+  });
+  await page.getByRole("button", { name: "Adicionar versão" }).click();
+  await expect(page.getByText(/Nova versão armazenada e registrada com hash SHA-256/)).toBeVisible();
+  await page.getByRole("button", { name: "Publicar dataset" }).click();
+  await expect(page.getByText("Dataset publicado no catálogo público.")).toBeVisible();
+  await page.goto(`/dados-abertos/${datasetSlug}`);
+  await expect(page.getByRole("heading", { name: new RegExp(`Dataset POC ${suffix}`) })).toBeVisible();
+  await expect(page.getByText(/Versão 1/)).toBeVisible();
+
+  await page.goto("/admin/diario");
+  const edition = Number(suffix.slice(-5));
+  await page.getByLabel("Número").fill(String(edition));
+  await page.getByRole("button", { name: "Criar edição" }).click();
+  await expect(page.getByText(/Edição criada em DRAFT/)).toBeVisible();
+  await page.getByRole("button", { name: "Salvar composição" }).click();
+  await expect(page.getByText(/Composição persistida/)).toBeVisible();
+  await page.getByRole("button", { name: "Revisão" }).click();
+  await page.getByRole("button", { name: "Aprovar" }).click();
+  await page.getByRole("button", { name: "Gerar PDF" }).click();
+  await expect(page.getByText(/Ação generate concluída/)).toBeVisible();
+  await page.getByRole("button", { name: "Assinar" }).click();
+  await expect(page.getByText(/NÃO possui valor de assinatura ICP-Brasil|Ação sign concluída/)).toBeVisible();
+  await page.getByRole("button", { name: "Publicar" }).click();
+  const verificationLink = page.getByRole("link", { name: /Abrir verificação pública/ });
+  await expect(verificationLink).toBeVisible();
+  const href = await verificationLink.getAttribute("href");
+  expect(href).toMatch(/^\/verificar\//);
+  await page.goto(href!);
+  await expect(page.getByText("Documento localizado")).toBeVisible();
+
+  await page.goto("/ouvidoria");
+  await page.getByLabel("Nome").fill("Pessoa Demonstração");
+  await page.getByLabel("E-mail ou telefone").fill("poc@example.test");
+  await page.getByLabel("Descrição").fill("Solicitação sintética criada pelo teste automatizado para validar protocolo e acompanhamento.");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Registrar manifestação" }).click();
+  await expect(page.getByText("Manifestação registrada")).toBeVisible();
+  await expect(page.getByText(/DEO-/)).toBeVisible();
 });

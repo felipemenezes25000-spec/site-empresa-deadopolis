@@ -155,6 +155,7 @@ app.MapMigrationEndpoints();
 app.MapMigrationJobEndpoints();
 app.MapMigrationCrawlerEndpoints();
 app.MapTransparencyEndpoints();
+app.MapTransparencyAdminReadEndpoints();
 app.MapOperationsEndpoints();
 app.Run();
 
