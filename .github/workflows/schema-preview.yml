@@ -23,9 +23,20 @@ jobs:
       - run: dotnet tool restore
       - name: Build before schema generation
         run: dotnet build MunicipalPlatform.sln -c Release --no-restore
+      - name: Detect pending model changes
+        id: schema
+        shell: bash
+        run: |
+          if dotnet ef migrations has-pending-model-changes --project apps/api --startup-project apps/api --configuration Release --no-build; then
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Generate EF migration preview
-        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations --no-build
+        if: steps.schema.outputs.pending == 'true'
+        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations --configuration Release --no-build
       - uses: actions/upload-artifact@v4
+        if: steps.schema.outputs.pending == 'true'
         with:
           name: municipal-depth-migration
           path: apps/api/Infrastructure/Persistence/Migrations
