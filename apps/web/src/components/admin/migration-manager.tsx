@@ -57,7 +57,11 @@ type RedirectRule = {
 type DryRunResponse = {
   id: string;
   state: string | number;
-  summary: { discovered: number; failed: number; externalLinks: number; truncatedByLimit: boolean };
+  summary: {
+    discovered: number; failed: number; externalLinks: number; redirects: number; html: number;
+    documents: number; pdf: number; office: number; images: number; duplicatesByHash: number;
+    uniqueNormalized: number; queueRemaining: number; truncatedByLimit: boolean;
+  };
 };
 
 const migrationStateNames = ["Criado", "Descobrindo", "Mapeando", "Dry-run concluído", "Importando", "Validando", "Concluído", "Concluído com alertas", "Falhou"];
@@ -161,7 +165,7 @@ export function MigrationManager() {
           sourceBaseUrl,
           allowedHost,
           maxDepth: Number(form.get("maxDepth") ?? 2),
-          maxPages: Number(form.get("maxPages") ?? 250),
+          maxPages: Number(form.get("maxPages") ?? 20000),
         }),
       });
       if (!response.ok) throw new Error(await errorText(response));
@@ -189,7 +193,7 @@ export function MigrationManager() {
       const result = await response.json() as DryRunResponse;
       setDryRunSummary(result.summary);
       await Promise.all([refreshJobs(selectedId), refreshDetail(selectedId)]);
-      setMessage(`Dry-run concluído: ${result.summary.discovered} URL(s) descoberta(s), ${result.summary.failed} falha(s) e ${result.summary.externalLinks} referência(s) externa(s).`);
+      setMessage(`Dry-run concluído: ${result.summary.discovered} URL(s), ${result.summary.documents} documento(s), ${result.summary.failed} falha(s) e ${result.summary.queueRemaining} item(ns) pendente(s) na fila.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível executar o dry-run.");
     } finally {
@@ -255,7 +259,7 @@ export function MigrationManager() {
         <label className="field">URL inicial<input name="sourceBaseUrl" type="url" required placeholder="https://portal-legado.exemplo.gov.br/" /></label>
         <small>O host autorizado é derivado automaticamente desta URL e fica fixo no job.</small>
         <label className="field">Profundidade máxima<input name="maxDepth" type="number" min="0" max="10" defaultValue="2" required /></label>
-        <label className="field">Máximo de páginas<input name="maxPages" type="number" min="1" max="20000" defaultValue="250" required /></label>
+        <label className="field">Máximo de páginas<input name="maxPages" type="number" min="1" max="20000" defaultValue="20000" required /></label>
         <button className="action-button" disabled={busy}>Criar job de dry-run</button>
       </form>
     </div>
@@ -269,11 +273,11 @@ export function MigrationManager() {
       <div className="stat-grid">
         <div className="stat-card"><strong>{detail.job.discoveredCount}</strong><span>URLs descobertas</span></div>
         <div className="stat-card"><strong>{detail.job.failedCount}</strong><span>Falhas</span></div>
-        <div className="stat-card"><strong>{detail.urls.filter((url) => url.classification === "HTML").length}</strong><span>Páginas HTML</span></div>
+        <div className="stat-card"><strong>{detail.urls.filter((url) => url.contentType?.toLocaleLowerCase("en-US") === "text/html").length}</strong><span>Páginas HTML</span></div>
         <div className="stat-card"><strong>{detail.evidence.length}</strong><span>Evidências</span></div>
       </div>
 
-      {dryRunSummary && <div className="form-message" role="status">Resultado: {dryRunSummary.discovered} descobertas · {dryRunSummary.failed} falhas · {dryRunSummary.externalLinks} links externos{dryRunSummary.truncatedByLimit ? " · limite atingido" : ""}.</div>}
+      {dryRunSummary && <div className={dryRunSummary.truncatedByLimit ? "warning-box" : "ok-box"} role="status">Resultado: {dryRunSummary.discovered} URLs únicas · {dryRunSummary.html} HTML · {dryRunSummary.documents} documentos ({dryRunSummary.pdf} PDF, {dryRunSummary.office} Office) · {dryRunSummary.images} imagens · {dryRunSummary.redirects} redirects · {dryRunSummary.externalLinks} externos · {dryRunSummary.duplicatesByHash} duplicatas por hash · {dryRunSummary.failed} falhas · {dryRunSummary.queueRemaining} na fila{dryRunSummary.truncatedByLimit ? " · limite atingido, inventário incompleto" : " · fila esvaziada"}.</div>}
       {detail.job.lastError && <div className="warning-box"><strong>Último erro:</strong> {detail.job.lastError}</div>}
 
       <div className="editor-grid" style={{ marginTop: 20 }}>

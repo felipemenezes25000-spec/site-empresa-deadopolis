@@ -18,11 +18,40 @@ namespace MunicipalPlatform.Api.Infrastructure.Persistence;
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TenantContext tenantContext) : DbContext(options)
 {
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>(); public DbSet<PortalResource> PortalResources => Set<PortalResource>(); public DbSet<ContentRevision> ContentRevisions => Set<ContentRevision>(); public DbSet<GazetteEdition> GazetteEditions => Set<GazetteEdition>(); public DbSet<GazetteSection> GazetteSections => Set<GazetteSection>(); public DbSet<GazetteAct> GazetteActs => Set<GazetteAct>(); public DbSet<GazetteAttachment> GazetteAttachments => Set<GazetteAttachment>(); public DbSet<GazetteSignature> GazetteSignatures => Set<GazetteSignature>(); public DbSet<GazettePublication> GazettePublications => Set<GazettePublication>(); public DbSet<GazetteCorrection> GazetteCorrections => Set<GazetteCorrection>(); public DbSet<Municipality> Municipalities => Set<Municipality>(); public DbSet<UserAccount> Users => Set<UserAccount>(); public DbSet<RoleCapability> RoleCapabilities => Set<RoleCapability>(); public DbSet<Department> Departments => Set<Department>(); public DbSet<ServiceItem> Services => Set<ServiceItem>(); public DbSet<TransparencyLink> TransparencyLinks => Set<TransparencyLink>(); public DbSet<Dataset> Datasets => Set<Dataset>(); public DbSet<DatasetVersion> DatasetVersions => Set<DatasetVersion>(); public DbSet<IntegrationStatus> IntegrationStatuses => Set<IntegrationStatus>(); public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>(); public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>(); public DbSet<LinkCheck> LinkChecks => Set<LinkCheck>(); public DbSet<BackupEvidence> BackupEvidences => Set<BackupEvidence>(); public DbSet<ChangeRequest> ChangeRequests => Set<ChangeRequest>(); public DbSet<ChangelogEntry> ChangelogEntries => Set<ChangelogEntry>(); public DbSet<RedirectRule> RedirectRules => Set<RedirectRule>(); public DbSet<LegacyUrl> LegacyUrls => Set<LegacyUrl>(); public DbSet<ImportedContent> ImportedContents => Set<ImportedContent>(); public DbSet<MigrationJob> MigrationJobs => Set<MigrationJob>(); public DbSet<MigrationEvidence> MigrationEvidences => Set<MigrationEvidence>(); public DbSet<Ticket> Tickets => Set<Ticket>(); public DbSet<TicketComment> TicketComments => Set<TicketComment>(); public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>(); public DbSet<Mailbox> Mailboxes => Set<Mailbox>(); public DbSet<MailDomain> MailDomains => Set<MailDomain>(); public DbSet<MailAlias> MailAliases => Set<MailAlias>(); public DbSet<MailMigrationJob> MailMigrationJobs => Set<MailMigrationJob>(); public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>(); private Guid CurrentMunicipalityId => tenantContext.RequireMunicipalityId();
+    public DbSet<PublicDocument> PublicDocuments => Set<PublicDocument>();
     public override int SaveChanges(bool acceptAllChangesOnSuccess) { EnforceTenantBoundary(); return base.SaveChanges(acceptAllChangesOnSuccess); }
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) { EnforceTenantBoundary(); return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken); }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<PublicDocument>(e =>
+        {
+            e.ToTable("public_documents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Category).HasMaxLength(80);
+            e.Property(x => x.Subcategory).HasMaxLength(120);
+            e.Property(x => x.Title).HasMaxLength(220);
+            e.Property(x => x.Description).HasColumnType("text");
+            e.Property(x => x.DocumentNumber).HasMaxLength(120);
+            e.Property(x => x.ProcessNumber).HasMaxLength(120);
+            e.Property(x => x.ReferencePeriod).HasMaxLength(120);
+            e.Property(x => x.ResponsibleDepartment).HasMaxLength(180);
+            e.Property(x => x.DocumentType).HasMaxLength(80);
+            e.Property(x => x.SourceUrl).HasMaxLength(2048);
+            e.Property(x => x.NormalizedLegacyPath).HasMaxLength(2048);
+            e.Property(x => x.OriginalFileName).HasMaxLength(260);
+            e.Property(x => x.MimeType).HasMaxLength(180);
+            e.Property(x => x.Sha256).HasMaxLength(64);
+            e.Property(x => x.SourceSystem).HasMaxLength(80);
+            e.Property(x => x.Status).HasMaxLength(24);
+            e.HasOne<LegacyUrl>().WithMany().HasForeignKey(x => x.LegacyUrlId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MigrationJob>().WithMany().HasForeignKey(x => x.MigrationJobId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.MediaAssetId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.MunicipalityId, x.LegacyUrlId }).IsUnique();
+            e.HasIndex(x => new { x.MunicipalityId, x.Status, x.Category, x.PublicationDate });
+            e.HasIndex(x => new { x.MunicipalityId, x.DocumentType, x.ProcessNumber });
+            e.HasIndex(x => new { x.MunicipalityId, x.MediaAssetId });
+        });
         modelBuilder.Entity<NewsArticle>(e => { e.ToTable("news_articles"); e.HasKey(x => x.Id); e.Property(x => x.Title).HasMaxLength(180); e.Property(x => x.Slug).HasMaxLength(180); e.Property(x => x.Summary).HasMaxLength(320); e.Property(x => x.Body).HasColumnType("text"); e.Property(x => x.Status).HasConversion<string>().HasMaxLength(24); e.HasIndex(x => new { x.MunicipalityId, x.Slug }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Status, x.PublishedAt }); });
         modelBuilder.Entity<PortalResource>(e => { e.ToTable("portal_resources"); e.HasKey(x => x.Id); e.Property(x => x.Kind).HasMaxLength(32); e.Property(x => x.Slug).HasMaxLength(180); e.Property(x => x.Title).HasMaxLength(220); e.Property(x => x.Summary).HasMaxLength(500); e.Property(x => x.PayloadJson).HasColumnType("jsonb"); e.Property(x => x.Status).HasMaxLength(24); e.HasIndex(x => new { x.MunicipalityId, x.Kind, x.Slug }).IsUnique(); e.HasIndex(x => new { x.MunicipalityId, x.Kind, x.Status, x.DisplayOrder }); });
         modelBuilder.Entity<ContentRevision>(e => { e.ToTable("content_revisions"); e.HasKey(x => x.Id); e.Property(x => x.ResourceKind).HasMaxLength(32); e.Property(x => x.SnapshotJson).HasColumnType("jsonb"); e.HasIndex(x => new { x.MunicipalityId, x.ResourceKind, x.ResourceId, x.CreatedAt }); });

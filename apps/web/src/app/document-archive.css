@@ -1,0 +1,66 @@
+.archive-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(130px, .7fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 22px;
+  border-top: 5px solid var(--lime);
+  background: var(--primary-strong);
+  color: #fff;
+}
+.archive-filters > div { display: grid; gap: 6px; }
+.archive-filters label { color: #d7e6df; font-size: .72rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.archive-filters input, .archive-filters select { width: 100%; min-height: 46px; padding: 9px 11px; border: 1px solid #719083; background: #fff; color: var(--foreground); }
+.archive-filters button { min-height: 46px; padding: 9px 20px; border: 0; background: var(--lime); color: #173528; font-weight: 900; cursor: pointer; }
+.archive-summary { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 10px; padding: 25px 2px 14px; border-bottom: 1px solid var(--border); }
+.archive-summary strong { color: var(--primary); font: 600 2rem/1 Georgia, serif; }
+.archive-summary span { font-weight: 800; }
+.archive-summary small { color: var(--muted); }
+.document-ledger { border-bottom: 1px solid var(--border); }
+.document-record { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; gap: 24px; align-items: start; padding: 28px 4px; border-top: 1px solid var(--border); }
+.document-record:first-child { border-top: 0; }
+.document-stamp { display: grid; justify-items: start; align-content: start; min-height: 112px; padding: 14px; border-left: 5px solid var(--primary); background: #e8eee9; }
+.document-stamp svg { width: 23px; color: var(--primary); }
+.document-stamp strong { margin-top: 12px; font-size: .7rem; letter-spacing: .07em; overflow-wrap: anywhere; }
+.document-stamp span { color: var(--muted); font: 600 1.1rem Georgia, serif; }
+.document-copy h2 { margin: 2px 0 7px; font: 600 1.45rem/1.2 Georgia, serif; }
+.document-copy > p:not(.document-context) { max-width: 760px; margin: 0 0 13px; color: var(--muted); }
+.document-context { margin: 0; color: var(--primary); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.document-metadata { display: flex; flex-wrap: wrap; gap: 3px 18px; margin: 0 0 14px; font-size: .82rem; }
+.document-metadata dt { color: var(--muted); font-weight: 800; }
+.document-metadata dd { margin: 0; }
+.document-provenance { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; padding-top: 11px; border-top: 1px dashed #b6c2bb; color: var(--muted); font-size: .75rem; }
+.document-provenance svg { width: 17px; color: var(--primary); }
+.document-provenance span { color: var(--primary-strong); font-weight: 800; }
+.document-provenance code { font-size: .72rem; }
+.document-provenance a { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--primary); font-weight: 800; }
+.document-provenance a svg { width: 14px; }
+.document-download { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 15px; border: 1px solid var(--primary); color: var(--primary); font-weight: 900; text-decoration: none; white-space: nowrap; }
+.document-download:hover { background: var(--primary); color: #fff; }
+.document-download svg { width: 18px; }
+.archive-pagination { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; margin-top: 28px; }
+.archive-pagination a { color: var(--primary); font-weight: 900; }
+.archive-pagination a:last-child { justify-self: end; }
+.archive-pagination span { color: var(--muted); font-size: .84rem; }
+
+@media (max-width: 940px) {
+  .archive-filters { grid-template-columns: 1fr 1fr; }
+  .archive-query { grid-column: 1 / -1; }
+  .archive-filters button { align-self: end; }
+  .document-record { grid-template-columns: 84px minmax(0, 1fr); }
+  .document-download { grid-column: 2; justify-self: start; }
+}
+
+@media (max-width: 620px) {
+  .archive-filters { grid-template-columns: 1fr; padding: 17px; }
+  .archive-query { grid-column: auto; }
+  .archive-summary { grid-template-columns: auto 1fr; }
+  .archive-summary small { grid-column: 1 / -1; }
+  .document-record { grid-template-columns: 1fr; gap: 14px; }
+  .document-stamp { display: flex; align-items: center; gap: 9px; min-height: 0; }
+  .document-stamp strong { margin: 0; }
+  .document-download { grid-column: auto; }
+  .document-provenance a { width: 100%; margin-left: 0; }
+  .archive-pagination { grid-template-columns: 1fr 1fr; }
+  .archive-pagination span { grid-column: 1 / -1; grid-row: 1; }
+}

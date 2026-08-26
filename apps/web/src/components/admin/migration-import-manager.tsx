@@ -39,6 +39,13 @@ type ImportResponse = {
   detail: string;
 };
 
+type DocumentImportResponse = {
+  document: { id: string; title: string; status: string; category: string };
+  asset: { id: string; status: string; sha256: string; mimeType: string; sizeBytes: number };
+  reusedAsset: boolean;
+  detail: string;
+};
+
 export function MigrationImportManager() {
   const [jobs, setJobs] = useState<MigrationJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -91,7 +98,7 @@ export function MigrationImportManager() {
     return detail.urls.filter((url) =>
       url.state.toLocaleUpperCase("en-US") === "MAPPED"
       && url.classification.toLocaleUpperCase("en-US") === "MIGRATE"
-      && isHtml(url.contentType)
+      && (isHtml(url.contentType) || isDocument(url))
       && Boolean(url.sha256)
       && !importedIds.has(url.id));
   }, [detail, imports]);
@@ -158,18 +165,55 @@ export function MigrationImportManager() {
     }
   }
 
+  async function importDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedJobId || !selectedLegacy) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/v1/admin/migration/jobs/${selectedJobId}/urls/${selectedLegacy.id}/import-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: String(form.get("category") ?? "").trim(),
+          subcategory: optional(form.get("subcategory")),
+          title: String(form.get("title") ?? "").trim(),
+          description: optional(form.get("description")),
+          documentNumber: optional(form.get("documentNumber")),
+          processNumber: optional(form.get("processNumber")),
+          referencePeriod: optional(form.get("referencePeriod")),
+          publicationDate: optional(form.get("publicationDate")),
+          responsibleDepartment: optional(form.get("responsibleDepartment")),
+          documentType: String(form.get("documentType") ?? "DOCUMENT").trim(),
+        }),
+      });
+      if (!response.ok) throw new Error(await errorText(response));
+      const result = await response.json() as DocumentImportResponse;
+      await refreshSelected(selectedJobId);
+      const jobsResponse = await fetch("/api/v1/admin/migration/jobs");
+      if (jobsResponse.ok) setJobs(await jobsResponse.json() as MigrationJob[]);
+      setSelectedLegacyId(null);
+      setMessage(`${result.detail} ${result.document.title} criado em ${result.document.status}; asset ${result.asset.status}${result.reusedAsset ? " reutilizado por hash" : " persistido"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível importar o documento legado.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <section className="admin-panel" style={{ marginTop: 20 }}>
     <div className="admin-heading">
       <div>
         <span className="kicker">ETL controlado</span>
-        <h2>Importação para rascunhos CMS</h2>
-        <p>Refaz o fetch com proteção SSRF, exige o mesmo SHA-256 do dry-run e converte HTML em texto inerte. Nada é publicado automaticamente.</p>
+        <h2>Importação controlada de conteúdo e documentos</h2>
+        <p>Refaz o fetch com proteção SSRF, exige o mesmo SHA-256 do dry-run e encaminha HTML ao CMS ou arquivos ao acervo documental. Nada é publicado automaticamente.</p>
       </div>
       <button type="button" className="action-button secondary" onClick={() => void refreshJobs()} disabled={busy}>Atualizar importações</button>
     </div>
 
     <div className="warning-box">
-      <strong>Integridade antes de velocidade.</strong> Se a origem mudou desde o inventário, a importação é recusada. Scripts, estilos e marcação executável não são levados para o CMS. PDFs e mídias continuam fora deste fluxo e devem passar pela biblioteca de mídia.
+      <strong>Integridade antes de velocidade.</strong> Se a origem mudou desde o inventário, a importação é recusada. HTML vira texto inerte; PDF, Office e imagens passam por magic bytes, MIME, malware scan, storage e quarentena antes do acervo.
     </div>
 
     {loading ? <div className="empty-state" aria-busy="true"><p>Carregando inventários…</p></div> : jobs.length === 0 ? <div className="empty-state"><h3>Nenhum inventário disponível</h3><p>Execute um dry-run acima antes de preparar conteúdo.</p></div> : <div className="compact-list" style={{ marginTop: 16 }}>
@@ -181,11 +225,11 @@ export function MigrationImportManager() {
 
     {detail && detail.job.id === selectedJobId && <div className="editor-grid" style={{ marginTop: 20 }}>
       <div>
-        <h3>Páginas aptas</h3>
-        {candidates.length === 0 ? <div className="empty-state"><p>Nenhuma página HTML mapeada e íntegra está pendente de importação neste job.</p></div> : <div className="compact-list">
+        <h3>Conteúdos aptos</h3>
+        {candidates.length === 0 ? <div className="empty-state"><p>Nenhum HTML ou documento mapeado e íntegro está pendente de importação neste job.</p></div> : <div className="compact-list">
           {candidates.map((url) => <button key={url.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedLegacyId(url.id); setMessage(""); }}>
             <span style={{ minWidth: 0 }}><strong>{url.normalizedPath}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{url.url}</small><small style={{ display: "block" }}>{url.contentType} · SHA-256 {url.sha256?.slice(0, 16)}…</small></span>
-            <span className="status-pill">Preparar</span>
+            <span className="status-pill">{isHtml(url.contentType) ? "Página" : "Documento"}</span>
           </button>)}
         </div>}
       </div>
@@ -198,7 +242,7 @@ export function MigrationImportManager() {
       </div>
     </div>}
 
-    {selectedLegacy && <form key={selectedLegacy.id} className="admin-panel editor-fields" style={{ marginTop: 20 }} onSubmit={importPage}>
+    {selectedLegacy && isHtml(selectedLegacy.contentType) && <form key={selectedLegacy.id} className="admin-panel editor-fields" style={{ marginTop: 20 }} onSubmit={importPage}>
       <h3>Preparar rascunho de {selectedLegacy.normalizedPath}</h3>
       <p>O destino é um recurso <strong>PAGE / DRAFT</strong>. Revise no CMS antes de qualquer publicação.</p>
       <label className="field">Slug do rascunho<input name="slug" required maxLength={180} pattern="[a-z0-9-]+" defaultValue={slugFromPath(selectedLegacy.normalizedPath)} /></label>
@@ -209,6 +253,26 @@ export function MigrationImportManager() {
       <button className="action-button" disabled={busy}>Criar rascunho com evidência</button>
     </form>}
 
+    {selectedLegacy && isDocument(selectedLegacy) && <form key={selectedLegacy.id} className="admin-panel editor-fields" style={{ marginTop: 20 }} onSubmit={importDocument}>
+      <h3>Arquivar documento {selectedLegacy.normalizedPath}</h3>
+      <p>O arquivo será revalidado e criado como <strong>DRAFT</strong>. A publicação exige aprovação do asset e ação administrativa explícita.</p>
+      <div className="editor-grid">
+        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
+        <label className="field">Subcategoria<input name="subcategory" maxLength={120} placeholder="Ex.: RREO, EDITAL, CONTRATO" /></label>
+      </div>
+      <label className="field">Título<input name="title" required maxLength={220} defaultValue={titleFromPath(selectedLegacy.normalizedPath)} /></label>
+      <label className="field">Descrição<textarea name="description" maxLength={2000} rows={3} /></label>
+      <div className="editor-grid">
+        <label className="field">Tipo documental<input name="documentType" required maxLength={80} defaultValue={documentTypeFromPath(selectedLegacy.normalizedPath)} /></label>
+        <label className="field">Órgão responsável<input name="responsibleDepartment" maxLength={180} /></label>
+        <label className="field">Número<input name="documentNumber" maxLength={120} /></label>
+        <label className="field">Processo<input name="processNumber" maxLength={120} /></label>
+        <label className="field">Período de referência<input name="referencePeriod" maxLength={120} placeholder="Ex.: 2025 ou 1º bimestre/2025" /></label>
+        <label className="field">Data de publicação<input name="publicationDate" type="date" /></label>
+      </div>
+      <button className="action-button" disabled={busy}>Validar e criar documento no acervo</button>
+    </form>}
+
     {message && <div className="form-message" role="status" style={{ marginTop: 16 }}>{message}</div>}
   </section>;
 }
@@ -217,11 +281,31 @@ function isHtml(contentType: string | null) {
   return contentType?.toLocaleLowerCase("en-US") === "text/html" || contentType?.toLocaleLowerCase("en-US") === "application/xhtml+xml";
 }
 
+function isDocument(url: LegacyUrl) {
+  const contentType = url.contentType?.toLocaleLowerCase("en-US") ?? "";
+  return contentType === "application/pdf"
+    || contentType.startsWith("image/")
+    || contentType.includes("msword")
+    || contentType.includes("officedocument")
+    || contentType.includes("spreadsheet")
+    || /\.(?:pdf|docx?|xlsx?|pptx?|jpe?g|png|webp)(?:\?|$)/i.test(url.normalizedPath);
+}
+
 function slugFromPath(path: string) {
   const pathname = path.split("?", 1)[0];
   const tail = pathname.split("/").filter(Boolean).at(-1) ?? "pagina-importada";
   const normalized = tail.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("en-US").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return normalized || "pagina-importada";
+}
+
+function titleFromPath(path: string) {
+  const fileName = decodeURIComponent(path.split("?", 1)[0].split("/").filter(Boolean).at(-1) ?? "Documento legado");
+  return fileName.replace(/\.[a-z0-9]+$/i, "").replaceAll(/[-_]+/g, " ").replace(/^./, (character) => character.toLocaleUpperCase("pt-BR"));
+}
+
+function documentTypeFromPath(path: string) {
+  const extension = path.split("?", 1)[0].split(".").at(-1)?.toLocaleUpperCase("en-US");
+  return extension === "PDF" ? "PDF" : ["DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX"].includes(extension ?? "") ? "OFFICE" : "DOCUMENT";
 }
 
 function optional(value: FormDataEntryValue | null) {

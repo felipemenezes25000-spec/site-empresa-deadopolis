@@ -10,3 +10,12 @@ test("transparência preserva categorias históricas sem aceitar slugs arbitrár
   const unknown = await page.goto("/transparencia/categoria-inexistente");
   expect(unknown?.status()).toBe(404);
 });
+
+test("acervo documental oferece busca pública e estado vazio orientativo", async ({ page }) => {
+  await page.goto("/transparencia/documentos");
+
+  await expect(page.getByRole("heading", { level: 1, name: /acervo público de documentos/i })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: /buscar no acervo/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /pesquisar/i })).toBeVisible();
+  await expect(page.getByText(/documentos publicados/i)).toBeVisible();
+});

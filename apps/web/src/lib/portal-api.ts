@@ -15,6 +15,14 @@ export type SearchResult = { type: string; title: string; description: string; u
 export type GazetteEdition = { id?: string; number: number; year: number; type: string; publicationDate: string; verificationCode: string | null; sha256: string | null; documentObjectKey: string | null };
 export type GazetteVerification = { number: number; year: number; publicationDate: string; sha256: string; verificationCode: string; certificateSubject: string | null; certificateIssuer: string | null; signedAt: string | null; status: string };
 export type PortalResource = { id: string; kind: string; slug: string; title: string; summary: string; payload: unknown; displayOrder: number; startsAt: string | null; endsAt: string | null; publishedAt: string | null; version: number };
+export type PublicDocument = {
+  id: string; category: string; subcategory: string; title: string; description: string;
+  documentNumber: string; processNumber: string; referencePeriod: string; publicationDate: string | null;
+  responsibleDepartment: string; documentType: string; sourceUrl: string; originalFileName: string;
+  mimeType: string; sizeBytes: number; sha256: string; sourceSystem: string; publishedAt: string;
+  downloadUrl: string;
+};
+export type PublicDocumentPage = { page: number; pageSize: number; total: number; totalPages: number; items: PublicDocument[] };
 export type OpenDatasetSummary = {
   id: string;
   title: string;
@@ -70,3 +78,8 @@ export async function getResources(kind?: string) { const suffix = kind ? `?kind
 export async function getResource(kind: string, slug: string) { return request<PortalResource>(`/api/v1/resources/${encodeURIComponent(kind)}/${encodeURIComponent(slug)}`, true); }
 export async function getOpenDatasets() { return (await request<OpenDatasetSummary[]>("/api/v1/public/datasets"))!; }
 export async function getOpenDataset(slug: string) { return request<OpenDatasetDetail>(`/api/v1/public/datasets/${encodeURIComponent(slug)}`, true); }
+export async function getPublicDocuments(filters: { q?: string; category?: string; type?: string; year?: string; page?: string }) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) if (value) search.set(key, value);
+  return (await request<PublicDocumentPage>(`/api/v1/public/documents${search.size ? `?${search}` : ""}`))!;
+}

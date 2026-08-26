@@ -19,7 +19,73 @@ public static class MigrationImportEndpoints
 
         group.MapGet("/{id:guid}/imports", ListImportsAsync);
         group.MapPost("/{id:guid}/urls/{legacyUrlId:guid}/import-page", ImportPageAsync);
+        group.MapPost("/{id:guid}/urls/{legacyUrlId:guid}/import-document", ImportDocumentAsync);
         return endpoints;
+    }
+
+    private static async Task<IResult> ImportDocumentAsync(
+        Guid id,
+        Guid legacyUrlId,
+        ImportDocumentRequest request,
+        ClaimsPrincipal principal,
+        HttpContext context,
+        ApplicationDbContext database,
+        TenantContext tenant,
+        LegacyDocumentImportService importer,
+        CancellationToken cancellationToken)
+    {
+        var job = await database.MigrationJobs.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (job is null) return Results.NotFound();
+        var legacyUrl = await database.LegacyUrls.SingleOrDefaultAsync(item => item.Id == legacyUrlId && item.MigrationJobId == id, cancellationToken);
+        if (legacyUrl is null) return Results.NotFound();
+        var actor = RequireActor(principal);
+        try
+        {
+            var result = await importer.ImportAsync(
+                job,
+                legacyUrl,
+                new LegacyDocumentImportOptions(
+                    request.Category,
+                    request.Subcategory,
+                    request.Title,
+                    request.Description,
+                    request.DocumentNumber,
+                    request.ProcessNumber,
+                    request.ReferencePeriod,
+                    request.PublicationDate,
+                    request.ResponsibleDepartment,
+                    request.DocumentType),
+                actor,
+                database,
+                cancellationToken);
+            var evidence = new MigrationEvidence(tenant.RequireMunicipalityId(), job.Id, "DOCUMENT_IMPORT", legacyUrl.Url, result.EvidenceJson);
+            database.MigrationEvidences.Add(evidence);
+            database.AuditEvents.Add(new AuditEvent(
+                tenant.RequireMunicipalityId(), actor, "migration.document.imported", "PublicDocument", result.Document.Id.ToString(),
+                JsonSerializer.Serialize(new { jobId = job.Id, legacyUrlId, documentId = result.Document.Id, mediaAssetId = result.Asset.Id, result.ReusedAsset, result.Document.Status }),
+                context.TraceIdentifier));
+            await database.SaveChangesAsync(cancellationToken);
+            return Results.Created($"/api/v1/admin/documents/{result.Document.Id}", new
+            {
+                document = result.Document,
+                asset = new { result.Asset.Id, result.Asset.Status, result.Asset.Sha256, result.Asset.MimeType, result.Asset.SizeBytes },
+                result.ReusedAsset,
+                evidenceId = evidence.Id,
+                detail = "Documento criado como rascunho. O acesso público exige asset aprovado e publicação administrativa explícita."
+            });
+        }
+        catch (LegacyImportConflictException exception)
+        {
+            return Results.Conflict(new { title = "Importação recusada", detail = exception.Message, status = 409 });
+        }
+        catch (Exception exception) when (exception is LegacyImportValidationException or ArgumentException or JsonException)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["import"] = [exception.Message] });
+        }
+        catch (DbUpdateException)
+        {
+            return Results.Conflict(new { title = "Conflito ao persistir documento", detail = "A URL legada ou o contexto documental já foi importado.", status = 409 });
+        }
     }
 
     private static async Task<IResult> ListImportsAsync(
@@ -157,4 +223,16 @@ public static class MigrationImportEndpoints
         string? Summary,
         string? RedirectDestination,
         bool PermanentRedirect);
+
+    public sealed record ImportDocumentRequest(
+        string Category,
+        string? Subcategory,
+        string Title,
+        string? Description,
+        string? DocumentNumber,
+        string? ProcessNumber,
+        string? ReferencePeriod,
+        DateOnly? PublicationDate,
+        string? ResponsibleDepartment,
+        string DocumentType);
 }

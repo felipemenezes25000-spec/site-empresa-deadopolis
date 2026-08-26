@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Media.Domain;
 using MunicipalPlatform.Api.Modules.Media.Providers;
+using MunicipalPlatform.Api.Modules.Media.Services;
 using MunicipalPlatform.Api.Modules.Operations.Domain;
 using MunicipalPlatform.Api.Platform.Storage;
 using MunicipalPlatform.Api.Platform.Tenancy;
@@ -13,8 +14,6 @@ namespace MunicipalPlatform.Api.Modules.Media;
 
 public static class MediaEndpoints
 {
-    private const long MaxBytes = 25 * 1024 * 1024;
-
     public static IEndpointRouteBuilder MapMediaEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/admin/media").WithTags("Admin", "Media").RequireAuthorization(p => p.RequireClaim("capability", "media.manage"));
@@ -29,21 +28,26 @@ public static class MediaEndpoints
 
     private static async Task<IResult> UploadAsync(IFormFile file, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct, string? altText = null, string? caption = null, string? credit = null)
     {
-        if (file.Length <= 0 || file.Length > MaxBytes) return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Arquivo deve possuir até 25 MB."] });
+        if (file.Length <= 0 || file.Length > DocumentFileInspector.MaxBytes) return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Arquivo deve possuir até 25 MB."] });
         if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Storage não configurado", detail: storage.Description, statusCode: StatusCodes.Status503ServiceUnavailable);
         await using var stream = file.OpenReadStream();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory, ct);
         var bytes = memory.ToArray();
-        var detected = Detect(bytes);
-        if (detected is null) return Results.Problem(title: "Tipo de arquivo não permitido", detail: "São aceitos JPEG, PNG, WebP e PDF identificados pelos bytes reais do arquivo.", statusCode: StatusCodes.Status415UnsupportedMediaType);
+        var originalFileName = Path.GetFileName(file.FileName);
+        var detected = DocumentFileInspector.Detect(bytes, originalFileName);
+        if (detected is null) return Results.Problem(title: "Tipo de arquivo não permitido", detail: "São aceitos JPEG, PNG, WebP, PDF e documentos Office identificados por extensão, estrutura e bytes reais.", statusCode: StatusCodes.Status415UnsupportedMediaType);
+        if (!DocumentFileInspector.IsDeclaredMimeCompatible(file.ContentType, detected.MimeType))
+            return Results.Problem(title: "MIME incompatível", detail: "O tipo declarado pelo upload não corresponde ao conteúdo real do arquivo.", statusCode: StatusCodes.Status415UnsupportedMediaType);
         var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-        var objectKey = $"media/{DateTimeOffset.UtcNow:yyyy/MM}/{Guid.NewGuid():N}.{detected.Value.Extension}";
+        var scan = await scanner.ScanAsync(bytes, ct);
+        if (!scan.IsClean && scanner.State != "NOT_CONFIGURED")
+            return Results.Problem(title: "Arquivo recusado", detail: scan.Detail, statusCode: StatusCodes.Status422UnprocessableEntity);
+        var objectKey = $"media/{DateTimeOffset.UtcNow:yyyy/MM}/{Guid.NewGuid():N}.{detected.Extension}";
         await storage.SaveAsync(objectKey, bytes, ct);
         var actor = RequireActor(principal);
-        var asset = new MediaAsset(tenant.RequireMunicipalityId(), objectKey, Path.GetFileName(file.FileName), detected.Value.Mime, bytes.LongLength, sha, actor);
+        var asset = new MediaAsset(tenant.RequireMunicipalityId(), objectKey, originalFileName, detected.MimeType, bytes.LongLength, sha, actor);
         asset.UpdateMetadata(altText, caption, credit);
-        var scan = await scanner.ScanAsync(bytes, ct);
         if (scan.IsClean && scanner.State != "NOT_CONFIGURED") asset.Approve();
         db.MediaAssets.Add(asset);
         db.AuditEvents.Add(new AuditEvent(
@@ -63,15 +67,6 @@ public static class MediaEndpoints
         db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), RequireActor(principal), "media.metadata.updated", "MediaAsset", asset.Id.ToString(), JsonSerializer.Serialize(new { asset.AltText, asset.Caption, asset.Credit }), context.TraceIdentifier));
         await db.SaveChangesAsync(ct);
         return Results.Ok(asset);
-    }
-
-    private static (string Mime, string Extension)? Detect(byte[] bytes)
-    {
-        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return ("image/jpeg", "jpg");
-        if (bytes.Length >= 8 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) return ("image/png", "png");
-        if (bytes.Length >= 12 && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP") return ("image/webp", "webp");
-        if (bytes.Length >= 5 && System.Text.Encoding.ASCII.GetString(bytes, 0, 5) == "%PDF-") return ("application/pdf", "pdf");
-        return null;
     }
 
     private static Guid RequireActor(ClaimsPrincipal p) => Guid.TryParse(p.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new InvalidOperationException("Sessão inválida.");
