@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("POC principal: cidadão, CMS, Dados Abertos, Migração, Diário e Ouvidoria", async ({ page }) => {
+test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Diário e Ouvidoria", async ({ page }) => {
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -77,6 +77,33 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, Diário e Ouvidor
   const resolved = await page.request.get(`/api/v1/legacy/resolve?url=${encodeURIComponent(legacyPath)}`);
   expect(resolved.ok()).toBeTruthy();
   await expect(resolved.json()).resolves.toMatchObject({ source: legacyPath, destination: destinationPath, statusCode: 301 });
+
+  const mailDomain = `poc-${suffix}.deodapolis.ms.gov.br`;
+  const mailboxAddress = `contato-${suffix}@${mailDomain}`;
+  const aliasAddress = `ouvidoria-${suffix}@${mailDomain}`;
+  await page.goto("/admin/email");
+  await expect(page.getByText(/Provider: DEMO_ONLY/)).toBeVisible();
+  await page.getByLabel("Domínio institucional").fill(mailDomain);
+  await page.getByRole("button", { name: "Cadastrar domínio" }).click();
+  await expect(page.getByText(/Domínio institucional cadastrado/)).toBeVisible();
+  await expect(page.getByText(mailDomain, { exact: true })).toBeVisible();
+  await page.getByLabel("Endereço da caixa").fill(mailboxAddress);
+  await page.getByLabel("Nome de exibição").fill(`Caixa POC ${suffix}`);
+  await page.getByLabel("Quota (MB)").fill("2048");
+  await page.getByRole("button", { name: "Solicitar caixa" }).click();
+  await expect(page.getByText(/Estado do provider: DEMO_ONLY/)).toBeVisible();
+  await expect(page.getByText(mailboxAddress, { exact: true }).first()).toBeVisible();
+  await page.getByLabel("Endereço do alias").fill(aliasAddress);
+  await page.getByLabel("Destino do alias").fill(mailboxAddress);
+  await page.getByRole("button", { name: "Cadastrar alias" }).click();
+  await expect(page.getByText("Alias institucional cadastrado e auditado.")).toBeVisible();
+  await expect(page.getByText(aliasAddress, { exact: true })).toBeVisible();
+  await page.getByLabel("Tipo de origem").selectOption("EML");
+  await page.getByLabel("Referência da origem").fill(`lote-poc-${suffix}`);
+  await page.getByLabel("Caixa de destino").fill(mailboxAddress);
+  await page.getByRole("button", { name: "Registrar migração" }).click();
+  await expect(page.getByText(/Pedido de migração registrado/)).toBeVisible();
+  await expect(page.getByText(`EML → ${mailboxAddress}`, { exact: true })).toBeVisible();
 
   await page.goto("/admin/diario");
   const edition = Number(suffix.slice(-5));
