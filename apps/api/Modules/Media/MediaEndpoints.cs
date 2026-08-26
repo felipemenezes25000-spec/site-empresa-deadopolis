@@ -31,7 +31,7 @@ public static class MediaEndpoints
     {
         if (file.Length <= 0 || file.Length > MaxBytes) return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Arquivo deve possuir até 25 MB."] });
         if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Storage não configurado", detail: storage.Description, statusCode: StatusCodes.Status503ServiceUnavailable);
-        await using var stream = file.OpenReadStream(MaxBytes);
+        await using var stream = file.OpenReadStream();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory, ct);
         var bytes = memory.ToArray();
