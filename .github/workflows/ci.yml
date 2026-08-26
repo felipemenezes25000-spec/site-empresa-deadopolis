@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: 8.0.x }
       - run: dotnet restore MunicipalPlatform.sln
+      - name: .NET format verification
+        run: dotnet format MunicipalPlatform.sln --verify-no-changes --no-restore
       - run: dotnet build MunicipalPlatform.sln -c Release --no-restore
       - run: dotnet test MunicipalPlatform.sln -c Release --no-build --logger "trx;LogFileName=tests.trx"
       - name: Restore repository tools
@@ -79,6 +81,22 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f apps/api/Dockerfile -t municipal-api:ci .
       - run: docker build -f apps/web/Dockerfile -t municipal-web:ci .
+      - name: Scan API image for fixable critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: municipal-api:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+      - name: Scan web image for fixable critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: municipal-web:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
       - name: Validate compose configuration with ephemeral credentials
         run: |
           export POSTGRES_PASSWORD=$(openssl rand -hex 16)
