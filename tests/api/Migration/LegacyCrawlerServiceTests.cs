@@ -167,6 +167,23 @@ public sealed class LegacyCrawlerServiceTests
         Assert.DoesNotContain("/noticias.php?page=3", fetcher.RequestedPaths);
     }
 
+    [Fact]
+    public async Task CrawlRetriesTransientFetchFailureWithoutLosingTheUrl()
+    {
+        var fetcher = new FlakyFetcher();
+        await using var database = CreateDatabase();
+        var job = new MigrationJob(MunicipalityId, "https://legacy.example.test/", "legacy.example.test", 1, 10);
+        database.MigrationJobs.Add(job);
+        await database.SaveChangesAsync();
+
+        var summary = await new LegacyCrawlerService(fetcher)
+            .RunDryRunAsync(job, database, CancellationToken.None);
+
+        Assert.Equal(2, fetcher.RequestCount);
+        Assert.Equal(0, summary.Failed);
+        Assert.Equal(1, summary.Html);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         var tenant = new TenantContext();
@@ -211,6 +228,19 @@ public sealed class LegacyCrawlerServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             RequestedPaths.Add(uri.PathAndQuery);
             return Task.FromResult(responses[uri.PathAndQuery]);
+        }
+    }
+
+    private sealed class FlakyFetcher : ILegacySourceFetcher
+    {
+        public int RequestCount { get; private set; }
+
+        public Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            if (RequestCount == 1)
+                throw new HttpRequestException("Falha transitória simulada.");
+            return Task.FromResult(Html("<main>Conteúdo recuperado</main>"));
         }
     }
 }

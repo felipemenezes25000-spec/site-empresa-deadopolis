@@ -14,6 +14,7 @@ namespace MunicipalPlatform.Api.Modules.Migration.Services;
 public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
 {
     private const int ProgressBatchSize = 50;
+    private const int FetchAttempts = 3;
     public static JsonSerializerOptions SummaryJsonOptions { get; } = new(JsonSerializerDefaults.Web);
 
     public async Task<LegacyCrawlSummary> RunDryRunAsync(
@@ -80,7 +81,7 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
 
                 try
                 {
-                    var fetched = await fetcher.FetchAsync(uri, job.AllowedHost, cancellationToken);
+                    var fetched = await FetchWithRetryAsync(uri, job.AllowedHost, cancellationToken);
                     var hash = fetched.Body.Length == 0
                         ? null
                         : Convert.ToHexString(SHA256.HashData(fetched.Body)).ToLowerInvariant();
@@ -234,6 +235,34 @@ public sealed partial class LegacyCrawlerService(ILegacySourceFetcher fetcher)
         {
             return null;
         }
+    }
+
+    private async Task<LegacyFetchResult> FetchWithRetryAsync(
+        Uri uri,
+        string allowedHost,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= FetchAttempts; attempt++)
+        {
+            try
+            {
+                return await fetcher.FetchAsync(uri, allowedHost, cancellationToken);
+            }
+            catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                if (attempt == FetchAttempts)
+                    throw new HttpRequestException("A origem excedeu o tempo limite após três tentativas.", exception);
+            }
+            catch (Exception exception) when (exception is HttpRequestException or IOException or SocketException)
+            {
+                if (attempt == FetchAttempts)
+                    throw;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), cancellationToken);
+        }
+
+        throw new InvalidOperationException("Política de retry terminou em estado inválido.");
     }
 
     private static bool IsOfficeContentType(string? contentType) =>
