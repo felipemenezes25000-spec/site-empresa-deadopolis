@@ -184,6 +184,25 @@ public sealed class LegacyCrawlerServiceTests
         Assert.Equal(1, summary.Html);
     }
 
+    [Fact]
+    public async Task TerminalFetchFailureKeepsReasonAndReceivesAnExplicitDecision()
+    {
+        await using var database = CreateDatabase();
+        var job = new MigrationJob(MunicipalityId, "https://legacy.example.test/", "legacy.example.test", 1, 10);
+        database.MigrationJobs.Add(job);
+        await database.SaveChangesAsync();
+
+        var summary = await new LegacyCrawlerService(new AlwaysFailFetcher())
+            .RunDryRunAsync(job, database, CancellationToken.None);
+
+        var failed = await database.LegacyUrls.SingleAsync();
+        Assert.Equal("FAILED", failed.State);
+        Assert.Equal("IGNORE_WITH_REASON", failed.Classification);
+        Assert.Contains("Falha persistente", failed.FailureReason);
+        Assert.Equal(1, summary.Classifications["IGNORE_WITH_REASON"]);
+        Assert.DoesNotContain("UNCLASSIFIED", summary.Classifications.Keys);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         var tenant = new TenantContext();
@@ -242,5 +261,11 @@ public sealed class LegacyCrawlerServiceTests
                 throw new HttpRequestException("Falha transitória simulada.");
             return Task.FromResult(Html("<main>Conteúdo recuperado</main>"));
         }
+    }
+
+    private sealed class AlwaysFailFetcher : ILegacySourceFetcher
+    {
+        public Task<LegacyFetchResult> FetchAsync(Uri uri, string allowedHost, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("Falha persistente simulada.");
     }
 }

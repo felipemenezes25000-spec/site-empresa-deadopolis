@@ -365,5 +365,5 @@ public sealed record LegacyCrawlSummary(
     Dictionary<string, int> Families,
     Dictionary<string, int> Depths)
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 }

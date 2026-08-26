@@ -51,6 +51,7 @@ public sealed class LegacyUrl : ITenantEntity
     public void Fail(string reason)
     {
         State = "FAILED";
+        Classification = "IGNORE_WITH_REASON";
         FailureReason = reason;
     }
 }
