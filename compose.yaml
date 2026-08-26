@@ -21,6 +21,7 @@ services:
       PresentationMode: "true"
       Demo__Password: ${DEMO_PASSWORD:?Defina DEMO_PASSWORD no arquivo .env}
       Storage__LocalRoot: /tmp/municipal-objects
+      DataProtection__KeyRingPath: /tmp/municipal-dp-keys
       PublicPortalBaseUrl: http://localhost:3000
     ports: ["127.0.0.1:5080:8080"]
     depends_on: { postgres: { condition: service_healthy } }
