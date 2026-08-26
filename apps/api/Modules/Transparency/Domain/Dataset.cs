@@ -30,8 +30,8 @@ public sealed class Dataset : ITenantEntity
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public DateTimeOffset? PublishedAt { get; private set; }
-    public void UpdateMetadata(string title,string description,string category,string responsibleDepartment,string license,string updateFrequency,string? referencePeriod,string? source,DateTimeOffset? nextExpectedUpdateAt){if(Status==DatasetStatus.Archived)throw new InvalidOperationException("Dataset arquivado não pode ser editado.");Title=title.Trim();Description=description.Trim();Category=category.Trim();ResponsibleDepartment=responsibleDepartment.Trim();License=license.Trim();UpdateFrequency=updateFrequency.Trim();ReferencePeriod=referencePeriod?.Trim();Source=source?.Trim();NextExpectedUpdateAt=nextExpectedUpdateAt;UpdatedAt=DateTimeOffset.UtcNow;}
-    public void Publish(DateTimeOffset now){if(Status==DatasetStatus.Archived)throw new InvalidOperationException("Dataset arquivado não pode ser publicado.");Status=DatasetStatus.Published;PublishedAt??=now;LastUpdatedAt=now;UpdatedAt=now;}
-    public void MarkVersionPublished(DateTimeOffset now){LastUpdatedAt=now;UpdatedAt=now;}
-    public void Archive(DateTimeOffset now){Status=DatasetStatus.Archived;UpdatedAt=now;}
+    public void UpdateMetadata(string title, string description, string category, string responsibleDepartment, string license, string updateFrequency, string? referencePeriod, string? source, DateTimeOffset? nextExpectedUpdateAt) { if (Status == DatasetStatus.Archived) throw new InvalidOperationException("Dataset arquivado não pode ser editado."); Title = title.Trim(); Description = description.Trim(); Category = category.Trim(); ResponsibleDepartment = responsibleDepartment.Trim(); License = license.Trim(); UpdateFrequency = updateFrequency.Trim(); ReferencePeriod = referencePeriod?.Trim(); Source = source?.Trim(); NextExpectedUpdateAt = nextExpectedUpdateAt; UpdatedAt = DateTimeOffset.UtcNow; }
+    public void Publish(DateTimeOffset now) { if (Status == DatasetStatus.Archived) throw new InvalidOperationException("Dataset arquivado não pode ser publicado."); Status = DatasetStatus.Published; PublishedAt ??= now; LastUpdatedAt = now; UpdatedAt = now; }
+    public void MarkVersionPublished(DateTimeOffset now) { LastUpdatedAt = now; UpdatedAt = now; }
+    public void Archive(DateTimeOffset now) { Status = DatasetStatus.Archived; UpdatedAt = now; }
 }
