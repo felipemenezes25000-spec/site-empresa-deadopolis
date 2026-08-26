@@ -40,9 +40,6 @@ export function ResourceManager() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setSelectedId(null);
-    setRevisions([]);
-    setMessage("");
     void fetch(`/api/v1/admin/resources?kind=${encodeURIComponent(kind)}`, { signal: controller.signal })
       .then(async (response) => {
         if (response.ok && !controller.signal.aborted) setItems(await response.json() as Resource[]);
@@ -50,6 +47,13 @@ export function ResourceManager() {
       .catch(() => undefined);
     return () => controller.abort();
   }, [kind]);
+
+  function changeKind(value: string) {
+    setKind(value);
+    setSelectedId(null);
+    setRevisions([]);
+    setMessage("");
+  }
 
   async function load(preferredId?: string) {
     const response = await fetch(`/api/v1/admin/resources?kind=${encodeURIComponent(kind)}`);
@@ -158,7 +162,7 @@ export function ResourceManager() {
   return <div className="editor-grid">
     <section className="admin-panel">
       <div className="resource-toolbar">
-        <label>Tipo <select value={kind} onChange={(event) => setKind(event.target.value)}>{kinds.map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label>Tipo <select value={kind} onChange={(event) => changeKind(event.target.value)}>{kinds.map((value) => <option key={value}>{value}</option>)}</select></label>
         {selected && <button type="button" className="action-button secondary" onClick={() => { setSelectedId(null); setRevisions([]); setMessage(""); }}>Novo conteúdo</button>}
       </div>
       {items.length === 0 ? <div className="empty-state"><h3>Nenhum conteúdo deste tipo</h3><p>Crie um item no formulário ao lado.</p></div> : <div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}>
