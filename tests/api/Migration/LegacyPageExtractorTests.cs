@@ -6,7 +6,7 @@ namespace MunicipalPlatform.Api.Tests.Migration;
 public sealed class LegacyPageExtractorTests
 {
     [Fact]
-    public void Extract_RemovesExecutableMarkupAndPreservesReadableText()
+    public void ExtractRemovesExecutableMarkupAndPreservesReadableText()
     {
         var html = """
             <html>
@@ -31,7 +31,7 @@ public sealed class LegacyPageExtractorTests
     }
 
     [Fact]
-    public void Extract_NormalizesBlocksIntoStableLines()
+    public void ExtractNormalizesBlocksIntoStableLines()
     {
         var html = "<div>Primeira linha</div><div>Segunda <strong>linha</strong></div><br><p>Terceira</p>";
 

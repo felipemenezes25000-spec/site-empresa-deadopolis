@@ -14,7 +14,7 @@ public sealed class LegacyImportServiceTests
     private static readonly Guid ActorId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     [Fact]
-    public async Task PreparePageDraft_CreatesDraftEvidenceAndOptionalRedirectWithoutPublishing()
+    public async Task PreparePageDraftCreatesDraftEvidenceAndOptionalRedirectWithoutPublishing()
     {
         var body = Encoding.UTF8.GetBytes("<html><head><title>Página histórica</title></head><body><script>alert(1)</script><h1>Serviço antigo</h1><p>Texto preservado.</p></body></html>");
         var hash = Convert.ToHexString(SHA256.HashData(body)).ToLowerInvariant();
@@ -51,7 +51,7 @@ public sealed class LegacyImportServiceTests
     }
 
     [Fact]
-    public async Task PreparePageDraft_RejectsSourceWhenHashChangedAfterDryRun()
+    public async Task PreparePageDraftRejectsSourceWhenHashChangedAfterDryRun()
     {
         var inventoriedBody = Encoding.UTF8.GetBytes("<html><body>Versão inventariada</body></html>");
         var changedBody = Encoding.UTF8.GetBytes("<html><body>Versão alterada</body></html>");
@@ -76,7 +76,7 @@ public sealed class LegacyImportServiceTests
     }
 
     [Fact]
-    public async Task PreparePageDraft_IsIdempotentPerLegacyUrl()
+    public async Task PreparePageDraftIsIdempotentPerLegacyUrl()
     {
         var body = Encoding.UTF8.GetBytes("<html><body><p>Conteúdo estável</p></body></html>");
         var hash = Convert.ToHexString(SHA256.HashData(body)).ToLowerInvariant();
