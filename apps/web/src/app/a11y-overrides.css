@@ -1,0 +1,10 @@
+/* Accessibility hardening overrides kept separate from the legacy visual sheet.
+   These values meet WCAG 2.2 AA contrast requirements on the portal surfaces. */
+.service-number {
+  color: var(--muted);
+}
+
+.universal-search input::placeholder {
+  color: #5d6d66;
+  opacity: 1;
+}
