@@ -19,6 +19,7 @@ using MunicipalPlatform.Api.Modules.Mail.Providers;
 using MunicipalPlatform.Api.Modules.Media;
 using MunicipalPlatform.Api.Modules.Media.Providers;
 using MunicipalPlatform.Api.Modules.Migration;
+using MunicipalPlatform.Api.Modules.Migration.Services;
 using MunicipalPlatform.Api.Modules.Operations;
 using MunicipalPlatform.Api.Modules.Portal;
 using MunicipalPlatform.Api.Modules.Support;
@@ -39,6 +40,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
 builder.Services.AddSingleton<MfaTotpService>();
 builder.Services.AddSingleton<GazetteDocumentService>();
+builder.Services.AddSingleton<LegacyCrawlerService>();
 builder.Services.AddHostedService<ScheduledPublicationWorker>();
 builder.Services.AddRateLimiter(options =>
 {
@@ -151,6 +153,7 @@ app.MapMailGovernanceEndpoints();
 app.MapMediaEndpoints();
 app.MapMigrationEndpoints();
 app.MapMigrationJobEndpoints();
+app.MapMigrationCrawlerEndpoints();
 app.MapTransparencyEndpoints();
 app.MapOperationsEndpoints();
 app.Run();
