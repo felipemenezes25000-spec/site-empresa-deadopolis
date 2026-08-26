@@ -82,7 +82,7 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await page.getByRole("button", { name: "Criar job de dry-run" }).click();
   await expect(page.getByText(/Job criado para o host autorizado 127\.0\.0\.1/)).toBeVisible();
   await page.getByRole("button", { name: "Executar dry-run seguro" }).click();
-  await expect(page.getByText(/Dry-run concluído: 1 URL\(s\) descoberta\(s\), 1 falha\(s\)/)).toBeVisible();
+  await expect(page.getByText(/Dry-run concluído: 1 URL\(s\), 0 documento\(s\), 1 falha\(s\) e 0 item\(ns\) pendente\(s\) na fila/)).toBeVisible();
   await expect(page.getByText(/Bloqueio\/falha: Host resolveu para endereço privado, local ou reservado/i)).toBeVisible();
 
   const legacyPath = `/portal-antigo-${suffix}`;
