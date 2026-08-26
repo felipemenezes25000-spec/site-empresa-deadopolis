@@ -15,6 +15,7 @@ const links = [
   ["/admin/diario", "Diário Oficial"],
   ["/admin/email", "E-mail institucional"],
   ["/admin/migracao", "Migração"],
+  ["/admin/operacoes", "Operações"],
   ["/admin/tickets", "Tickets e SLA"],
   ["/admin/integracoes", "Integrações"],
   ["/admin/compliance", "Compliance"],

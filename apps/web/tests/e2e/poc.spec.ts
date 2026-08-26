@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Diário e Ouvidoria", async ({ page }) => {
+test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operações, Diário e Ouvidoria", async ({ page }) => {
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -104,6 +104,33 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Diário e
   await page.getByRole("button", { name: "Registrar migração" }).click();
   await expect(page.getByText(/Pedido de migração registrado/)).toBeVisible();
   await expect(page.getByText(`EML → ${mailboxAddress}`, { exact: true })).toBeVisible();
+
+  await page.goto("/admin/operacoes");
+  await page.getByLabel("URL monitorada").fill("http://127.0.0.1/");
+  await page.getByRole("button", { name: "Adicionar monitoramento" }).click();
+  await expect(page.getByText(/IP privado, local ou reservado.*SSRF/i)).toBeVisible();
+  const monitoredUrl = `https://unresolved-${suffix}.invalid/health`;
+  await page.getByLabel("URL monitorada").fill(monitoredUrl);
+  await page.getByRole("button", { name: "Adicionar monitoramento" }).click();
+  await expect(page.getByText("URL adicionada ao monitoramento periódico e auditada.")).toBeVisible();
+  await expect(page.getByText(monitoredUrl, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: `Verificar ${monitoredUrl}` }).click();
+  await expect(page.getByText("Verificação concluída: DEGRADED.")).toBeVisible();
+  await expect(page.getByText("DEGRADED", { exact: true })).toBeVisible();
+
+  const startedAt = new Date(Date.now() - 60_000).toISOString().slice(0, 16);
+  const completedAt = new Date().toISOString().slice(0, 16);
+  const backupProvider = `POC Provider ${suffix}`;
+  await page.getByLabel("Provider do backup").fill(backupProvider);
+  await page.getByLabel("Tipo de backup").fill("DATABASE_FULL");
+  await page.getByLabel("Início").fill(startedAt);
+  await page.getByLabel("Conclusão").fill(completedAt);
+  await page.getByLabel("Referência do artefato").fill(`backup://poc/${suffix}`);
+  await page.getByLabel("Tamanho (bytes)").fill("4096");
+  await page.getByLabel("Restore testado em").fill(completedAt);
+  await page.getByRole("button", { name: "Registrar evidência" }).click();
+  await expect(page.getByText(/Evidência de backup registrada/)).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${backupProvider} · DATABASE_FULL$`))).toBeVisible();
 
   await page.goto("/admin/diario");
   const edition = Number(suffix.slice(-5));

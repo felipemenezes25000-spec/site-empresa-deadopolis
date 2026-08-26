@@ -41,7 +41,9 @@ builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAcco
 builder.Services.AddSingleton<MfaTotpService>();
 builder.Services.AddSingleton<GazetteDocumentService>();
 builder.Services.AddSingleton<LegacyCrawlerService>();
+builder.Services.AddSingleton<LinkCheckProbeService>();
 builder.Services.AddHostedService<ScheduledPublicationWorker>();
+builder.Services.AddHostedService<LinkCheckWorker>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
