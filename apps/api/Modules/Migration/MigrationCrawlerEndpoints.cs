@@ -28,7 +28,8 @@ public static class MigrationCrawlerEndpoints
         CancellationToken cancellationToken)
     {
         var job = await database.MigrationJobs.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (job is null) return Results.NotFound();
+        if (job is null)
+            return Results.NotFound();
 
         var summary = await crawler.RunDryRunAsync(job, database, cancellationToken);
         database.AuditEvents.Add(new AuditEvent(
