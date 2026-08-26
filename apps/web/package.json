@@ -9,7 +9,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test --project=chromium",
+    "test:a11y": "playwright test tests/e2e/a11y.spec.ts --project=chromium",
+    "test:crawl": "playwright test tests/e2e/crawl.spec.ts --project=chromium"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
