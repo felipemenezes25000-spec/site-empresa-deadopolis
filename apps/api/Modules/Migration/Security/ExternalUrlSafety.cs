@@ -10,7 +10,8 @@ public static class ExternalUrlSafety
         ArgumentNullException.ThrowIfNull(uri);
         if (!uri.IsAbsoluteUri)
             return false;
-        if (uri.Scheme is not (Uri.UriSchemeHttp or Uri.UriSchemeHttps))
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             return false;
         if (!string.IsNullOrEmpty(uri.UserInfo))
             return false;
