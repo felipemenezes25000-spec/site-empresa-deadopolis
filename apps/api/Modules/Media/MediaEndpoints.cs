@@ -21,6 +21,8 @@ public static class MediaEndpoints
         group.MapGet("/", ListAsync);
         group.MapPost("/upload", UploadAsync).DisableAntiforgery();
         group.MapPut("/{id:guid}/metadata", UpdateMetadataAsync);
+        group.MapPost("/{id:guid}/review", ReviewAsync);
+        group.MapPost("/{id:guid}/reject", RejectAsync);
         return endpoints;
     }
 
@@ -64,10 +66,7 @@ public static class MediaEndpoints
         asset.UpdateMetadata(altText, caption, credit);
         if (scan.IsClean && scanner.State != "NOT_CONFIGURED") asset.Approve();
         db.MediaAssets.Add(asset);
-        db.AuditEvents.Add(new AuditEvent(
-            tenant.RequireMunicipalityId(), actor, "media.uploaded", "MediaAsset", asset.Id.ToString(),
-            JsonSerializer.Serialize(new { asset.OriginalFileName, asset.MimeType, asset.SizeBytes, asset.Sha256, asset.Status, scannerState = scanner.State, storageState = storage.State }),
-            context.TraceIdentifier));
+        AddAudit(db, tenant, actor, "media.uploaded", asset, context.TraceIdentifier, new { asset.OriginalFileName, asset.MimeType, asset.SizeBytes, asset.Sha256, asset.Status, scannerState = scanner.State, storageState = storage.State });
         await db.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/admin/media/{asset.Id}", new { asset.Id, asset.ObjectKey, asset.OriginalFileName, asset.MimeType, asset.SizeBytes, asset.Sha256, asset.Status, scan = new { scannerState = scanner.State, scan.Detail } });
     }
@@ -78,11 +77,61 @@ public static class MediaEndpoints
         if (asset is null) return Results.NotFound();
         try { asset.UpdateMetadata(request.AltText, request.Caption, request.Credit); }
         catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["metadata"] = [ex.Message] }); }
-        db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), RequireActor(principal), "media.metadata.updated", "MediaAsset", asset.Id.ToString(), JsonSerializer.Serialize(new { asset.AltText, asset.Caption, asset.Credit }), context.TraceIdentifier));
+        var actor = RequireActor(principal);
+        AddAudit(db, tenant, actor, "media.metadata.updated", asset, context.TraceIdentifier, new { asset.AltText, asset.Caption, asset.Credit });
         await db.SaveChangesAsync(ct);
         return Results.Ok(asset);
     }
 
+    private static async Task<IResult> ReviewAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct)
+    {
+        var asset = await db.MediaAssets.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (asset is null) return Results.NotFound();
+        if (asset.Status == "APPROVED") return Results.Ok(asset);
+        if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Storage não configurado", detail: storage.Description, statusCode: StatusCodes.Status503ServiceUnavailable);
+        if (scanner.State == "NOT_CONFIGURED") return Results.Problem(title: "Scanner antimalware não configurado", detail: scanner.Description, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        var bytes = await storage.ReadAsync(asset.ObjectKey, ct);
+        if (bytes is null) return Results.Problem(title: "Objeto de mídia ausente", detail: "O metadado existe, mas o arquivo não foi localizado no storage.", statusCode: StatusCodes.Status409Conflict);
+        var scan = await scanner.ScanAsync(bytes, ct);
+        var actor = RequireActor(principal);
+        if (!scan.IsClean)
+        {
+            asset.Reject();
+            AddAudit(db, tenant, actor, "media.rejected.by_scan", asset, context.TraceIdentifier, new { scannerState = scanner.State, scan.Detail });
+            await db.SaveChangesAsync(ct);
+            return Results.Json(new { asset.Id, asset.Status, scannerState = scanner.State, scan.Detail }, statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+
+        asset.Approve();
+        AddAudit(db, tenant, actor, "media.approved.after_scan", asset, context.TraceIdentifier, new { scannerState = scanner.State, scan.Detail, asset.Sha256 });
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(asset);
+    }
+
+    private static async Task<IResult> RejectAsync(Guid id, MediaRejectRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        var asset = await db.MediaAssets.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (asset is null) return Results.NotFound();
+        var reason = NormalizeReason(request.Reason);
+        asset.Reject();
+        var actor = RequireActor(principal);
+        AddAudit(db, tenant, actor, "media.rejected.manual", asset, context.TraceIdentifier, new { reason, asset.Sha256 });
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(asset);
+    }
+
+    private static string NormalizeReason(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "Rejeição administrativa sem justificativa informada.";
+        var normalized = value.Trim();
+        return normalized.Length <= 500 ? normalized : normalized[..500];
+    }
+
+    private static void AddAudit(ApplicationDbContext db, TenantContext tenant, Guid actor, string action, MediaAsset asset, string correlationId, object diff) =>
+        db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "MediaAsset", asset.Id.ToString(), JsonSerializer.Serialize(diff), correlationId));
+
     private static Guid RequireActor(ClaimsPrincipal p) => Guid.TryParse(p.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new InvalidOperationException("Sessão inválida.");
     public sealed record MediaMetadataRequest(string? AltText, string? Caption, string? Credit);
+    public sealed record MediaRejectRequest(string? Reason);
 }
