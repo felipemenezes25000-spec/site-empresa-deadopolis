@@ -100,7 +100,14 @@ public sealed class MailArchiveInspectionService
 
             var messageStart = envelopeEnd + 1;
             var messageEnd = index + 1 < boundaries.Count ? boundaries[index + 1] : text.Length;
-            if (messageEnd <= messageStart || !InspectMessage(text.AsSpan(messageStart, messageEnd - messageStart), out var reason))
+            if (messageEnd <= messageStart)
+            {
+                invalid++;
+                AddWarning(warnings, $"Mensagem {index + 1}: mensagem vazia após o envelope MBOX.");
+                continue;
+            }
+
+            if (!InspectMessage(text.AsSpan(messageStart, messageEnd - messageStart), out var reason))
             {
                 invalid++;
                 AddWarning(warnings, $"Mensagem {index + 1}: {reason}");
