@@ -17,10 +17,12 @@ public static class MediaEndpoints
     public static IEndpointRouteBuilder MapMediaEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/v1/media/{id:guid}", PublicReadAsync).AllowAnonymous().WithTags("Media");
+        endpoints.MapGet("/api/v1/media/{id:guid}/metadata", PublicMetadataAsync).AllowAnonymous().WithTags("Media");
         var group = endpoints.MapGroup("/api/v1/admin/media").WithTags("Admin", "Media").RequireAuthorization(p => p.RequireClaim("capability", "media.manage"));
         group.MapGet("/", ListAsync);
         group.MapPost("/upload", UploadAsync).DisableAntiforgery();
         group.MapPut("/{id:guid}/metadata", UpdateMetadataAsync);
+        group.MapPut("/{id:guid}/presentation", UpdatePresentationAsync);
         group.MapPost("/{id:guid}/review", ReviewAsync);
         group.MapPost("/{id:guid}/reject", RejectAsync);
         return endpoints;
@@ -37,6 +39,26 @@ public static class MediaEndpoints
         if (context.Request.Headers.IfNoneMatch.Any(value => string.Equals(value, etag, StringComparison.Ordinal))) return Results.StatusCode(StatusCodes.Status304NotModified);
         var bytes = await storage.ReadAsync(asset.ObjectKey, ct);
         return bytes is null ? Results.NotFound() : Results.File(bytes, asset.MimeType, enableRangeProcessing: false);
+    }
+
+    private static async Task<IResult> PublicMetadataAsync(Guid id, ApplicationDbContext db, CancellationToken ct)
+    {
+        var asset = await db.MediaAssets.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.Status == "APPROVED", ct);
+        if (asset is null) return Results.NotFound();
+        return Results.Ok(new
+        {
+            asset.Id,
+            asset.MimeType,
+            asset.AltText,
+            asset.Caption,
+            asset.Credit,
+            tags = ParseTags(asset.TagsCsv),
+            focalPoint = new { x = asset.FocalPointX ?? 0.5m, y = asset.FocalPointY ?? 0.5m },
+            crop = asset.CropX.HasValue && asset.CropY.HasValue && asset.CropWidth.HasValue && asset.CropHeight.HasValue
+                ? new { x = asset.CropX.Value, y = asset.CropY.Value, width = asset.CropWidth.Value, height = asset.CropHeight.Value }
+                : null,
+            asset.Sha256
+        });
     }
 
     private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) =>
@@ -83,6 +105,29 @@ public static class MediaEndpoints
         return Results.Ok(asset);
     }
 
+    private static async Task<IResult> UpdatePresentationAsync(Guid id, MediaPresentationRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
+    {
+        var asset = await db.MediaAssets.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (asset is null) return Results.NotFound();
+        try
+        {
+            asset.UpdatePresentation(request.Tags, request.FocalPointX, request.FocalPointY, request.CropX, request.CropY, request.CropWidth, request.CropHeight);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["presentation"] = [ex.Message] });
+        }
+        var actor = RequireActor(principal);
+        AddAudit(db, tenant, actor, "media.presentation.updated", asset, context.TraceIdentifier, new
+        {
+            asset.TagsCsv,
+            focalPoint = new { x = asset.FocalPointX, y = asset.FocalPointY },
+            crop = new { x = asset.CropX, y = asset.CropY, width = asset.CropWidth, height = asset.CropHeight }
+        });
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(asset);
+    }
+
     private static async Task<IResult> ReviewAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct)
     {
         var asset = await db.MediaAssets.SingleOrDefaultAsync(x => x.Id == id, ct);
@@ -121,6 +166,10 @@ public static class MediaEndpoints
         return Results.Ok(asset);
     }
 
+    private static string[] ParseTags(string value) => string.IsNullOrWhiteSpace(value)
+        ? []
+        : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private static string NormalizeReason(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return "Rejeição administrativa sem justificativa informada.";
@@ -133,5 +182,6 @@ public static class MediaEndpoints
 
     private static Guid RequireActor(ClaimsPrincipal p) => Guid.TryParse(p.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new InvalidOperationException("Sessão inválida.");
     public sealed record MediaMetadataRequest(string? AltText, string? Caption, string? Credit);
+    public sealed record MediaPresentationRequest(string? Tags, decimal FocalPointX, decimal FocalPointY, decimal? CropX, decimal? CropY, decimal? CropWidth, decimal? CropHeight);
     public sealed record MediaRejectRequest(string? Reason);
 }
