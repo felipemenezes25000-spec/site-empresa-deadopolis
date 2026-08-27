@@ -156,6 +156,7 @@ app.MapSupportEndpoints();
 app.MapGazetteEndpoints();
 app.MapGazetteCompositionEndpoints();
 app.MapAdministrationEndpoints();
+app.MapContentGovernanceEndpoints();
 app.MapMailEndpoints();
 app.MapMailGovernanceEndpoints();
 app.MapMediaEndpoints();

@@ -9,6 +9,7 @@ const links = [
   ["/admin", "Visão geral"],
   ["/admin/comunicacao", "Comunicação"],
   ["/admin/conteudo", "Páginas e blocos"],
+  ["/admin/governanca-conteudo", "Governança de conteúdo"],
   ["/admin/servicos", "Serviços"],
   ["/admin/midia", "Mídia"],
   ["/admin/dados-abertos", "Dados Abertos"],
