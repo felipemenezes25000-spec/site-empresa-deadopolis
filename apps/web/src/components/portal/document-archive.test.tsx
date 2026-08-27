@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { getPublicDocuments } from "@/lib/portal-api";
 import { DocumentArchive } from "./document-archive";
@@ -31,6 +32,12 @@ vi.mock("@/lib/portal-api", () => ({
       downloadUrl: "/api/v1/public/documents/11111111-1111-1111-1111-111111111111/download",
     }],
   }),
+}));
+
+vi.mock("./public-shell", () => ({
+  PublicShell: ({ children }: { children: ReactNode }) => <>{children}</>,
+  PageIntro: ({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) => <section><p>{eyebrow}</p><h1>{title}</h1>{description && <p>{description}</p>}</section>,
+  EmptyPanel: ({ title, description }: { title: string; description: string }) => <div role="status"><h2>{title}</h2><p>{description}</p></div>,
 }));
 
 describe("DocumentArchive", () => {
