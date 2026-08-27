@@ -35,6 +35,7 @@ var databaseConnection = builder.Configuration.GetConnectionString("Database") ?
 var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"] ?? Path.Combine(Path.GetTempPath(), "municipal-dp-keys");
 Directory.CreateDirectory(keyRingPath);
 builder.Services.AddDataProtection().SetApplicationName("MunicipalPlatform").PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
+builder.Services.AddPlatformObservability(builder.Configuration);
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(databaseConnection));
 builder.Services.AddProblemDetails();
