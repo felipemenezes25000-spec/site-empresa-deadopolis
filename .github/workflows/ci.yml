@@ -24,8 +24,8 @@ jobs:
       ConnectionStrings__Database: Host=127.0.0.1;Port=54329;Database=municipal_platform;Username=municipal;Password=ci-postgres-only
       DefaultMunicipalitySlug: deodapolis
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with: { dotnet-version: 8.0.x }
       - run: dotnet restore MunicipalPlatform.sln
       - name: .NET format verification
@@ -48,14 +48,14 @@ jobs:
         run: dotnet ef migrations has-pending-model-changes --project apps/api/MunicipalPlatform.Api.csproj --startup-project apps/api/MunicipalPlatform.Api.csproj --configuration Release --no-build
       - name: Vulnerable NuGet packages
         run: dotnet list MunicipalPlatform.sln package --vulnerable --include-transitive
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with: { name: backend-test-results, path: "**/TestResults/*.trx", if-no-files-found: ignore }
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with: { node-version: 24, cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - run: npm ci
         working-directory: apps/web
@@ -74,7 +74,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
       - run: ./scripts/secret-scan.sh
       - name: Reject certificate/private key artifacts
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend, frontend, security]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: docker build -f apps/api/Dockerfile -t municipal-api:ci .
       - run: docker build -f apps/web/Dockerfile -t municipal-web:ci .
       - name: Scan API image for fixable critical vulnerabilities
@@ -113,8 +113,8 @@ jobs:
     env:
       E2E_BASE_URL: http://127.0.0.1:3000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with: { node-version: 24, cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - name: Prepare ephemeral POC credentials
         run: |
@@ -136,7 +136,7 @@ jobs:
       - name: Container logs
         if: always()
         run: docker compose logs --no-color > compose.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with: { name: e2e-evidence, path: "apps/web/playwright-report\napps/web/test-results\ncompose.log", if-no-files-found: ignore }
       - if: always()
