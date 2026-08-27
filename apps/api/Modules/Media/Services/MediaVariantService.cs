@@ -118,7 +118,7 @@ public sealed class MediaVariantService
 
     private static SKRect FitAspect(SKRect bounds, float targetAspect, float focalX, float focalY)
     {
-        if (targetAspect <= 0f) throw new ArgumentOutOfRangeException(nameof(targetAspect));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(targetAspect, 0f);
         var currentAspect = bounds.Width / bounds.Height;
         if (Math.Abs(currentAspect - targetAspect) < 0.0001f) return bounds;
 
