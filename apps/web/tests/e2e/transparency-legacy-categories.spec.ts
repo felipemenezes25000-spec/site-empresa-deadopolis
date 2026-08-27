@@ -19,3 +19,12 @@ test("acervo documental oferece busca pública e estado vazio orientativo", asyn
   await expect(page.getByRole("button", { name: /pesquisar/i })).toBeVisible();
   await expect(page.getByText(/documentos publicados/i)).toBeVisible();
 });
+
+test("licitações combina fontes oficiais e acervo histórico filtrável", async ({ page }) => {
+  await page.goto("/licitacoes");
+
+  await expect(page.getByRole("heading", { level: 1, name: /licitações e contratos/i })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: /buscar no acervo/i })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: /etapa/i })).toBeVisible();
+  await expect(page.getByText(/documentos publicados/i)).toBeVisible();
+});

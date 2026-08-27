@@ -1,17 +1,20 @@
 # Auditoria do portal atual de Deodápolis/MS
 
-**Data da coleta:** 25 de agosto de 2026  
-**Domínio auditado:** `https://deodapolis.ms.gov.br/` e variante `www`  
+**Data da coleta preliminar:** 25 de agosto de 2026
+
+**Inventário completo reconciliado:** 26 de agosto de 2026 — consulte `docs/LEGACY_MIGRATION_REPORT.md`
+
+**Domínio auditado:** `https://deodapolis.ms.gov.br/` e variante `www`
 **Escopo:** navegação pública, profundidade máxima 2, limite de 180 respostas HTML, inventário de links e documentos descobertos. Nenhum formulário foi submetido e nenhum dado autenticado foi acessado.
 
 ## Evidências e método
 
 - O repositório de destino estava vazio, sem arquivos e sem commits.
 - `robots.txt` e `sitemap.xml` retornaram 404; portanto, a descoberta partiu da home, e-SIC, Serviços, Licitações, Carta de Serviços e Dados Abertos.
-- Foram consultadas 180 páginas: 173 responderam 200 e 7 responderam 404.
-- Foram descobertas 1.238 URLs internas únicas e 663 referências a arquivos legados (`PDF`, `DOCX` e afins) no recorte controlado.
+- No recorte preliminar foram consultadas 180 páginas: 173 responderam 200 e 7 responderam 404.
+- O recorte preliminar descobriu 1.238 URLs internas únicas e 663 referências a arquivos legados (`PDF`, `DOCX` e afins). O dry-run completo posterior esvaziou a fila com 14.373 URLs internas únicas e 8.155 documentos.
 - O portal expõe ao menos 74 páginas de contratos, 71 de editais, 56 de avisos, 51 de resultados e 57 notícias no grafo imediatamente alcançável. Esses números são páginas/URLs descobertas, não quantidade definitiva de registros.
-- A coleta automatizada com validação TLS padrão falhou no host `www`; uma segunda coleta somente leitura, sem cookies de autenticação, foi usada apenas para inventário. A correção do certificado/encadeamento deve preceder o cutover.
+- Na coleta preliminar, a validação TLS padrão falhou no host `www`; uma segunda coleta somente leitura foi usada apenas para inventário. O dry-run final conseguiu acessar o mesmo host com validação padrão, mas a cadeia deve continuar monitorada até o cutover.
 - O HTML declara UTF-8, porém múltiplas páginas entregam mojibake (`Servi�o`, `Educa��o`, `Transpar�nia`) e títulos incorretos como “Deodapolis - MG”.
 
 ## Inventário de recursos
@@ -102,4 +105,4 @@
 
 ## Limites da auditoria
 
-O crawl foi deliberadamente limitado para não sobrecarregar o portal. A relação completa de milhares de registros paginados e a validação individual de todos os 663 arquivos exigem o `MigrationJob` em modo `DISCOVER/FETCH/VERIFY`, executado com janela autorizada. Nenhum dado pessoal, área autenticada ou formulário foi coletado.
+O recorte descrito neste documento foi deliberadamente limitado para não sobrecarregar o portal. Depois dele, o `MigrationJob` executou o inventário público completo em modo dry-run, sem truncamento e com reconciliação independente; os resultados estão em `docs/LEGACY_MIGRATION_REPORT.md`. Nenhum dado pessoal, área autenticada ou formulário foi coletado. O inventário não equivale a importação/publicação e deve ser repetido antes do cutover porque a origem continua mudando.

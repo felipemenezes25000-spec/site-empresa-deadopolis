@@ -15,7 +15,7 @@ Este documento é a matriz de continuidade entre o portal legado e a nova plataf
 
 ## Escala do acervo observado
 
-A auditoria pública realizada em 26/08/2026 mostrou que o legado não é apenas um conjunto pequeno de páginas institucionais. A listagem histórica contém **aproximadamente 7,3 mil registros** e o total é dinâmico. No snapshot observado, a maior parte do volume estava em licitações, seguida por informativos e prestação de contas.
+A auditoria pública automatizada concluída em 26/08/2026 mostrou que o legado não é apenas um conjunto pequeno de páginas institucionais. O dry-run completo encontrou **14.373 URLs únicas**, incluindo 8.155 documentos e 3.372 imagens. A reconciliação independente encontrou inicialmente 5.332 documentos de licitações; o grafo final capturou 5.336 após quatro referências surgirem durante a janela. Prestação de contas permaneceu em 610 e informativos em 1.404 páginas. Consulte `docs/LEGACY_MIGRATION_REPORT.md`.
 
 O cutover deve, portanto, ser tratado como **migração de acervo**. O `MigrationJob` precisa produzir a contagem definitiva por crawl e evidência; os números observados manualmente não substituem esse inventário automatizado.
 
@@ -31,7 +31,7 @@ Famílias de grande volume observadas:
 
 Rotas top-level existentes hoje na nova aplicação: `/`, `/acessibilidade`, `/acesso-a-informacao`, `/agenda`, `/buscar`, `/contatos`, `/dados-abertos`, `/diario-oficial`, `/legislacao`, `/licitacoes`, `/locais`, `/noticias`, `/ouvidoria`, `/privacidade`, `/secretarias`, `/servicos`, `/transparencia` e `/verificar`.
 
-Importante: `/secretarias` hoje é um diretório, `/licitacoes` é um hub de recursos/links e `/legislacao` é um acervo genérico. Não considerar subrotas inexistentes como entregues apenas porque o hub existe.
+Importante: `/secretarias` é um diretório administrável, `/licitacoes` combina fontes operacionais declaradas com o acervo histórico filtrável, e `/legislacao` ainda é um acervo genérico. Não considerar subrotas inexistentes como entregues apenas porque o hub existe.
 
 ## Institucional e páginas históricas
 
@@ -133,28 +133,28 @@ O legado do e-SIC é um subsistema separado. Login/sessão antigos **não devem 
 
 ## Prestação de contas (`/e-sic/prestacao_contas.php?tipo=`)
 
-A nova `/transparencia` hoje é um hub; as subáreas abaixo ainda não possuem páginas próprias. Preservar o acervo por categoria e implementar navegação antes de ativar redirects específicos.
+A nova `/transparencia` é um hub e as categorias verificadas abaixo possuem páginas próprias, pesquisa, filtro de tipo/ano, paginação, origem, hash e download governado. Um registro só aparece publicamente depois de o arquivo ser aprovado e o `PublicDocument` ser publicado.
 
 | Tipo | Categoria observada | Destino planejado | Estado |
 |---:|---|---|---|
-| 4 | RREO | `/transparencia/rreo` | IMPLEMENTAR |
-| 6 | RGF | `/transparencia/rgf` | IMPLEMENTAR |
-| 7 | Contratos de Convênios | `/transparencia/convenios` | IMPLEMENTAR |
-| 8 | Dados Gerais | `/transparencia/dados-gerais` | IMPLEMENTAR |
-| 9 | PPA | `/transparencia/ppa` | IMPLEMENTAR |
-| 10 | LDO | `/transparencia/ldo` | IMPLEMENTAR |
-| 11 | LOA | `/transparencia/loa` | IMPLEMENTAR |
-| 12 | Balancetes | `/transparencia/balancetes` | IMPLEMENTAR |
-| 13 | Relatório de Gestão | `/transparencia/relatorios-gestao` | IMPLEMENTAR |
-| 14 | Recursos Federais | `/transparencia/recursos-federais` | IMPLEMENTAR |
+| 4 | RREO | `/transparencia/rreo` | EXISTE — ACERVO FILTRADO |
+| 6 | RGF | `/transparencia/rgf` | EXISTE — ACERVO FILTRADO |
+| 7 | Contratos de Convênios | `/transparencia/convenios` | EXISTE — ACERVO FILTRADO |
+| 8 | Dados Gerais | `/transparencia/dados-gerais` | EXISTE — ACERVO FILTRADO |
+| 9 | PPA | `/transparencia/ppa` | EXISTE — ACERVO FILTRADO |
+| 10 | LDO | `/transparencia/ldo` | EXISTE — ACERVO FILTRADO |
+| 11 | LOA | `/transparencia/loa` | EXISTE — ACERVO FILTRADO |
+| 12 | Balancetes | `/transparencia/balancetes` | EXISTE — ACERVO FILTRADO |
+| 13 | Relatório de Gestão | `/transparencia/relatorios-gestao` | EXISTE — ACERVO FILTRADO |
+| 14 | Recursos Federais | `/transparencia/recursos-federais` | EXISTE — ACERVO FILTRADO |
 | 15 | Estrutura Organizacional | `/secretarias` | EXISTE, validar conteúdo |
-| 16 | Relatório de Gestão SUS | `/transparencia/relatorios-gestao-sus` | IMPLEMENTAR |
+| 16 | Relatório de Gestão SUS | `/transparencia/relatorios-gestao-sus` | EXISTE — ACERVO FILTRADO |
 | 17 | Decretos | `/legislacao` + classificação | EXISTE/IMPLEMENTAR FILTRO |
-| 18 | Receitas e Despesas COSIP | `/transparencia/cosip` | IMPLEMENTAR |
-| 19 | Balanços | `/transparencia/balancos` | IMPLEMENTAR |
-| 20 | UFID | `/transparencia/ufid` ou serviço equivalente | IMPLEMENTAR |
+| 18 | Receitas e Despesas COSIP | `/transparencia/cosip` | EXISTE — ACERVO FILTRADO |
+| 19 | Balanços | `/transparencia/balancos` | EXISTE — ACERVO FILTRADO |
+| 20 | UFID | `/transparencia/ufid` | EXISTE — ACERVO FILTRADO |
 | 21 | Mais oportunidades / Editais | `/licitacoes` ou área própria | EXISTE/DINAMICO |
-| 22 | Documentos e arquivos para download | acervo/documentos | IMPLEMENTAR |
+| 22 | Documentos e arquivos para download | `/transparencia/documentos` | EXISTE — ACERVO FILTRADO |
 
 O tipo 5 não foi confirmado na auditoria manual; não inventar significado. O crawler deverá registrar qualquer ocorrência real.
 
@@ -171,12 +171,12 @@ A associação exata `tipo -> taxonomia` deve ser produzida pelo crawl/inventár
 | URL antiga | Destino planejado | Ação | Estado |
 |---|---|---|---|
 | `/licitacoes/` | `/licitacoes` | 301_APOS_DESTINO | EXISTE |
-| `/e-sic/avisos-licitacoes.php?tipo=4` | acervo de avisos | MIGRAR_CONTEUDO | IMPLEMENTAR ACERVO |
-| `/e-sic/editais_licitacoes.php?tipo=1` | acervo de editais | MIGRAR_CONTEUDO | IMPLEMENTAR ACERVO |
-| `/e-sic/resultados_licitacoes.php?tipo=2` | acervo de resultados | MIGRAR_CONTEUDO | IMPLEMENTAR ACERVO |
-| `/e-sic/contratos.php?tipo=3` | acervo de contratos | MIGRAR_CONTEUDO | IMPLEMENTAR ACERVO |
+| `/e-sic/avisos-licitacoes.php?tipo=4` | `/licitacoes?subcategory=AVISOS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
+| `/e-sic/editais_licitacoes.php?tipo=1` | `/licitacoes?subcategory=EDITAIS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
+| `/e-sic/resultados_licitacoes.php?tipo=2` | `/licitacoes?subcategory=RESULTADOS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
+| `/e-sic/contratos.php?tipo=3` | `/licitacoes?subcategory=CONTRATOS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
 | `/e-sic/calendario.php` | `/licitacoes` + calendário | MIGRAR_CONTEUDO | IMPLEMENTAR CALENDÁRIO |
-| `/licitacoes/contratos.php?tipo=3` | mesmo acervo de contratos | MIGRAR_CONTEUDO | IMPLEMENTAR ACERVO |
+| `/licitacoes/contratos.php?tipo=3` | `/licitacoes?subcategory=CONTRATOS` | MIGRAR_CONTEUDO | ACERVO EXISTE; origem observada em 404 |
 | `/cadastro-fornecedor/` | fluxo/provider de fornecedores | MANTER_EXTERNO ou integrar | EXTERNO/DINAMICO |
 
 O hub novo `/licitacoes` não é, por si só, substituto para milhares de registros históricos. Antes do cutover, cada processo/documento precisa ter uma decisão explícita: importar metadados, preservar documento, apontar para sistema oficial externo ou arquivar com evidência.
@@ -203,7 +203,7 @@ Famílias conhecidas a inventariar por URL + hash + tamanho + content type:
 - PDFs do Diário e demais documentos diretamente abaixo de `/e-sic/uploads/`;
 - downloads ligados a licenciamento ambiental, LGPD, prestação de contas, legislação, licitações e Dados Abertos.
 
-Destino final: `/documentos/{id}` **somente quando existir uma rota/document store pública para o arquivo**. Até lá, registrar `LegacyUrl`, hash e `MigrationEvidence`; não ativar 301 para uma rota inexistente.
+Destino público: listagem em `/transparencia/documentos` (ou categoria dedicada) e download governado em `/api/v1/public/documents/{id}/download`. Não ativar 301 para o download antes de o asset estar aprovado e o documento publicado.
 
 ## Sistemas externos — não importar cegamente
 
@@ -243,18 +243,18 @@ O crawler não deve ser considerado completo se `truncatedByLimit=true`, se houv
 
 ## Checklist antes do cutover
 
-- [ ] Executar crawl completo do host legado com `truncatedByLimit=false`.
-- [ ] Reconciliar total do crawler com as famílias públicas conhecidas.
-- [ ] Exportar todas as `LegacyUrl` com status/classificação/hash.
+- [x] Executar crawl completo do host legado com `truncatedByLimit=false`.
+- [x] Reconciliar total do crawler com as famílias públicas conhecidas.
+- [x] Exportar todas as `LegacyUrl` com estado/classificação/hash pelo relatório CSV administrativo.
 - [ ] Deduplicar `exibe.php` e `exibe23.php` por conteúdo/ID/hash.
 - [ ] Mapear todas as páginas de secretaria/governo.
 - [ ] Mapear 100% das categorias de Carta de Serviços.
 - [ ] Mapear 100% dos datasets/documentos de Dados Abertos.
 - [ ] Mapear todas as famílias de prestação de contas.
 - [ ] Mapear taxonomia completa da legislação.
-- [ ] Inventariar avisos, editais, resultados e contratos.
-- [ ] Inventariar PDFs/planilhas/downloads por hash.
-- [ ] Separar integrações externas de conteúdo a migrar.
+- [x] Inventariar avisos, editais, resultados e contratos.
+- [x] Inventariar PDFs/planilhas/downloads por hash.
+- [x] Separar integrações externas de conteúdo a migrar.
 - [ ] Implementar todos os destinos marcados `IMPLEMENTAR` antes de habilitar 301.
 - [ ] Validar que cada redirect de produção aponta para HTTP 200/rota válida.
 - [ ] Gerar evidência final de origem → destino → ação → razão → status.

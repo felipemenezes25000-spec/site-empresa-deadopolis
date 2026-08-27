@@ -1,0 +1,98 @@
+{
+  "kind": "LEGACY_INVENTORY_FINAL",
+  "source": "https://www.deodapolis.ms.gov.br/",
+  "startedAt": "2026-08-27T02:08:59.8229390+00:00",
+  "completedAt": "2026-08-27T02:48:32.1107319+00:00",
+  "elapsedSeconds": 2372.2877932,
+  "schemaVersion": 5,
+  "parameters": {
+    "maxDepth": 6,
+    "maxPages": 20000,
+    "allowedHost": "www.deodapolis.ms.gov.br"
+  },
+  "metrics": {
+    "discovered": 14373,
+    "uniqueNormalized": 14373,
+    "html": 2556,
+    "documents": 8155,
+    "pdf": 7356,
+    "office": 799,
+    "images": 3372,
+    "redirects": 4,
+    "externalOccurrences": 85610,
+    "externalUrlsUnique": 381,
+    "ignoredWithReason": 105,
+    "failed": 16,
+    "duplicatesByHash": 445,
+    "queueRemaining": 0,
+    "truncatedByLimit": false
+  },
+  "statusCodes": {
+    "200": 14266,
+    "404": 87,
+    "301": 4
+  },
+  "classifications": {
+    "MIGRATE": 14264,
+    "IGNORE_WITH_REASON": 105,
+    "REDIRECT": 4,
+    "UNCLASSIFIED": 0
+  },
+  "mimeTypes": {
+    "text/html": 2647,
+    "text/css": 78,
+    "image/png": 86,
+    "image/jpeg": 3286,
+    "text/javascript": 103,
+    "application/pdf": 7356,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": 787,
+    "application/msword": 12,
+    "application/vnd.rar": 1,
+    "application/zip": 1
+  },
+  "keyFamilies": {
+    "/e-sic/prestacao_contas.php": 49,
+    "/e-sic/avisos-licitacoes.php": 57,
+    "/e-sic/editais_licitacoes.php": 72,
+    "/e-sic/resultados_licitacoes.php": 52,
+    "/e-sic/contratos.php": 75,
+    "/noticias25.php": 296,
+    "/exibe23.php": 1404,
+    "/e-sic/legislacao.php": 84,
+    "/e-sic/uploads/noticias": 1394,
+    "/e-sic/uploads/prestacoes_contas": 610,
+    "/e-sic/uploads/avisos": 1117,
+    "/e-sic/uploads/editais": 1752,
+    "/e-sic/uploads/extratos": 998,
+    "/e-sic/uploads/contrato": 1469
+  },
+  "terminalDecisions": {
+    "http404": 87,
+    "over25MiB": 16,
+    "unsupportedArchiveMime": 2
+  },
+  "reconciliation": {
+    "historicalApproximate": {
+      "procurement": 5341,
+      "accountability": 615,
+      "newsArticles": 1422
+    },
+    "independentIndexProbe": {
+      "procurement": 5332,
+      "accountability": 610,
+      "newsArticles": 1404
+    },
+    "finalCrawlGraph": {
+      "procurement": 5336,
+      "accountability": 610,
+      "newsArticles": 1404
+    },
+    "observedDuringWindow": "Quatro referências de licitação apareceram entre a sondagem independente e o grafo final, enquanto o inventário global aumentou em três URLs/PDFs únicos."
+  },
+  "completionInvariant": {
+    "queueEmpty": true,
+    "notTruncated": true,
+    "everyInternalUrlHasDecision": true
+  },
+  "publicationClaim": false
+}
