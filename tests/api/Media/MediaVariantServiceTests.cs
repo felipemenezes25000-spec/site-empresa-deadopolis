@@ -13,7 +13,7 @@ public sealed class MediaVariantServiceTests
     public void WebpCapabilityIsAvailableOnSupportedRuntime()
     {
         Assert.Equal("AVAILABLE", _service.Capabilities.Webp.State);
-        Assert.Contains(_service.Capabilities.Avif.State, new[] { "AVAILABLE", "UNAVAILABLE" });
+        Assert.True(_service.Capabilities.Avif.State is "AVAILABLE" or "UNAVAILABLE");
     }
 
     [Fact]
