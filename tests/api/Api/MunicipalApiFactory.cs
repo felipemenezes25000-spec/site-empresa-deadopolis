@@ -57,6 +57,7 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.write"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.sign"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.publish"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "media.manage"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "mail.manage"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "settings.manage"));

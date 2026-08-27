@@ -29,7 +29,7 @@ export function NewsEditor() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/v1/admin/media", { signal: controller.signal }).then(async (response) => {
+    void fetch("/api/v1/admin/media?status=APPROVED&pageSize=100", { signal: controller.signal }).then(async (response) => {
       if (response.ok && !controller.signal.aborted) setMedia(await response.json() as Asset[]);
     }).catch(() => undefined);
     return () => controller.abort();

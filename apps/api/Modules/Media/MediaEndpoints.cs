@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -61,8 +62,53 @@ public static class MediaEndpoints
         });
     }
 
-    private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) =>
-        Results.Ok(await db.MediaAssets.AsNoTracking().OrderByDescending(x => x.UploadedAt).Take(200).ToListAsync(ct));
+    private static async Task<IResult> ListAsync(string? q, string? status, int page, int pageSize, HttpContext context, ApplicationDbContext db, CancellationToken ct)
+    {
+        var normalizedPage = Math.Clamp(page <= 0 ? 1 : page, 1, 1_000_000);
+        var normalizedPageSize = Math.Clamp(pageSize <= 0 ? 50 : pageSize, 1, 100);
+        var query = db.MediaAssets.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToUpperInvariant();
+            query = query.Where(asset => asset.Status == normalizedStatus);
+        }
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["A busca deve possuir até 120 caracteres."] });
+            if (string.Equals(db.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                var pattern = $"%{term}%";
+                query = query.Where(asset =>
+                    EF.Functions.ILike(asset.OriginalFileName, pattern)
+                    || EF.Functions.ILike(asset.MimeType, pattern)
+                    || EF.Functions.ILike(asset.AltText, pattern)
+                    || EF.Functions.ILike(asset.Caption, pattern)
+                    || EF.Functions.ILike(asset.Credit, pattern)
+                    || EF.Functions.ILike(asset.TagsCsv, pattern));
+            }
+            else
+            {
+                query = query.Where(asset =>
+                    asset.OriginalFileName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || asset.MimeType.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || asset.AltText.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || asset.Caption.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || asset.Credit.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || asset.TagsCsv.Contains(term, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        var total = await query.CountAsync(ct);
+        context.Response.Headers.Append("X-Total-Count", total.ToString(CultureInfo.InvariantCulture));
+        var items = await query
+            .OrderByDescending(asset => asset.UploadedAt)
+            .ThenBy(asset => asset.Id)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync(ct);
+        return Results.Ok(items);
+    }
 
     private static async Task<IResult> UploadAsync(IFormFile file, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct, string? altText = null, string? caption = null, string? credit = null)
     {

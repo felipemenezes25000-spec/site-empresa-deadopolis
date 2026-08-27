@@ -18,7 +18,7 @@ export function PageBlockBuilder({ initialBlocks, disabled = false }: { initialB
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/v1/admin/media", { signal: controller.signal })
+    void fetch("/api/v1/admin/media?status=APPROVED&pageSize=100", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("media");
         const assets = await response.json() as ApprovedImage[];
