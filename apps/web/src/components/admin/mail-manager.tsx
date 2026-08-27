@@ -6,7 +6,22 @@ type Provider = { state: string; description: string };
 type MailDomain = { id: string; domain: string; state: string; externalId: string | null; createdAt: string; updatedAt: string };
 type Mailbox = { id: string; address: string; displayName: string; quotaMegabytes: number; status: string; externalId: string | null };
 type MailAlias = { id: string; address: string; targetAddress: string; isActive: boolean; createdAt: string };
-type MailMigrationJob = { id: string; sourceType: string; sourceReference: string; targetAddress: string; state: string; importedMessages: number; failedMessages: number; lastError: string | null; createdAt: string; updatedAt: string };
+type MailMigrationJob = {
+  id: string;
+  sourceType: string;
+  sourceReference: string;
+  targetAddress: string;
+  state: string;
+  candidateMessages: number;
+  importedMessages: number;
+  failedMessages: number;
+  sourceBytes: number;
+  sourceSha256: string | null;
+  inspectedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 type MailboxList = { provider: Provider; mailboxes: Mailbox[] };
 type DomainList = { provider: Provider; domains: MailDomain[] };
 
@@ -192,6 +207,23 @@ export function MailManager() {
     });
   }
 
+  async function inspectMigration(jobId: string, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    await execute(async () => {
+      const response = await fetch(`/api/v1/admin/mail/migration-jobs/${jobId}/inspect`, {
+        method: "POST",
+        body: form,
+      });
+      if (!response.ok) throw new Error(await errorText(response));
+      const result = await response.json() as { nextStep: string; importExecuted: boolean };
+      formElement.reset();
+      await refreshMigrations();
+      setMessage(`${result.nextStep} Importação executada: ${result.importExecuted ? "sim" : "não"}.`);
+    });
+  }
+
   async function execute(action: () => Promise<void>) {
     setBusy(true);
     setMessage("");
@@ -257,8 +289,25 @@ export function MailManager() {
 
       <section className="admin-panel">
         <h2>Migração de mensagens</h2>
-        <div className="warning-box"><strong>Sem segredos no portal.</strong> O job registra origem, referência e destino. Credenciais IMAP ou acesso ao provider devem permanecer em integração externa segura.</div>
-        {migrationJobs.length === 0 ? <div className="empty-state"><p>Nenhum pedido de migração cadastrado.</p></div> : <div className="compact-list">{migrationJobs.map((job) => <div className="compact-item" key={job.id}><div><strong>{job.sourceType} → {job.targetAddress}</strong><small style={{ display: "block" }}>{job.sourceReference} · {formatDate(job.createdAt)}</small><small style={{ display: "block" }}>{job.importedMessages} importadas · {job.failedMessages} falhas</small>{job.lastError && <small style={{ display: "block" }}>{job.lastError}</small>}</div><span className="status-pill">{job.state}</span></div>)}</div>}
+        <div className="warning-box"><strong>Inspeção não é importação.</strong> EML/MBOX podem ser validados localmente sem credenciais. A contagem de candidatas abaixo nunca é somada às mensagens importadas até existir um provider real que confirme a operação.</div>
+        {migrationJobs.length === 0 ? <div className="empty-state"><p>Nenhum pedido de migração cadastrado.</p></div> : <div className="compact-list">{migrationJobs.map((job) => <article className="rounded-xl border border-border bg-surface p-3" key={job.id}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <strong>{job.sourceType} → {job.targetAddress}</strong>
+              <small style={{ display: "block" }}>{job.sourceReference} · criado em {formatDate(job.createdAt)}</small>
+              <small style={{ display: "block" }}>{job.candidateMessages} candidatas inspecionadas · {job.importedMessages} importadas · {job.failedMessages} inválidas/falhas</small>
+              {job.inspectedAt && <small style={{ display: "block" }}>Inspeção local: {formatDate(job.inspectedAt)} · {formatBytes(job.sourceBytes)}</small>}
+              {job.sourceSha256 && <small style={{ display: "block", wordBreak: "break-all" }}>SHA-256: <code>{job.sourceSha256}</code></small>}
+              {job.lastError && <small style={{ display: "block" }}>{job.lastError}</small>}
+            </div>
+            <span className="status-pill">{job.state}</span>
+          </div>
+          {job.sourceType === "IMAP" ? <div className="warning-box" style={{ marginTop: 12 }}><strong>Dependência externa.</strong> A inspeção IMAP exige conector e credenciais fora do portal; nenhuma senha é solicitada aqui.</div> : <form className="editor-fields" onSubmit={(event) => void inspectMigration(job.id, event)} style={{ marginTop: 12 }}>
+            <label className="field">Arquivo {job.sourceType}<input name="file" type="file" required accept={job.sourceType === "EML" ? ".eml,message/rfc822" : ".mbox,.mbx"} /></label>
+            <small>Limite interativo: 25 MB. O arquivo bruto não é persistido; são registrados somente evidências da inspeção.</small>
+            <button className="action-button secondary" disabled={busy}>Inspecionar arquivo</button>
+          </form>}
+        </article>)}</div>}
         <form className="editor-fields" onSubmit={createMigration} style={{ marginTop: 20 }}>
           <label className="field">Tipo de origem<select name="sourceType" defaultValue="EML"><option value="IMAP">IMAP</option><option value="MBOX">MBOX</option><option value="EML">EML</option></select></label>
           <label className="field">Referência da origem<input name="sourceReference" required placeholder="Lote, arquivo, mailbox ou identificador sem credencial" /></label>
@@ -275,6 +324,14 @@ export function MailManager() {
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const amount = value / (1024 ** index);
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(amount)} ${units[index]}`;
 }
 
 async function errorText(response: Response) {
