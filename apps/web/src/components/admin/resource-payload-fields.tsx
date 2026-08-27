@@ -1,7 +1,10 @@
+import { PageBlockBuilder, type PageBlock } from "./page-block-builder";
+
 type ResourcePayloadFieldsProps = {
   kind: string;
   payloadJson: string;
   disabled?: boolean;
+  menuOptions?: Array<{ value: string; label: string }>;
 };
 
 type Payload = Record<string, unknown>;
@@ -16,7 +19,7 @@ const specializedKinds = new Set([
   "PROCUREMENT_LINK",
 ]);
 
-export function ResourcePayloadFields({ kind, payloadJson, disabled = false }: ResourcePayloadFieldsProps) {
+export function ResourcePayloadFields({ kind, payloadJson, disabled = false, menuOptions = [] }: ResourcePayloadFieldsProps) {
   const payload = parsePayload(payloadJson);
   const normalizedKind = kind.toUpperCase();
 
@@ -28,6 +31,7 @@ export function ResourcePayloadFields({ kind, payloadJson, disabled = false }: R
     </label>;
   }
 
+  const currentParent = text(payload.parent);
   return <>
     <input type="hidden" name="payloadBaseJson" value={formatPayload(payload)} />
     {normalizedKind === "PAGE" && <>
@@ -41,6 +45,7 @@ export function ResourcePayloadFields({ kind, payloadJson, disabled = false }: R
         <textarea aria-label="Seções da página" name="payloadSections" rows={5} defaultValue={lines(payload.sections)} disabled={disabled} />
         <small>Informe uma seção por linha para organizar a navegação do conteúdo.</small>
       </label>
+      <PageBlockBuilder initialBlocks={pageBlocks(payload.blocks)} disabled={disabled} />
     </>}
     {normalizedKind === "BANNER" && <>
       <label className="field">URL da imagem<input name="payloadImageUrl" type="text" defaultValue={text(payload.imageUrl)} disabled={disabled} /></label>
@@ -51,7 +56,7 @@ export function ResourcePayloadFields({ kind, payloadJson, disabled = false }: R
     {normalizedKind === "MENU" && <>
       <label className="field">Rótulo do item<input name="payloadLabel" required defaultValue={text(payload.label)} disabled={disabled} /></label>
       <label className="field">Destino do item<input name="payloadUrl" required type="text" defaultValue={text(payload.url)} disabled={disabled} /></label>
-      <label className="field">Item superior<input name="payloadParent" defaultValue={text(payload.parent)} disabled={disabled} /><small>Opcional. Use o identificador do item pai para criar submenus.</small></label>
+      <label className="field">Item superior<select name="payloadParent" defaultValue={currentParent} disabled={disabled}><option value="">Raiz do menu</option>{currentParent && !menuOptions.some((option) => option.value === currentParent) && <option value={currentParent}>{currentParent} (legado)</option>}{menuOptions.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.value})</option>)}</select><small>Escolha o item pai para montar a hierarquia sem digitar identificadores manualmente.</small></label>
       <label><input name="payloadExternal" type="checkbox" defaultChecked={boolean(payload.external)} disabled={disabled} /> Abrir como link externo</label>
       <label><input name="payloadEnabled" type="checkbox" defaultChecked={payload.enabled === undefined ? true : boolean(payload.enabled)} disabled={disabled} /> Item habilitado</label>
     </>}
@@ -98,9 +103,10 @@ export function serializeResourcePayload(kind: string, form: FormData) {
 
   const base = parsePayload(value(form, "payloadBaseJson") || "{}");
   const payload = normalizedKind === "PAGE" ? {
-    ...without(base, "body"),
+    ...without(without(base, "body"), "blocks"),
     conteudo: value(form, "payloadBody"),
     sections: value(form, "payloadSections").split(/\r?\n/).map(item => item.trim()).filter(Boolean),
+    blocks: parsePageBlocks(value(form, "payloadBlocksJson")),
   } : normalizedKind === "BANNER" ? {
     ...base,
     imageUrl: value(form, "payloadImageUrl"),
@@ -148,6 +154,31 @@ function parsePayload(payloadJson: string, strict = false): Payload {
   }
   if (strict) throw new Error("O payload precisa ser um objeto JSON.");
   return {};
+}
+
+function parsePageBlocks(raw: string): PageBlock[] {
+  if (!raw) return [];
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) throw new Error("A composição da página precisa ser uma lista de blocos.");
+  return pageBlocks(parsed);
+}
+
+function pageBlocks(value: unknown): PageBlock[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const candidate = entry as Record<string, unknown>;
+    const type = text(candidate.type);
+    if (!type) return [];
+    return [{
+      id: text(candidate.id) || `block-${index + 1}`,
+      type,
+      title: text(candidate.title),
+      content: text(candidate.content),
+      reference: text(candidate.reference),
+      enabled: candidate.enabled === undefined ? true : boolean(candidate.enabled),
+    }];
+  });
 }
 
 function formatPayload(payload: Payload) {

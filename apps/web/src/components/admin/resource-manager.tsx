@@ -38,6 +38,7 @@ export function ResourceManager() {
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [message, setMessage] = useState("");
   const selected = items.find((item) => item.id === selectedId) ?? null;
+  const menuOptions = items.filter((item) => item.id !== selectedId).map((item) => ({ value: item.slug, label: item.title }));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,7 +83,7 @@ export function ResourceManager() {
     try {
       payloadJson = serializeResourcePayload(kind, form);
     } catch {
-      setMessage("Os detalhes estruturados precisam ser um objeto JSON válido.");
+      setMessage("Os detalhes estruturados precisam ser válidos.");
       return;
     }
     const payload = {
@@ -122,7 +123,7 @@ export function ResourceManager() {
     try {
       payloadJson = serializeResourcePayload(selected.kind, form);
     } catch {
-      setMessage("Os detalhes estruturados precisam ser um objeto JSON válido.");
+      setMessage("Os detalhes estruturados precisam ser válidos.");
       return;
     }
     const response = await fetch(`/api/v1/admin/resources/${selected.id}`, {
@@ -180,6 +181,7 @@ export function ResourceManager() {
         <label>Tipo <select value={kind} onChange={(event) => changeKind(event.target.value)}>{kinds.map((value) => <option key={value}>{value}</option>)}</select></label>
         {selected && <button type="button" className="action-button secondary" onClick={() => { setSelectedId(null); setRevisions([]); setMessage(""); }}>Novo conteúdo</button>}
       </div>
+      {kind === "MENU" && items.length > 0 && <MenuStructureOverview items={items} />}
       {items.length === 0 ? <div className="empty-state"><h3>Nenhum conteúdo deste tipo</h3><p>Crie um item no formulário ao lado.</p></div> : <div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}>
         <div>
           <strong>{item.title}</strong>
@@ -209,7 +211,7 @@ export function ResourceManager() {
         <label className="field">Ordem<input name="displayOrder" type="number" defaultValue={selected.displayOrder} disabled={selected.status === "ARCHIVED"} /></label>
         <label className="field">Início de exibição<input name="startsAt" type="datetime-local" defaultValue={toDateTimeLocal(selected.startsAt)} disabled={selected.status === "ARCHIVED"} /><small>Opcional. Antes desta data, mesmo publicado, o item não aparece no portal.</small></label>
         <label className="field">Fim de exibição<input name="endsAt" type="datetime-local" defaultValue={toDateTimeLocal(selected.endsAt)} disabled={selected.status === "ARCHIVED"} /><small>Opcional. O item deixa de aparecer automaticamente após esta data.</small></label>
-        <ResourcePayloadFields kind={selected.kind} payloadJson={selected.payloadJson || "{}"} disabled={selected.status === "ARCHIVED"} />
+        <ResourcePayloadFields kind={selected.kind} payloadJson={selected.payloadJson || "{}"} disabled={selected.status === "ARCHIVED"} menuOptions={menuOptions} />
         <button className="action-button" disabled={selected.status === "ARCHIVED"}>Salvar alterações</button>
       </form>
       <section aria-labelledby="revision-history-title">
@@ -233,11 +235,27 @@ export function ResourceManager() {
       <label className="field">Ordem<input name="displayOrder" type="number" defaultValue={0} /></label>
       <label className="field">Início de exibição<input name="startsAt" type="datetime-local" /><small>Opcional. Permite preparar hoje e exibir somente a partir da data escolhida.</small></label>
       <label className="field">Fim de exibição<input name="endsAt" type="datetime-local" /><small>Opcional. Remove o item da área pública após a data escolhida sem apagar o histórico.</small></label>
-      <ResourcePayloadFields kind={kind} payloadJson="{}" />
+      <ResourcePayloadFields kind={kind} payloadJson="{}" menuOptions={menuOptions} />
       <button className="action-button">Salvar rascunho</button>
     </form>}
   </div>;
 }
+
+function MenuStructureOverview({ items }: { items: Resource[] }) {
+  const nodes = items.map((item) => ({ item, payload: parsePayload(item.payloadJson) }));
+  const roots = nodes.filter((node) => !node.payload.parent || !items.some((item) => item.slug === node.payload.parent));
+  return <section className="mb-4 rounded-xl border border-border bg-surface-soft p-4" aria-labelledby="menu-preview-title"><h3 id="menu-preview-title">Estrutura do menu</h3><p className="text-sm text-muted">Prévia hierárquica baseada no item superior e na ordem editorial.</p><ul className="mt-2 grid gap-2">{roots.sort(byDisplayOrder).map((node) => <MenuNode key={node.item.id} node={node} nodes={nodes} visited={new Set()} />)}</ul></section>;
+}
+
+function MenuNode({ node, nodes, visited }: { node: { item: Resource; payload: Record<string, unknown> }; nodes: Array<{ item: Resource; payload: Record<string, unknown> }>; visited: Set<string> }) {
+  if (visited.has(node.item.slug)) return <li><strong>{node.item.title}</strong> <small className="text-muted">ciclo detectado</small></li>;
+  const nextVisited = new Set(visited).add(node.item.slug);
+  const children = nodes.filter((candidate) => candidate.payload.parent === node.item.slug).sort(byDisplayOrder);
+  return <li className="rounded-lg border border-border bg-surface p-2"><div><strong>{String(node.payload.label || node.item.title)}</strong> <small className="text-muted">{String(node.payload.url || "sem destino")} · {node.item.status}</small></div>{children.length > 0 && <ul className="ml-5 mt-2 grid gap-2 border-l border-border pl-3">{children.map((child) => <MenuNode key={child.item.id} node={child} nodes={nodes} visited={nextVisited} />)}</ul>}</li>;
+}
+
+function byDisplayOrder(a: { item: Resource }, b: { item: Resource }) { return a.item.displayOrder - b.item.displayOrder || a.item.title.localeCompare(b.item.title, "pt-BR"); }
+function parsePayload(value: string) { try { const parsed = JSON.parse(value) as unknown; return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}; } catch { return {}; } }
 
 function toIsoOrNull(value: FormDataEntryValue | null) {
   const normalized = typeof value === "string" ? value.trim() : "";

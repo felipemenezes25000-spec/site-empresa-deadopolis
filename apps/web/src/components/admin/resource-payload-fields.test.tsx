@@ -11,6 +11,7 @@ describe("serializeResourcePayload", () => {
     expect(JSON.parse(serializeResourcePayload("PAGE", form))).toEqual({
       conteudo: "Texto oficial da página.",
       sections: ["Atendimento", "Prazos", "Recursos"],
+      blocks: [],
     });
   });
 
@@ -23,7 +24,17 @@ describe("serializeResourcePayload", () => {
       sourceUrl: "https://legacy.example/page",
       conteudo: "Conteúdo revisado.",
       sections: [],
+      blocks: [],
     });
+  });
+
+  it("serializes the visual page builder blocks", () => {
+    const form = new FormData();
+    form.set("payloadBlocksJson", JSON.stringify([{ id: "hero-1", type: "Hero", title: "Bem-vindo", content: "Mensagem", reference: "", enabled: true }]));
+
+    expect(JSON.parse(serializeResourcePayload("PAGE", form)).blocks).toEqual([
+      { id: "hero-1", type: "Hero", title: "Bem-vindo", content: "Mensagem", reference: "", enabled: true },
+    ]);
   });
 
   it("loads the established migrated page content into the guided field", () => {
