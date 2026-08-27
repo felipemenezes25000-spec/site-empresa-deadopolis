@@ -90,6 +90,7 @@ export function MigrationManager() {
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [runningDryRun, setRunningDryRun] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
 
@@ -135,6 +136,29 @@ export function MigrationManager() {
       });
     return () => controller.abort();
   }, [selectedId, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind]);
+
+  useEffect(() => {
+    if (!runningDryRun || !selectedId) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const [jobsResponse, detailResponse, inventoryResponse] = await Promise.all([
+          fetch("/api/v1/admin/migration/jobs"),
+          fetch(`/api/v1/admin/migration/jobs/${selectedId}`),
+          fetch(inventoryUrl(selectedId, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind)),
+        ]);
+        if (!active || !jobsResponse.ok || !detailResponse.ok || !inventoryResponse.ok) return;
+        setJobs(await jobsResponse.json() as MigrationJob[]);
+        setDetail(await detailResponse.json() as JobDetail);
+        setInventory(await inventoryResponse.json() as InventoryPage);
+      } catch {
+        // A requisição principal preserva o erro final; uma sondagem transitória não deve apagar o progresso já visível.
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [runningDryRun, selectedId, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind]);
 
   const filteredJobs = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
@@ -219,6 +243,7 @@ export function MigrationManager() {
   async function runDryRun() {
     if (!selectedId) return;
     setBusy(true);
+    setRunningDryRun(true);
     setMessage("");
     setDryRunSummary(null);
     try {
@@ -231,6 +256,7 @@ export function MigrationManager() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível executar o dry-run.");
     } finally {
+      setRunningDryRun(false);
       setBusy(false);
     }
   }
@@ -315,6 +341,7 @@ export function MigrationManager() {
       </div>
 
       {visibleDryRunSummary && <div className={visibleDryRunSummary.truncatedByLimit ? "warning-box" : "ok-box"} role="status">Resultado persistido: {visibleDryRunSummary.discovered} URLs únicas · {visibleDryRunSummary.html} HTML · {visibleDryRunSummary.documents} documentos ({visibleDryRunSummary.pdf} PDF, {visibleDryRunSummary.office} Office) · {visibleDryRunSummary.images} imagens · {visibleDryRunSummary.redirects} redirects · {visibleDryRunSummary.externalLinks} externos · {visibleDryRunSummary.duplicatesByHash} duplicatas por hash · {visibleDryRunSummary.failed} falhas · {visibleDryRunSummary.queueRemaining} na fila{visibleDryRunSummary.truncatedByLimit ? " · limite atingido, inventário incompleto" : " · fila esvaziada"}.</div>}
+      {runningDryRun && <div className="warning-box" role="status" aria-live="polite"><strong>Dry-run em execução.</strong> O painel atualiza contagens e inventário a cada três segundos; mantenha esta página aberta até o resultado final.</div>}
       {detail.job.lastError && <div className="warning-box"><strong>Último erro:</strong> {detail.job.lastError}</div>}
 
       <div className="editor-grid" style={{ marginTop: 20 }}>

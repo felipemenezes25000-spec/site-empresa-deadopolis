@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
@@ -99,6 +100,23 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
         Assert.Equal(1, payload.Total);
         Assert.Single(payload.Items);
         Assert.Equal("FAILED", payload.Items[0].State);
+    }
+
+    [Fact]
+    public async Task JobDetailReportsInventorySizeWithoutInliningHundredsOfUrls()
+    {
+        await _factory.SeedAsync();
+        var jobId = await SeedInventoryAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        await LoginAsync(client);
+
+        using var response = await client.GetAsync(new Uri($"/api/v1/admin/migration/jobs/{jobId}", UriKind.Relative));
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(620, payload.RootElement.GetProperty("urlCount").GetInt32());
+        Assert.False(payload.RootElement.TryGetProperty("urls", out _));
     }
 
     private async Task<Guid> SeedInventoryAsync(int count = 620)
