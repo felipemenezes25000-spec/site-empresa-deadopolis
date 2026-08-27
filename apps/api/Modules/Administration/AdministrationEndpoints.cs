@@ -3,8 +3,13 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Content.Domain;
+using MunicipalPlatform.Api.Modules.Gazette.Providers;
+using MunicipalPlatform.Api.Modules.Mail.Providers;
+using MunicipalPlatform.Api.Modules.Media.Providers;
+using MunicipalPlatform.Api.Modules.Media.Services;
 using MunicipalPlatform.Api.Modules.Operations.Domain;
 using MunicipalPlatform.Api.Modules.Services.Domain;
+using MunicipalPlatform.Api.Platform.Storage;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
 namespace MunicipalPlatform.Api.Modules.Administration;
@@ -19,6 +24,7 @@ public static class AdministrationEndpoints
         var departments = endpoints.MapGroup("/api/v1/admin/departments").RequireAuthorization(p => p.RequireClaim("capability", "services.manage")).WithTags("Admin", "Departments");
         departments.MapGet("/", ListDepartmentsAsync); departments.MapPost("/", CreateDepartmentAsync); departments.MapPut("/{id:guid}", UpdateDepartmentAsync);
         endpoints.MapGet("/api/v1/admin/integrations", IntegrationsAsync).RequireAuthorization(p => p.RequireClaim("capability", "settings.manage")).WithTags("Admin", "Operations");
+        endpoints.MapGet("/api/v1/admin/compliance", ComplianceAsync).RequireAuthorization(p => p.RequireClaim("capability", "settings.manage")).WithTags("Admin", "Operations", "Compliance");
         return endpoints;
     }
 
@@ -92,6 +98,64 @@ public static class AdministrationEndpoints
     }
 
     private static async Task<IResult> IntegrationsAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.IntegrationStatuses.AsNoTracking().OrderBy(x => x.Provider).ToListAsync(ct));
+
+    private static async Task<IResult> ComplianceAsync(
+        ApplicationDbContext db,
+        IObjectStorageProvider storage,
+        IDigitalSigner signer,
+        ITimestampProvider timestamp,
+        IInstitutionalEmailProvider email,
+        IMalwareScanner malware,
+        MediaVariantService mediaVariants,
+        CancellationToken ct)
+    {
+        var databaseReady = false;
+        try { databaseReady = await db.Database.CanConnectAsync(ct); }
+        catch { databaseReady = false; }
+
+        var capabilities = mediaVariants.Capabilities;
+        var webpReady = capabilities.Webp.State == "AVAILABLE";
+        var integrations = await db.IntegrationStatuses.AsNoTracking().OrderBy(item => item.Provider).ToListAsync(ct);
+        var linkTotal = await db.LinkChecks.CountAsync(ct);
+        var linkDegraded = await db.LinkChecks.CountAsync(item => item.State != "HEALTHY", ct);
+        var migrationEvidence = await db.MigrationEvidences.CountAsync(ct);
+        var backupTotal = await db.BackupEvidences.CountAsync(ct);
+        var restoreTested = await db.BackupEvidences.CountAsync(item => item.RestoreTestedAt.HasValue, ct);
+        var signatures = await db.GazetteSignatures.CountAsync(ct);
+        var publications = await db.GazettePublications.CountAsync(ct);
+        var corrections = await db.GazetteCorrections.CountAsync(ct);
+
+        return Results.Ok(new
+        {
+            generatedAt = DateTimeOffset.UtcNow,
+            readiness = new { state = databaseReady && webpReady ? "READY" : "NOT_READY", databaseReady },
+            providers = new
+            {
+                storage = new { state = storage.State, description = storage.Description },
+                digitalSignature = new { state = signer.State, description = signer.Description },
+                timestamp = new { state = timestamp.State, description = "Carimbo do tempo depende de provider externo contratado e configurado." },
+                institutionalEmail = new { state = email.State, description = email.Description },
+                malwareScanner = new { state = malware.State, description = malware.Description },
+                mediaVariants = new { webp = capabilities.Webp, avif = capabilities.Avif }
+            },
+            evidence = new
+            {
+                links = new { total = linkTotal, degraded = linkDegraded },
+                migration = new { total = migrationEvidence },
+                backups = new { total = backupTotal, restoreTested },
+                gazette = new { signatures, publications, corrections }
+            },
+            integrations = integrations.Select(item => new { item.Provider, state = item.State.ToString().ToUpperInvariant(), item.Message, item.LastCheckedAt }),
+            externalDependencies = new[]
+            {
+                new { name = "Storage de produção", state = storage.State, requirement = "Configurar storage compatível com retenção, backup e credenciais gerenciadas." },
+                new { name = "ICP-Brasil", state = signer.State, requirement = "Contratar/configurar certificado ou serviço ICP-Brasil e validar a política institucional." },
+                new { name = "Carimbo do tempo", state = timestamp.State, requirement = "Configurar uma autoridade de carimbo do tempo quando exigido pela política do Diário." },
+                new { name = "E-mail institucional", state = email.State, requirement = "Contratar/configurar provider, DNS e credenciais fora do repositório." },
+                new { name = "Scanner antimalware", state = malware.State, requirement = "Configurar scanner de produção antes de liberar uploads oficiais." }
+            }
+        });
+    }
     private static void Audit(ApplicationDbContext db, TenantContext tenant, ClaimsPrincipal principal, HttpContext context, string action, Guid id, object diff) { var actor = Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : throw new InvalidOperationException("Sessão inválida."); db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "Administration", id.ToString(), JsonSerializer.Serialize(diff), context.TraceIdentifier)); }
 
     public sealed record ServiceRequest(string Name, string Slug, string Description, string Area, string Audience, Guid? DepartmentId, string? Requirements, string? Documents, string? Steps, string? ExpectedDuration, string? Cost, string? Channels, bool IsOnline, string? OnlineUrl, string? Phone, string? Address, string? OpeningHours, string? LegalBasis, bool IsFeatured, bool Published)

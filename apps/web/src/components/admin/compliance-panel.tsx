@@ -1,5 +1,117 @@
 "use client";
-import { useEffect,useState } from "react";
+
+import { useEffect, useState } from "react";
 import { AuditViewer, StatusBadge, type AuditViewerItem } from "@/components/ui";
-export function CompliancePanel(){const[audit,setAudit]=useState<AuditViewerItem[]>([]);useEffect(()=>{fetch("/api/v1/admin/audit").then(async r=>{if(r.ok)setAudit(await r.json() as AuditViewerItem[])})},[]);return <><div className="admin-grid"><Card title="Acessibilidade" status="TEST AUTOMATION READY"/><Card title="Auditoria" status="IMPLEMENTED"/><Card title="LGPD" status="POLICY + MINIMIZATION"/><Card title="Providers" status="STATUS EXPLICIT"/><Card title="Backups" status="INFRA EVIDENCE REQUIRED"/><Card title="Produção" status="NOT VALIDATED"/></div><section className="admin-panel"><h2>Últimos eventos de auditoria</h2><AuditViewer items={audit.slice(0,20)}/></section></>}
-function Card({title,status}:{title:string;status:string}){return <div className="metric-card"><span>{title}</span><StatusBadge status={status}/></div>}
+
+type StateDetail = { state: string; description?: string; detail?: string | null };
+type Compliance = {
+  generatedAt: string;
+  readiness: { state: string; databaseReady: boolean };
+  providers: {
+    storage: StateDetail;
+    digitalSignature: StateDetail;
+    timestamp: StateDetail;
+    institutionalEmail: StateDetail;
+    malwareScanner: StateDetail;
+    mediaVariants: { webp: StateDetail; avif: StateDetail };
+  };
+  evidence: {
+    links: { total: number; degraded: number };
+    migration: { total: number };
+    backups: { total: number; restoreTested: number };
+    gazette: { signatures: number; publications: number; corrections: number };
+  };
+  integrations: Array<{ provider: string; state: string; message: string; lastCheckedAt: string }>;
+  externalDependencies: Array<{ name: string; state: string; requirement: string }>;
+};
+
+export function CompliancePanel() {
+  const [compliance, setCompliance] = useState<Compliance | null>(null);
+  const [audit, setAudit] = useState<AuditViewerItem[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      fetch("/api/v1/admin/compliance", { signal: controller.signal }),
+      fetch("/api/v1/admin/audit", { signal: controller.signal }),
+    ]).then(async ([complianceResponse, auditResponse]) => {
+      if (!complianceResponse.ok) throw new Error(await errorText(complianceResponse));
+      if (!auditResponse.ok) throw new Error(await errorText(auditResponse));
+      const [complianceData, auditData] = await Promise.all([
+        complianceResponse.json() as Promise<Compliance>,
+        auditResponse.json() as Promise<AuditViewerItem[]>,
+      ]);
+      if (!controller.signal.aborted) {
+        setCompliance(complianceData);
+        setAudit(auditData);
+      }
+    }).catch((reason) => {
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Não foi possível carregar as evidências.");
+    });
+    return () => controller.abort();
+  }, []);
+
+  if (error) return <div className="form-message error" role="alert">{error}</div>;
+  if (!compliance) return <div className="admin-panel" aria-busy="true">Carregando evidências de compliance…</div>;
+
+  const providers = [
+    ["Storage", compliance.providers.storage],
+    ["Assinatura digital", compliance.providers.digitalSignature],
+    ["Carimbo do tempo", compliance.providers.timestamp],
+    ["E-mail institucional", compliance.providers.institutionalEmail],
+    ["Scanner antimalware", compliance.providers.malwareScanner],
+    ["WebP", compliance.providers.mediaVariants.webp],
+    ["AVIF", compliance.providers.mediaVariants.avif],
+  ] as const;
+
+  return <>
+    <div className="admin-grid">
+      <Metric title="Readiness" value={compliance.readiness.state} />
+      <Metric title="Links degradados" value={`${compliance.evidence.links.degraded} de ${compliance.evidence.links.total}`} />
+      <Metric title="Evidências de migração" value={String(compliance.evidence.migration.total)} />
+      <Metric title="Restores evidenciados" value={`${compliance.evidence.backups.restoreTested} de ${compliance.evidence.backups.total}`} />
+    </div>
+
+    <section className="admin-panel">
+      <div className="admin-heading"><div><h2>Capacidades do runtime</h2><p>Estados obtidos do processo em execução. Demonstração e ausência de provider permanecem explícitas.</p></div><small>Atualizado em {formatDate(compliance.generatedAt)}</small></div>
+      <div className="compact-list">{providers.map(([name, provider]) => <div className="compact-item" key={name}><div><strong>{name}</strong><small style={{ display: "block" }}>{provider.description ?? provider.detail ?? "Sem detalhe fornecido."}</small></div><StatusBadge status={provider.state} /></div>)}</div>
+    </section>
+
+    <section className="admin-panel">
+      <h2>Evidências persistidas</h2>
+      <div className="admin-grid">
+        <Metric title="Assinaturas do Diário" value={String(compliance.evidence.gazette.signatures)} />
+        <Metric title="Publicações do Diário" value={String(compliance.evidence.gazette.publications)} />
+        <Metric title="Correções vinculadas" value={String(compliance.evidence.gazette.corrections)} />
+        <Metric title="Backups registrados" value={String(compliance.evidence.backups.total)} />
+      </div>
+    </section>
+
+    <section className="admin-panel">
+      <h2>Dependências externas para produção</h2>
+      <div className="compact-list">{compliance.externalDependencies.map((dependency) => <div className="compact-item" key={dependency.name}><div><strong>{dependency.name}</strong><small style={{ display: "block" }}>{dependency.requirement}</small></div><StatusBadge status={dependency.state} /></div>)}</div>
+    </section>
+
+    <section className="admin-panel">
+      <h2>Integrações cadastradas</h2>
+      {compliance.integrations.length === 0 ? <div className="empty-state"><p>Nenhum estado de integração cadastrado.</p></div> : <div className="compact-list">{compliance.integrations.map((integration) => <div className="compact-item" key={integration.provider}><div><strong>{integration.provider}</strong><small style={{ display: "block" }}>{integration.message}</small></div><StatusBadge status={integration.state} /></div>)}</div>}
+    </section>
+
+    <section className="admin-panel"><h2>Últimos eventos de auditoria</h2><AuditViewer items={audit.slice(0, 20)} /></section>
+  </>;
+}
+
+function Metric({ title, value }: { title: string; value: string }) {
+  return <div className="metric-card"><span>{title}</span><strong>{value}</strong></div>;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
+
+async function errorText(response: Response) {
+  const body = await response.json().catch(() => null) as { title?: string; detail?: string } | null;
+  return body?.detail ?? body?.title ?? `Erro ${response.status}`;
+}

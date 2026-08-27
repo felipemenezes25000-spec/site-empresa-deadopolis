@@ -174,6 +174,12 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(page.getByText(/Evidência de backup registrada/)).toBeVisible();
   await expect(page.getByText(new RegExp(`^${backupProvider} · DATABASE_FULL$`))).toBeVisible();
 
+  await page.goto("/admin/compliance");
+  const runtimeSection = page.getByRole("heading", { name: "Capacidades do runtime" }).locator("xpath=ancestor::section");
+  await expect(runtimeSection.getByText("WebP", { exact: true })).toBeVisible();
+  await expect(runtimeSection.getByText("AVAILABLE", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dependências externas para produção" })).toBeVisible();
+
   await page.goto("/admin/diario");
   const edition = Number(suffix.slice(-5));
   await page.getByLabel("Número").fill(String(edition));
@@ -192,6 +198,10 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(verificationLink).toBeVisible();
   const href = await verificationLink.getAttribute("href");
   expect(href).toMatch(/^\/verificar\//);
+  await page.getByLabel("Número da nova edição").fill(String(edition + 1));
+  await page.getByLabel("Justificativa").fill("Correção sintética vinculada pelo E2E, sem sobrescrever a edição originalmente publicada.");
+  await page.getByRole("button", { name: "Criar correção" }).click();
+  await expect(page.getByText(/A edição original permaneceu imutável/)).toBeVisible();
   await page.goto(href!);
   await expect(page.getByText("Documento localizado")).toBeVisible();
 

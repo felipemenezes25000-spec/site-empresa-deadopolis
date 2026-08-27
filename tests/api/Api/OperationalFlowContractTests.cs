@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace MunicipalPlatform.Api.Tests.Api;
 
@@ -114,6 +115,24 @@ public sealed class OperationalFlowContractTests : IClassFixture<MunicipalApiFac
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("biblioteca de mídia", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ComplianceCenterReportsRuntimeStatesAndPersistedEvidence()
+    {
+        await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        await LoginAsync(client);
+
+        using var response = await client.GetAsync(new Uri("/api/v1/admin/compliance", UriKind.Relative));
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(body.RootElement.GetProperty("readiness").GetProperty("databaseReady").GetBoolean());
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("providers").GetProperty("storage").GetProperty("state").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("providers").GetProperty("mediaVariants").GetProperty("webp").GetProperty("state").GetString()));
+        Assert.Equal(JsonValueKind.Array, body.RootElement.GetProperty("externalDependencies").ValueKind);
     }
 
     [Fact]
