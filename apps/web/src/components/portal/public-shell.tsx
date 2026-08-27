@@ -60,7 +60,7 @@ function wouldCreateCycle(node: MenuNode, parent: MenuNode, bySlug: Map<string, 
   while (current) {
     if (seen.has(current.resource.slug)) return true;
     seen.add(current.resource.slug);
-    const parentSlug = current.payload.parent?.trim();
+    const parentSlug: string | undefined = current.payload.parent?.trim();
     current = parentSlug ? bySlug.get(parentSlug) : undefined;
   }
   return false;
