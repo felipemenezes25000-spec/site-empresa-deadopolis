@@ -62,6 +62,45 @@ describe("PortalHome", () => {
     expect(screen.getByText("Ambiente de demonstração")).toBeInTheDocument();
   });
 
+  it("renders an internal featured-news cover with responsive WebP variants", () => {
+    const coverImageUrl = "/api/v1/media/11111111-1111-1111-1111-111111111111";
+    const coverImageAlt = "Atendimento da feira municipal";
+    const { container } = render(<PortalHome content={{
+      ...content,
+      latestNews: [{ ...content.latestNews[0], coverImageUrl, coverImageAlt }],
+    }} />);
+
+    const image = screen.getByRole("img", { name: coverImageAlt });
+    expect(image).toHaveAttribute("src", coverImageUrl);
+    expect(image).toHaveAttribute("width", "720");
+    expect(image).toHaveAttribute("height", "720");
+
+    const webpSource = container.querySelector("source[type='image/webp']");
+    expect(webpSource).not.toBeNull();
+    expect(webpSource).toHaveAttribute("sizes", "(max-width: 760px) 100vw, 420px");
+    expect(webpSource?.getAttribute("srcset")).toContain(
+      `${coverImageUrl}/variant?width=480&height=480&format=webp 480w`,
+    );
+    expect(webpSource?.getAttribute("srcset")).toContain(
+      `${coverImageUrl}/variant?width=1200&height=1200&format=webp 1200w`,
+    );
+  });
+
+  it("keeps the municipal placeholder for third-party cover URLs", () => {
+    render(<PortalHome content={{
+      ...content,
+      latestNews: [{
+        ...content.latestNews[0],
+        coverImageUrl: "https://images.example.test/featured.jpg",
+        coverImageAlt: "Imagem externa não autorizada",
+      }],
+    }} />);
+
+    expect(screen.queryByRole("img", { name: "Imagem externa não autorizada" })).not.toBeInTheDocument();
+    expect(screen.getByText("DEO")).toBeInTheDocument();
+    expect(screen.getByText("Informação municipal")).toBeInTheDocument();
+  });
+
   it("uses the published CMS block list to control home sections", () => {
     render(<PortalHome content={content} homeLayout={{ blocks: [
       { id: "news-first", type: "NewsGrid", title: "Atualizações do município", enabled: true },

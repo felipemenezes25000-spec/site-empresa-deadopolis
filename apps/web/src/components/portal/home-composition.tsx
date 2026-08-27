@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { PortalHomeContent } from "@/lib/portal-api";
 import { PageBlockRenderer } from "./page-block-renderer";
+import { ResponsiveMediaImage } from "./responsive-media-image";
 
 type HomeBlock = {
   id?: string;
@@ -102,7 +103,8 @@ function NewsSection({ block, content }: { block: HomeBlock; content: PortalHome
   const title = clean(block.title) || (block.type === "FeaturedNews" ? "Notícia em destaque" : "Notícias da Prefeitura");
   const featured = content.latestNews.find((item) => item.isFeatured) ?? content.latestNews[0];
   const recent = content.latestNews.filter((item) => item.slug !== featured?.slug).slice(0, 3);
-  return <section className="news-section" aria-labelledby={`news-title-${safeId(block.id)}`} data-block-type={block.type}><div className="page-shell"><div className="section-heading"><div><p className="eyebrow dark">Acontece em Deodápolis</p><h2 id={`news-title-${safeId(block.id)}`}>{title}</h2>{clean(block.content) && <p>{clean(block.content)}</p>}</div><Link className="section-link" href="/noticias">Todas as notícias <ArrowRight size={18} aria-hidden="true" /></Link></div>{featured ? <div className="editorial-grid"><article className="lead-story"><div className="story-visual" aria-hidden="true"><span>DEO</span><small>Informação municipal</small></div><div className="story-copy"><p className="story-kicker">Destaque</p><h3><Link href={`/noticias/${featured.slug}`}>{featured.title}</Link></h3><p>{featured.summary}</p><Link className="read-more" href={`/noticias/${featured.slug}`}>Ler notícia <ArrowRight size={17} aria-hidden="true" /></Link></div></article><div className="recent-stories">{recent.map((article) => <article key={article.slug}><time dateTime={article.publishedAt ?? undefined}>{formatDate(article.publishedAt)}</time><h3><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3><p>{article.summary}</p></article>)}{recent.length === 0 && <p className="muted-note">Novas publicações aparecerão aqui.</p>}</div></div> : <div className="empty-state" role="status"><BookOpenText aria-hidden="true" /><h3>Nenhuma notícia publicada</h3><p>Assim que houver uma publicação aprovada, ela aparecerá nesta área.</p></div>}</div></section>;
+  const featuredCoverUrl = featured && isInternalMediaUrl(featured.coverImageUrl) ? featured.coverImageUrl : null;
+  return <section className="news-section" aria-labelledby={`news-title-${safeId(block.id)}`} data-block-type={block.type}><div className="page-shell"><div className="section-heading"><div><p className="eyebrow dark">Acontece em Deodápolis</p><h2 id={`news-title-${safeId(block.id)}`}>{title}</h2>{clean(block.content) && <p>{clean(block.content)}</p>}</div><Link className="section-link" href="/noticias">Todas as notícias <ArrowRight size={18} aria-hidden="true" /></Link></div>{featured ? <div className="editorial-grid"><article className="lead-story">{featuredCoverUrl ? <div className="story-visual story-visual-media"><ResponsiveMediaImage className="story-cover" src={featuredCoverUrl} width={720} height={720} sizes="(max-width: 760px) 100vw, 420px" alt={clean(featured.coverImageAlt) || featured.title} /></div> : <div className="story-visual" aria-hidden="true"><span>DEO</span><small>Informação municipal</small></div>}<div className="story-copy"><p className="story-kicker">Destaque</p><h3><Link href={`/noticias/${featured.slug}`}>{featured.title}</Link></h3><p>{featured.summary}</p><Link className="read-more" href={`/noticias/${featured.slug}`}>Ler notícia <ArrowRight size={17} aria-hidden="true" /></Link></div></article><div className="recent-stories">{recent.map((article) => <article key={article.slug}><time dateTime={article.publishedAt ?? undefined}>{formatDate(article.publishedAt)}</time><h3><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3><p>{article.summary}</p></article>)}{recent.length === 0 && <p className="muted-note">Novas publicações aparecerão aqui.</p>}</div></div> : <div className="empty-state" role="status"><BookOpenText aria-hidden="true" /><h3>Nenhuma notícia publicada</h3><p>Assim que houver uma publicação aprovada, ela aparecerá nesta área.</p></div>}</div></section>;
 }
 
 function ParticipationSection({ block, content }: { block: HomeBlock; content: PortalHomeContent }) {
@@ -159,6 +161,10 @@ function safeInternalOrHttpUrl(value: string | undefined) {
   } catch {
     return null;
   }
+}
+
+function isInternalMediaUrl(value: string | null) {
+  return typeof value === "string" && value.startsWith("/api/v1/media/");
 }
 
 function formatDate(value: string | null) {
