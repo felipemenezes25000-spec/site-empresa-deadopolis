@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { SearchField } from "@/components/ui";
 
 type Asset = { id: string; originalFileName: string; mimeType: string; sizeBytes: number; status: string; altText: string; uploadedAt: string };
 
 export function MediaManager() {
   const [items, setItems] = useState<Asset[]>([]);
   const [message, setMessage] = useState("");
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("pt-BR");
+    if (!normalized) return items;
+    return items.filter((item) => `${item.originalFileName} ${item.mimeType} ${item.altText ?? ""} ${item.status}`.toLocaleLowerCase("pt-BR").includes(normalized));
+  }, [items, query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,6 +53,6 @@ export function MediaManager() {
       {message && <div className="form-message">{message}</div>}
       <small>O backend valida bytes reais, tamanho, SHA-256 e mantém quarentena quando o scanner de produção não está configurado.</small>
     </form>
-    <section className="admin-panel"><h2>Biblioteca</h2><div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}><div><strong>{item.originalFileName}</strong><small style={{ display: "block" }}>{item.mimeType} · {(item.sizeBytes / 1024).toFixed(0)} KB</small></div><span className="status-pill">{item.status}</span></div>)}</div></section>
+    <section className="admin-panel"><h2>Biblioteca</h2><SearchField value={query} onChange={setQuery} label="Filtrar mídia" placeholder="Nome, tipo, texto alternativo ou status" /><div className="compact-list">{filtered.map((item) => <div className="compact-item" key={item.id}><div><strong>{item.originalFileName}</strong><small style={{ display: "block" }}>{item.mimeType} · {(item.sizeBytes / 1024).toFixed(0)} KB</small></div><span className="status-pill">{item.status}</span></div>)}</div>{filtered.length === 0 && <p className="text-muted">Nenhuma mídia corresponde ao filtro.</p>}</section>
   </div>;
 }
