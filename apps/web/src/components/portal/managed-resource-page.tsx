@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { EmptyPanel, PageIntro, PublicShell } from "./public-shell";
+import { PageBlockRenderer } from "./page-block-renderer";
 import type { PortalResource } from "@/lib/portal-api";
 type ManagedResourcePageProps = {
   resource: PortalResource | null;
@@ -19,8 +20,16 @@ export function ManagedResourcePage({ resource, eyebrow, fallbackTitle, fallback
           : <EmptyPanel title="Conteúdo em atualização" description="Esta área é administrável pelo CMS municipal e ainda não possui publicação ativa." />}
       </div>
     </section>
+    {resource && <PageBlockRenderer payload={resource.payload} />}
     {children}
   </PublicShell>;
 }
-function ResourcePayload({payload}:{payload:unknown}){if(!payload||typeof payload!=="object")return <p>Informação estruturada indisponível.</p>;const entries=Object.entries(payload as Record<string,unknown>).filter(([key])=>key!=="classification");return <dl className="definition-list">{entries.map(([key,value])=><div style={{display:"contents"}} key={key}><dt>{humanize(key)}</dt><dd>{Array.isArray(value)?value.join(", "):typeof value==="object"?JSON.stringify(value):String(value)}</dd></div>)}</dl>}
-function humanize(value:string){return value.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase())}
+function ResourcePayload({ payload }: { payload: unknown }) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return <p>Informação estruturada indisponível.</p>;
+  const data = payload as Record<string, unknown>;
+  const content = typeof data.conteudo === "string" ? data.conteudo : typeof data.body === "string" ? data.body : "";
+  const sections = Array.isArray(data.sections) ? data.sections.filter((value): value is string => typeof value === "string") : [];
+  const entries = Object.entries(data).filter(([key]) => !["classification", "conteudo", "body", "sections", "blocks"].includes(key));
+  return <>{content && <p style={{ whiteSpace: "pre-wrap" }}>{content}</p>}{sections.length > 0 && <><h3>Nesta página</h3><ul>{sections.map((section) => <li key={section}>{section}</li>)}</ul></>}{entries.length > 0 && <dl className="definition-list">{entries.map(([key, value]) => <div style={{ display: "contents" }} key={key}><dt>{humanize(key)}</dt><dd>{Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value) : String(value)}</dd></div>)}</dl>}{!content && sections.length === 0 && entries.length === 0 && <p>Conteúdo visual administrado pelo CMS.</p>}</>;
+}
+function humanize(value: string) { return value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase()); }
