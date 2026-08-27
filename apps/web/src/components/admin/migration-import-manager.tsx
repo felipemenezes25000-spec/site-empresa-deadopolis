@@ -63,6 +63,7 @@ export function MigrationImportManager() {
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [imports, setImports] = useState<ImportedContent[]>([]);
   const [selectedLegacyId, setSelectedLegacyId] = useState<string | null>(null);
+  const [batchDocuments, setBatchDocuments] = useState<LegacyUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -211,9 +212,60 @@ export function MigrationImportManager() {
       const jobsResponse = await fetch("/api/v1/admin/migration/jobs");
       if (jobsResponse.ok) setJobs(await jobsResponse.json() as MigrationJob[]);
       setSelectedLegacyId(null);
+      setBatchDocuments((items) => items.filter((item) => item.id !== selectedLegacy.id));
       setMessage(`${result.detail} ${result.document.title} criado em ${result.document.status}; asset ${result.asset.status}${result.reusedAsset ? " reutilizado por hash" : " persistido"}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível importar o documento legado.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleBatchDocument(item: LegacyUrl) {
+    setBatchDocuments((current) => {
+      if (current.some((selected) => selected.id === item.id)) return current.filter((selected) => selected.id !== item.id);
+      if (current.length >= 10) {
+        setMessage("O lote seguro aceita no máximo 10 documentos por operação.");
+        return current;
+      }
+      return [...current, item];
+    });
+  }
+
+  async function importDocumentBatch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedJobId || batchDocuments.length === 0) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage("");
+    const failures: Array<{ id: string; detail: string }> = [];
+    let imported = 0;
+    try {
+      for (const item of batchDocuments) {
+        const response = await fetch(`/api/v1/admin/migration/jobs/${selectedJobId}/urls/${item.id}/import-document`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category: String(form.get("category") ?? "").trim(),
+            subcategory: optional(form.get("subcategory")),
+            title: titleFromPath(item.normalizedPath),
+            description: optional(form.get("description")),
+            documentNumber: null,
+            processNumber: null,
+            referencePeriod: optional(form.get("referencePeriod")),
+            publicationDate: null,
+            responsibleDepartment: optional(form.get("responsibleDepartment")),
+            documentType: documentTypeFromPath(item.normalizedPath),
+          }),
+        });
+        if (response.ok) imported++;
+        else failures.push({ id: item.id, detail: await errorText(response) });
+      }
+      await refreshSelected(selectedJobId);
+      setBatchDocuments((items) => items.filter((item) => failures.some((failure) => failure.id === item.id)));
+      setMessage(`${imported} documento(s) criado(s) como rascunho. ${failures.length === 0 ? "Lote concluído sem falhas." : `${failures.length} falha(s) permaneceram selecionadas: ${failures.map((failure) => failure.detail).join(" | ")}`}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "O lote foi interrompido; atualize o inventário antes de retomar.");
     } finally {
       setBusy(false);
     }
@@ -234,7 +286,7 @@ export function MigrationImportManager() {
     </div>
 
     {loading ? <div className="empty-state" aria-busy="true"><p>Carregando inventários…</p></div> : jobs.length === 0 ? <div className="empty-state"><h3>Nenhum inventário disponível</h3><p>Execute um dry-run acima antes de preparar conteúdo.</p></div> : <div className="compact-list" style={{ marginTop: 16 }}>
-      {jobs.map((job) => <button key={job.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedJobId(job.id); setSelectedLegacyId(null); setInventoryPage(1); setInventoryQuery(""); setMessage(""); }}>
+      {jobs.map((job) => <button key={job.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedJobId(job.id); setSelectedLegacyId(null); setBatchDocuments([]); setInventoryPage(1); setInventoryQuery(""); setMessage(""); }}>
         <span><strong>{job.allowedHost}</strong><small style={{ display: "block" }}>{job.discoveredCount} descobertas · {job.importedCount} importadas · {job.failedCount} falhas</small></span>
         <span className="status-pill">{String(job.state)}</span>
       </button>)}
@@ -245,10 +297,7 @@ export function MigrationImportManager() {
         <div className="admin-heading"><div><h3>Conteúdos aptos</h3><p>{inventory?.total ?? 0} URL(s) mapeada(s) para migração.</p></div></div>
         <label className="field">Buscar no inventário<input type="search" value={inventoryQuery} onChange={(event) => { setInventoryQuery(event.target.value); setInventoryPage(1); }} placeholder="Caminho ou URL de origem" /></label>
         {candidates.length === 0 ? <div className="empty-state"><p>Nenhum HTML ou documento mapeado e íntegro está pendente de importação neste job.</p></div> : <div className="compact-list">
-          {candidates.map((url) => <button key={url.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedLegacyId(url.id); setMessage(""); }}>
-            <span style={{ minWidth: 0 }}><strong>{url.normalizedPath}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{url.url}</small><small style={{ display: "block" }}>{url.contentType} · SHA-256 {url.sha256?.slice(0, 16)}…</small></span>
-            <span className="status-pill">{isHtml(url.contentType) ? "Página" : "Documento"}</span>
-          </button>)}
+          {candidates.map((url) => <div key={url.id} className="compact-item"><button type="button" style={{ minWidth: 0, flex: 1, border: 0, background: "transparent", color: "inherit", cursor: "pointer", textAlign: "left" }} onClick={() => { setSelectedLegacyId(url.id); setMessage(""); }}><strong>{url.normalizedPath}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{url.url}</small><small style={{ display: "block" }}>{url.contentType} · SHA-256 {url.sha256?.slice(0, 16)}…</small></button><div className="button-row"><span className="status-pill">{isHtml(url.contentType) ? "Página" : "Documento"}</span>{isDocument(url) && <button type="button" className="action-button secondary" aria-pressed={batchDocuments.some((item) => item.id === url.id)} onClick={() => toggleBatchDocument(url)}>{batchDocuments.some((item) => item.id === url.id) ? "Remover do lote" : "Adicionar ao lote"}</button>}</div></div>)}
         </div>}
         {inventory && inventory.totalPages > 1 && <div className="button-row" style={{ marginTop: 12 }}><button type="button" className="action-button secondary" disabled={busy || inventory.page <= 1} onClick={() => setInventoryPage((page) => Math.max(1, page - 1))}>Anterior</button><span>Página {inventory.page} de {inventory.totalPages}</span><button type="button" className="action-button secondary" disabled={busy || inventory.page >= inventory.totalPages} onClick={() => setInventoryPage((page) => page + 1)}>Próxima</button></div>}
       </div>
@@ -260,6 +309,19 @@ export function MigrationImportManager() {
         </div>}
       </div>
     </div>}
+
+    {batchDocuments.length > 0 && <form className="admin-panel editor-fields" style={{ marginTop: 20 }} onSubmit={importDocumentBatch}>
+      <div className="admin-heading"><div><span className="kicker">LOTE SEGURO · {batchDocuments.length}/10</span><h3>Preparar documentos selecionados</h3><p>Processamento sequencial e auditável. O título vem do nome do arquivo; os documentos permanecem em rascunho e cada falha é exibida sem desfazer sucessos anteriores.</p></div><button type="button" className="action-button secondary" onClick={() => setBatchDocuments([])} disabled={busy}>Limpar lote</button></div>
+      <div className="compact-list">{batchDocuments.map((item) => <div className="compact-item" key={item.id}><span><strong>{titleFromPath(item.normalizedPath)}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{item.normalizedPath}</small></span><button type="button" className="action-button secondary" onClick={() => toggleBatchDocument(item)} disabled={busy}>Remover</button></div>)}</div>
+      <div className="editor-grid">
+        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
+        <label className="field">Subcategoria comum<input name="subcategory" maxLength={120} placeholder="Ex.: EDITAL, CONTRATO, RREO" /></label>
+        <label className="field">Órgão responsável<input name="responsibleDepartment" maxLength={180} /></label>
+        <label className="field">Período de referência<input name="referencePeriod" maxLength={120} /></label>
+      </div>
+      <label className="field">Descrição comum<textarea name="description" maxLength={2000} rows={3} /></label>
+      <button className="action-button" disabled={busy}>Validar e criar {batchDocuments.length} rascunho(s)</button>
+    </form>}
 
     {selectedLegacy && isHtml(selectedLegacy.contentType) && <form key={selectedLegacy.id} className="admin-panel editor-fields" style={{ marginTop: 20 }} onSubmit={importPage}>
       <h3>Preparar rascunho de {selectedLegacy.normalizedPath}</h3>
