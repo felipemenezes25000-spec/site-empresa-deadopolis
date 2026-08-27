@@ -8,6 +8,7 @@ on:
       - '.github/workflows/schema-preview.yml'
   workflow_dispatch:
 
+# Read-only by default: generated migrations are reviewed before versioning.
 permissions:
   contents: read
 
