@@ -8,7 +8,7 @@ on:
       - '.github/workflows/schema-preview.yml'
   workflow_dispatch:
 
-# Read-only by default: generated migrations are reviewed before versioning.
+# Read-only by default: regenerate only after the mail inspector compiles and tests cleanly.
 permissions:
   contents: read
 
