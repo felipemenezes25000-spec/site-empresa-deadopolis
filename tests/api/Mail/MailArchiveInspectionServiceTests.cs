@@ -78,7 +78,7 @@ public sealed class MailArchiveInspectionServiceTests
     [Fact]
     public async Task InteractiveInspectionRejectsArchiveAboveBoundedLimit()
     {
-        var bytes = new byte[MailArchiveInspectionService.MaxArchiveBytes + 1];
+        var bytes = new byte[checked((int)MailArchiveInspectionService.MaxArchiveBytes + 1)];
         await using var stream = new MemoryStream(bytes, writable: false);
 
         var exception = await Assert.ThrowsAsync<InvalidDataException>(() => _service.InspectAsync("EML", stream));
