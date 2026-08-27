@@ -14,6 +14,7 @@ public static class ContentEndpoints
     {
         var group = endpoints.MapGroup("/api/v1/admin/news").WithTags("Admin", "Content");
         group.MapGet("/", ListAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
+        group.MapGet("/{id:guid}", GetAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
         group.MapPost("/", CreateAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
         group.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
         group.MapPost("/{id:guid}/submit", SubmitAsync).RequireAuthorization(p => p.RequireClaim("capability", "content.write"));
@@ -30,9 +31,16 @@ public static class ContentEndpoints
         return Results.Ok(items.Select(ToResponse));
     }
 
+    private static async Task<IResult> GetAsync(Guid id, ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var article = await database.NewsArticles.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        return article is null ? Results.NotFound() : Results.Ok(ToResponse(article));
+    }
+
     private static async Task<IResult> CreateAsync(NewsDraftRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
     {
         var errors = Validate(request.Title, request.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category);
+        await ValidateCoverAsync(request.CoverImageUrl, database, errors, cancellationToken);
         if (errors.Count > 0) return Results.ValidationProblem(errors);
         var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
         if (await database.NewsArticles.AnyAsync(article => article.Slug == normalizedSlug, cancellationToken)) return Results.Conflict(new { title = "Slug já utilizado", status = 409 });
@@ -52,6 +60,7 @@ public static class ContentEndpoints
         if (article is null) return Results.NotFound();
         if (article.Version != request.ExpectedVersion) return Results.Conflict(new { title = "Notícia alterada por outra pessoa", currentVersion = article.Version, status = 409 });
         var errors = Validate(request.Title, article.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category);
+        await ValidateCoverAsync(request.CoverImageUrl, database, errors, cancellationToken);
         if (errors.Count > 0) return Results.ValidationProblem(errors);
         var actor = RequireActor(principal);
         try
@@ -119,6 +128,23 @@ public static class ContentEndpoints
         if (!string.IsNullOrWhiteSpace(coverImageUrl) && string.IsNullOrWhiteSpace(coverImageAlt)) errors["coverImageAlt"] = ["Texto alternativo é obrigatório para imagem de capa."];
         if (!string.IsNullOrWhiteSpace(category) && (category.Trim().Length > 80 || category.Trim().Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))) errors["category"] = ["Use somente letras sem acento, números e sublinhado na categoria."];
         return errors;
+    }
+
+    private static async Task ValidateCoverAsync(string? coverImageUrl, ApplicationDbContext database, Dictionary<string, string[]> errors, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(coverImageUrl)) return;
+        const string prefix = "/api/v1/media/";
+        if (!coverImageUrl.StartsWith(prefix, StringComparison.Ordinal)
+            || !Guid.TryParseExact(coverImageUrl[prefix.Length..], "D", out var mediaId))
+        {
+            errors["coverImageUrl"] = ["Selecione uma imagem aprovada da biblioteca de mídia."];
+            return;
+        }
+
+        var approvedImageExists = await database.MediaAssets.AsNoTracking().AnyAsync(
+            asset => asset.Id == mediaId && asset.Status == "APPROVED" && asset.MimeType.StartsWith("image/"),
+            cancellationToken);
+        if (!approvedImageExists) errors["coverImageUrl"] = ["A capa deve referenciar uma imagem aprovada da biblioteca de mídia."];
     }
 
     private static Guid RequireActor(ClaimsPrincipal principal) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) ? actor : throw new InvalidOperationException("Sessão sem identificador de usuário.");

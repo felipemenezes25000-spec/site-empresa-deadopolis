@@ -19,6 +19,19 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
 
   const suffix = Date.now().toString().slice(-8);
 
+  const coverFileName = `capa-poc-${suffix}.png`;
+  const coverAlt = `Imagem sintética de capa da POC ${suffix}`;
+  await page.goto("/admin/midia");
+  await page.getByLabel("Arquivos").setInputFiles({
+    name: coverFileName,
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await page.getByLabel("Texto alternativo comum").fill(coverAlt);
+  await page.getByRole("button", { name: "Enviar 1 arquivo" }).click();
+  await expect(page.getByText(/1 arquivo recebido/)).toBeVisible();
+  await expect(page.getByText(coverFileName, { exact: true }).first()).toBeVisible();
+
   const cmsSummary = `[DEMONSTRAÇÃO] Conteúdo CMS atualizado pelo E2E ${suffix}.`;
   const cmsStartsAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
   const cmsEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -41,8 +54,19 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await page.getByLabel("Slug").fill(newsSlug);
   await page.getByLabel("Linha fina").fill("Publicação sintética criada pelo teste E2E.");
   await page.getByLabel("Conteúdo").fill("Conteúdo de demonstração sem valor de comunicado oficial. Este texto comprova persistência e workflow editorial.");
+  await page.getByText("Selecionar capa da biblioteca", { exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(coverFileName) }).click();
+  await expect(page.getByText("Capa selecionada", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Texto alternativo")).toHaveValue(coverAlt);
   await page.getByRole("button", { name: "Criar rascunho" }).click();
   await expect(page.getByText(/Rascunho salvo no servidor/)).toBeVisible();
+  await page.goto("/admin/comunicacao");
+  const newsRow = page.getByRole("row").filter({ hasText: `Notícia POC ${suffix}` });
+  await newsRow.getByRole("link", { name: "Editar" }).click();
+  await expect(page.getByRole("heading", { name: "Editar notícia" }).first()).toBeVisible();
+  await page.getByLabel("Linha fina").fill("Publicação sintética revisada pela Comunicação no teste E2E.");
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText(/Alterações salvas como versão/)).toBeVisible();
   await page.getByRole("button", { name: "Enviar para revisão" }).click();
   await expect(page.getByText(/Ação “submit” concluída/)).toBeVisible();
   await page.getByRole("button", { name: "Aprovar" }).click();
@@ -51,6 +75,7 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(page.getByText(/Ação “publish” concluída/)).toBeVisible();
   await page.goto(`/noticias/${newsSlug}`);
   await expect(page.getByRole("heading", { name: new RegExp(`Notícia POC ${suffix}`) })).toBeVisible();
+  await expect(page.getByRole("img", { name: coverAlt })).toBeVisible();
 
   const datasetSlug = `poc-dataset-${suffix}`;
   await page.goto("/admin/dados-abertos");

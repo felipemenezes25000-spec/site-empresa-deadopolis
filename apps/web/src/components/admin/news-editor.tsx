@@ -5,19 +5,23 @@ import { MediaPicker, RichTextEditor, type MediaPickerItem } from "@/components/
 import { NEWS_CATEGORIES } from "@/lib/news-categories";
 
 type Draft = { title: string; slug: string; summary: string; body: string; category: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
-type Article = { id: string; status: string; version: number; verificationCode?: string };
+type Article = Draft & { id: string; status: string; version: number; verificationCode?: string };
+type ArticleResponse = Omit<Article, "coverImageUrl" | "coverImageAlt"> & { coverImageUrl: string | null; coverImageAlt: string | null };
 type Asset = { id: string; originalFileName: string; mimeType: string; status: string; altText: string };
 const EMPTY_DRAFT: Draft = { title: "", slug: "", summary: "", body: "", category: "GERAL", coverImageUrl: "", coverImageAlt: "", isFeatured: false };
 const STORAGE_KEY = "deodapolis.news.draft";
 
-export function NewsEditor() {
+export function NewsEditor({ articleId }: { articleId?: string }) {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [article, setArticle] = useState<Article | null>(null);
   const [media, setMedia] = useState<Asset[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadingArticle, setLoadingArticle] = useState(Boolean(articleId));
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    if (articleId) return;
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
     const timer = window.setTimeout(() => {
@@ -25,7 +29,28 @@ export function NewsEditor() {
       catch { localStorage.removeItem(STORAGE_KEY); }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [articleId]);
+
+  useEffect(() => {
+    if (!articleId) return;
+    const controller = new AbortController();
+    void fetch(`/api/v1/admin/news/${articleId}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await errorText(response));
+        const loaded = await response.json() as ArticleResponse;
+        if (controller.signal.aborted) return;
+        const normalized = { ...loaded, coverImageUrl: loaded.coverImageUrl ?? "", coverImageAlt: loaded.coverImageAlt ?? "" };
+        setArticle(normalized);
+        setDraft(normalized);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "Não foi possível abrir a notícia.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingArticle(false);
+      });
+    return () => controller.abort();
+  }, [articleId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,19 +60,31 @@ export function NewsEditor() {
     return () => controller.abort();
   }, []);
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); }, [draft]);
+  useEffect(() => { if (!articleId) localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); }, [articleId, draft]);
   const canCreate = useMemo(() => Boolean(draft.title && draft.slug && draft.summary && draft.body), [draft]);
   const imageMedia: MediaPickerItem[] = useMemo(() => media.filter((asset) => asset.status === "APPROVED" && asset.mimeType.startsWith("image/")).map((asset) => ({ id: asset.id, name: asset.originalFileName, mimeType: asset.mimeType, altText: asset.altText, status: asset.status })), [media]);
   const selectedMediaId = draft.coverImageUrl.startsWith("/api/v1/media/") ? draft.coverImageUrl.split("/").at(-1) : undefined;
 
-  async function create(event: FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    const response = await fetch("/api/v1/admin/news", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, coverImageUrl: draft.coverImageUrl || null, coverImageAlt: draft.coverImageAlt || null }) });
+    const editing = Boolean(article);
+    const response = await fetch(editing ? `/api/v1/admin/news/${article!.id}` : "/api/v1/admin/news", {
+      method: editing ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...draft,
+        coverImageUrl: draft.coverImageUrl || null,
+        coverImageAlt: draft.coverImageAlt || null,
+        ...(editing ? { expectedVersion: article!.version } : {}),
+      }),
+    });
     if (response.ok) {
-      const created = await response.json() as Article;
-      setArticle(created);
-      setMessage("Rascunho salvo no servidor. Agora você pode enviar para revisão.");
+      const result = await response.json() as ArticleResponse;
+      const normalized = { ...result, coverImageUrl: result.coverImageUrl ?? "", coverImageAlt: result.coverImageAlt ?? "" };
+      setArticle(normalized);
+      setDraft(normalized);
+      setMessage(editing ? `Alterações salvas como versão ${result.version}.` : "Rascunho salvo no servidor. Agora você pode enviar para revisão.");
       localStorage.removeItem(STORAGE_KEY);
     } else setMessage(await errorText(response));
     setBusy(false);
@@ -64,20 +101,26 @@ export function NewsEditor() {
     setBusy(false);
   }
 
+  if (loadingArticle) return <div className="admin-panel empty-state" aria-busy="true"><h2>Carregando notícia…</h2></div>;
+  if (loadError) return <div className="admin-panel form-message error" role="alert"><h2>Notícia indisponível</h2><p>{loadError}</p></div>;
+
+  const immutable = article?.status === "PUBLISHED" || article?.status === "ARCHIVED";
+
   return <div className="editor-grid">
-    <form className="admin-panel editor-fields" onSubmit={create}>
-      <h2>Nova notícia</h2>
+    <form className="admin-panel editor-fields" onSubmit={save}>
+      <h2>{articleId ? "Editar notícia" : "Nova notícia"}</h2>
       <Field label="Título"><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={180} required /></Field>
-      <Field label="Slug"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} maxLength={180} required /></Field>
+      <Field label="Slug"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} maxLength={180} disabled={Boolean(articleId)} required /><small>O endereço fica estável após a criação para preservar links públicos.</small></Field>
       <Field label="Linha fina"><textarea value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} maxLength={320} rows={3} required /></Field>
       <Field label="Área editorial"><select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{NEWS_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
       <RichTextEditor label="Conteúdo" value={draft.body} onChange={(body) => setDraft({ ...draft, body })} required />
       <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer font-semibold">Selecionar capa da biblioteca</summary><div className="mt-3">{imageMedia.length > 0 ? <MediaPicker items={imageMedia} selectedId={selectedMediaId} onSelect={(item) => setDraft({ ...draft, coverImageUrl: `/api/v1/media/${item.id}`, coverImageAlt: item.altText || item.name })} /> : <p className="text-muted">Nenhuma imagem aprovada disponível. Envie e aprove a mídia na biblioteca antes de selecioná-la.</p>}</div></details>
-      <Field label="URL da imagem de capa (opcional)"><input value={draft.coverImageUrl} onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })} /></Field>
+      {draft.coverImageUrl && <div className="compact-item" aria-live="polite"><span><strong>Capa selecionada</strong><small style={{ display: "block" }}>{draft.coverImageUrl}</small></span><button type="button" className="action-button secondary" onClick={() => setDraft({ ...draft, coverImageUrl: "", coverImageAlt: "" })}>Remover capa</button></div>}
       <Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={(event) => setDraft({ ...draft, coverImageAlt: event.target.value })} /></Field>
       <label><input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft({ ...draft, isFeatured: event.target.checked })} /> Destaque na home</label>
-      <small>Recuperação local do rascunho fica ativa enquanto a notícia ainda não foi criada no servidor.</small>
-      <button className="action-button" disabled={!canCreate || busy || Boolean(article)}>{busy ? "Salvando…" : "Criar rascunho"}</button>
+      {!articleId && <small>Recuperação local do rascunho fica ativa enquanto a notícia ainda não foi criada no servidor.</small>}
+      {immutable && <div className="warning-box">Conteúdo publicado ou arquivado é imutável neste fluxo. Uma nova versão editorial deve ser criada.</div>}
+      <button className="action-button" disabled={!canCreate || busy || immutable}>{busy ? "Salvando…" : articleId ? "Salvar alterações" : "Criar rascunho"}</button>
     </form>
     <aside className="admin-panel">
       <h2>Workflow editorial</h2>
