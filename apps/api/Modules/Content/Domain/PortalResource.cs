@@ -16,7 +16,7 @@ public sealed class PortalResource : ITenantEntity
         Slug = Require(slug, 180).ToLowerInvariant();
         Title = Require(title, 220);
         Summary = Optional(summary, 500);
-        PayloadJson = ValidateJson(payloadJson);
+        PayloadJson = ValidateJson(Kind, payloadJson);
         DisplayOrder = displayOrder;
         Status = "DRAFT";
         CreatedBy = actorId;
@@ -50,7 +50,7 @@ public sealed class PortalResource : ITenantEntity
         if (endsAt.HasValue && startsAt.HasValue && endsAt <= startsAt) throw new ArgumentException("A data final deve ser posterior à inicial.");
         Title = Require(title, 220);
         Summary = Optional(summary, 500);
-        PayloadJson = ValidateJson(payloadJson);
+        PayloadJson = ValidateJson(Kind, payloadJson);
         DisplayOrder = displayOrder;
         StartsAt = startsAt;
         EndsAt = endsAt;
@@ -87,11 +87,12 @@ public sealed class PortalResource : ITenantEntity
         Version++;
     }
 
-    private static string ValidateJson(string value)
+    private static string ValidateJson(string kind, string value)
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? "{}" : value.Trim();
         if (normalized.Length > 1_000_000) throw new ArgumentException("Payload excede 1 MB.", nameof(value));
-        using var _ = JsonDocument.Parse(normalized);
+        using var document = JsonDocument.Parse(normalized);
+        if (kind == "PAGE") PageBlockPayloadValidator.Validate(document.RootElement);
         return normalized;
     }
 

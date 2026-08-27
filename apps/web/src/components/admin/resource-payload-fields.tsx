@@ -1,4 +1,5 @@
-import { PageBlockBuilder, type PageBlock } from "./page-block-builder";
+import { normalizePageBlockList, type PageBlock } from "@/lib/page-blocks";
+import { PageBlockBuilder } from "./page-block-builder";
 
 type ResourcePayloadFieldsProps = {
   kind: string;
@@ -166,21 +167,7 @@ function parsePageBlocks(raw: string): PageBlock[] {
 }
 
 function pageBlocks(value: unknown): PageBlock[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry, index) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
-    const candidate = entry as Record<string, unknown>;
-    const type = text(candidate.type);
-    if (!type) return [];
-    return [{
-      id: text(candidate.id) || `block-${index + 1}`,
-      type,
-      title: text(candidate.title),
-      content: text(candidate.content),
-      reference: text(candidate.reference),
-      enabled: candidate.enabled === undefined ? true : boolean(candidate.enabled),
-    }];
-  });
+  return normalizePageBlockList(value, { includeDisabled: true });
 }
 
 function formatPayload(payload: Payload) {

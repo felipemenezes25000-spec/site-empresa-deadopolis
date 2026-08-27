@@ -33,7 +33,7 @@ describe("serializeResourcePayload", () => {
     form.set("payloadBlocksJson", JSON.stringify([{ id: "hero-1", type: "Hero", title: "Bem-vindo", content: "Mensagem", reference: "", enabled: true }]));
 
     expect(JSON.parse(serializeResourcePayload("PAGE", form)).blocks).toEqual([
-      { id: "hero-1", type: "Hero", title: "Bem-vindo", content: "Mensagem", reference: "", enabled: true },
+      { id: "hero-1", type: "Hero", title: "Bem-vindo", content: "Mensagem", reference: "", imageUrl: "", imageAlt: "", linkLabel: "", items: [], enabled: true },
     ]);
   });
 
