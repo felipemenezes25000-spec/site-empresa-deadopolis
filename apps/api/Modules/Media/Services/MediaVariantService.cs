@@ -78,7 +78,7 @@ public sealed class MediaVariantService
         canvas.Flush();
 
         var (_, _, encodedFormat) = ResolveFormat(descriptor.Format);
-        SKData encoded;
+        SKData? encoded;
         try
         {
             encoded = output.Encode(encodedFormat, EncodeQuality);
@@ -87,6 +87,9 @@ public sealed class MediaVariantService
         {
             throw new MediaVariantFormatUnavailableException(descriptor.Format, exception);
         }
+
+        if (encoded is null)
+            throw new MediaVariantFormatUnavailableException(descriptor.Format);
 
         using (encoded)
         {
