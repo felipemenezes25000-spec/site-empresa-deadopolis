@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { SearchField, StatusBadge } from "@/components/ui";
 
@@ -126,7 +127,7 @@ export function MediaManager() {
       <div className="resource-toolbar"><div><h2>Revisão da mídia</h2><p>{selected.originalFileName}</p></div><StatusBadge status={selected.status} /></div>
       <div className="editor-grid">
         <div>
-          {selected.status === "APPROVED" && selected.mimeType.startsWith("image/") && <img src={`/api/v1/media/${selected.id}`} alt={selected.altText || "Prévia da mídia aprovada"} style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 12 }} />}
+          {selected.status === "APPROVED" && selected.mimeType.startsWith("image/") && <Image src={`/api/v1/media/${selected.id}`} alt={selected.altText || "Prévia da mídia aprovada"} width={1200} height={800} unoptimized style={{ width: "100%", height: "auto", maxHeight: 420, objectFit: "contain", borderRadius: 12 }} />}
           {selected.status === "APPROVED" && selected.mimeType === "application/pdf" && <a className="action-button secondary" href={`/api/v1/media/${selected.id}`} target="_blank" rel="noopener noreferrer">Abrir PDF aprovado</a>}
           {selected.status !== "APPROVED" && <div className="empty-state"><h3>Prévia pública bloqueada</h3><p>A mídia só pode ser lida pela rota pública depois de aprovação por scanner ou enquanto permanecer aprovada.</p></div>}
           <dl className="definition-list"><div style={{ display: "contents" }}><dt>SHA-256</dt><dd style={{ wordBreak: "break-all" }}>{selected.sha256}</dd></div><div style={{ display: "contents" }}><dt>Enviado em</dt><dd>{formatDate(selected.uploadedAt)}</dd></div></dl>
