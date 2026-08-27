@@ -76,6 +76,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
+      - name: Documentation and POC reset contracts
+        run: |
+          bash scripts/tests/verify-docs.test.sh
+          bash scripts/verify-docs.sh
+          bash scripts/tests/demo-reset.test.sh
       - run: ./scripts/secret-scan.sh
       - name: Reject certificate/private key artifacts
         run: test -z "$(find . -type f \( -name '*.pfx' -o -name '*.p12' -o -name '*.pem' -o -name '*.key' \) -not -path './.git/*' -print -quit)"

@@ -1,28 +1,29 @@
-# Matriz de requisitos verificada
+# Matriz final de requisitos
 
-Atualizada em 26/08/2026. `VALIDATED` significa que há implementação e teste automatizado no repositório; não significa que um provedor externo esteja contratado ou que o cutover de produção tenha sido autorizado. `EXTERNAL_GATE` identifica exatamente essa fronteira.
+Atualizada em 27/08/2026. Estados permitidos: `DONE`, `EXTERNAL_DEPENDENCY` e `NOT_APPLICABLE`. `DONE` significa código e evidência automatizada; não significa que conteúdo/provider externo esteja contratado.
 
-| ID | Requisito | Módulo | Status | Verificação/evidência | Dependência ou ressalva real |
-|---|---|---|---|---|---|
-| AUD-001 | Inventariar o portal legado inteiro | Migration | VALIDATED | `docs/LEGACY_MIGRATION_REPORT.md`; `docs/evidence/legacy-inventory-final-2026-08-26.json`; dry-run schema 5; fila vazia | O portal legado é mutável; repetir antes do cutover |
-| MIG-001 | Preservar URLs e 301 seguros | Migration | IMPLEMENTING | `LegacyRedirectMiddleware`, `RedirectRule`, testes de normalização/importação, `docs/URL_MIGRATION_MAP.md` | Redirect item a item só pode ser ativado depois da publicação do destino |
-| MIG-002 | Crawler seguro, retomável e reconciliável | Migration | VALIDATED | `LegacyCrawlerServiceTests`, `ExternalUrlSafetyTests`, `LegacyTraversalPolicyTests` | 16 arquivos acima de 25 MB permanecem bloqueados com motivo |
-| MIG-003 | Ingestão documental governada | Migration/Media | VALIDATED | `LegacyDocumentImportServiceTests`, `PublicDocumentContractTests`, migration `AddPublicDocumentArchive` | Publicação real exige storage e malware scanner configurados e aprovação administrativa |
-| MIG-004 | Operação administrativa em escala | Migration/Web | VALIDATED | paginação/filtros, isolamento de falhas, CSV completo protegido contra fórmulas e lote sequencial limitado a 10 rascunhos | O lote para quando o navegador fecha; uma fila distribuída só é necessária após definir infraestrutura operacional |
-| CORE-001 | Multi-tenant sem mistura | Platform | VALIDATED | `TenantPersistenceTests`, `TenantContextTests`, filtros globais EF | Cabeçalho/domínio de tenant deve ser configurado na infraestrutura de produção |
-| IAM-001 | RBAC e capabilities no backend | Identity | VALIDATED | `UserAccountSecurityTests`, autenticação e policies dos endpoints admin | Segredos/MFA devem ser configurados no ambiente final |
-| AUD-002 | Trilha de auditoria e correlation ID | Operations | VALIDATED | `AuditEvent`, middlewares de observabilidade e fluxos contratuais | Retenção/exportação dependem da política operacional final |
-| CMS-001 | Workflow editorial governado | Content | VALIDATED | `EditorialWorkflowTests`, `PortalResourceTests`, revisões e publicação agendada | Conteúdo histórico ainda precisa de revisão antes de publicar |
-| MED-001 | Upload, magic bytes, hash, quarentena e malware scan | Media | EXTERNAL_GATE | `DocumentFileInspector`, endpoints de mídia, testes de importação documental | Object storage e scanner reais precisam de credenciais; estado permanece explícito quando ausentes |
-| PUB-001 | Portal público responsivo e acessível | Portal/Web | VALIDATED | build Next.js, E2E, axe, crawl interno e rotas públicas | Conteúdo atual depende do CMS e das integrações configuradas |
-| SRV-001 | Carta de Serviços estruturada | Services | VALIDATED | `ServiceItem`, endpoints, `/servicos` e `/servicos/[slug]` | Catálogo legado ainda requer revisão editorial item a item |
-| SRC-001 | Busca universal | Search | VALIDATED | `SearchNormalizerTests`, endpoint e página `/buscar` | Ranking de produção deve ser observado com dados reais |
-| TRA-001 | Dados Abertos e Transparência | Transparency | VALIDATED | testes de datasets, `/dados-abertos`, categorias conhecidas com 404 rígido | Sistemas financeiros externos continuam como fontes declaradas |
-| TRA-002 | Acervo de licitações e prestação de contas | Transparency/Migration | VALIDATED | `/licitacoes`, `/transparencia/[slug]`, filtros/paginação e testes do arquivo documental | Registros só aparecem depois de importar, aprovar o asset e publicar o documento |
-| GAZ-001 | Diário Oficial, PDF, hash, QR e acervo | Gazette | EXTERNAL_GATE | `GazetteEditionTests`, `GazetteDocumentServiceTests`, E2E | Assinatura oficial ICP-Brasil não é simulada; provider real precisa ser contratado/configurado |
-| SUP-001 | Tickets, comentários e SLA | Support | VALIDATED | `TicketFlowTests`, `SlaPolicyTests`, E2E | Notificações externas dependem do provedor de e-mail |
-| MAIL-001 | Gestão e migração de e-mail | Mail | EXTERNAL_GATE | domínio, mailbox, alias e jobs auditáveis no POC/E2E | SMTP/IMAP/provider de produção não está configurado |
-| OPS-001 | Health, link check e evidência de backup | Operations | EXTERNAL_GATE | `HealthContractTests`, `LinkCheckTests`, endpoints operacionais | Restore real, monitoramento e backup dependem da infraestrutura final |
-| SEC-001 | Hardening OWASP | Cross-cutting | VALIDATED | SSRF/DNS/redirect tests, headers, rate limits e jobs de security scan na CI | WAF, rotação de segredos e pentest pertencem ao ambiente de produção |
-| A11Y-001 | WCAG 2.2 AA | Web | VALIDATED | suíte Playwright/axe e navegação por teclado na CI | Auditoria humana com tecnologia assistiva continua recomendada |
-| POC-001 | Demo reproduzível | Demo | VALIDATED | `apps/web/tests/e2e/poc.spec.ts` e job E2E da CI | Dados de demonstração permanecem marcados como `DEMO_ONLY` |
+| ID | Requisito | Estado | Evidência | Fronteira externa |
+|---|---|---|---|---|
+| AUD-001 | Inventário integral do legado | DONE | `LEGACY_MIGRATION_REPORT.md`, JSON de evidência, fila 0, sem truncamento | repetir imediatamente antes do cutover |
+| MIG-001 | URLs e redirects 301 seguros | EXTERNAL_DEPENDENCY | middleware, regras, resolução, mapa e E2E | ativação depende de destino oficial publicado |
+| MIG-002 | Crawler seguro e retomável | DONE | testes de SSRF, normalização, paginação, extração e importação | 16 arquivos acima do limite permanecem bloqueados com motivo |
+| MIG-003 | Ingestão documental governada | EXTERNAL_DEPENDENCY | magic bytes, SHA-256, deduplicação, quarentena e acervo | storage/scanner reais e aprovação |
+| MIG-004 | Operação administrativa em escala | DONE | paginação, filtros, CSV seguro, lote limitado e isolamento de falhas | fila distribuída depende da infraestrutura escolhida |
+| CORE-001 | Multi-tenant sem mistura | DONE | filtros EF e testes de persistência/contexto | host/header oficial na infraestrutura |
+| IAM-001 | Login, MFA, RBAC e capabilities | DONE | testes de identidade e contratos 401/403 | secret manager e política de usuários finais |
+| AUD-002 | Auditoria e correlation ID | DONE | AuditEvent, middlewares e fluxos contratuais | retenção institucional |
+| CMS-001 | Workflow editorial e CMS governado | DONE | revisões, versionamento, agenda, publicação e E2E | conteúdo oficial/revisores |
+| MED-001 | Mídia segura | EXTERNAL_DEPENDENCY | validação, metadata, quarentena e providers explícitos | storage e antivírus reais |
+| PUB-001 | Portal responsivo e acessível | DONE | build Next, axe, crawl e rotas críticas | auditoria humana assistiva recomendada |
+| SRV-001 | Carta de Serviços | DONE | domínio, CRUD e páginas públicas | catálogo oficial item a item |
+| SRC-001 | Busca global | DONE | consulta limitada no banco para serviços, notícias, secretarias, páginas, datasets e documentos | observar ranking com dados reais |
+| TRA-001 | Dados Abertos/Transparência | DONE | datasets versionados e categorias públicas | sistemas financeiros permanecem fontes declaradas |
+| TRA-002 | Acervo de licitações/contas/legislação | DONE | arquivo pesquisável, paginação, filtros, origem, hash e download | ingestão/publicação real depende de MIG-003 |
+| GAZ-001 | Diário Oficial verificável | EXTERNAL_DEPENDENCY | composição, PDF, hash, QR, código, imutabilidade e E2E | ICP-Brasil e timestamp reais |
+| SUP-001 | Ouvidoria, tickets e SLA | DONE | domínio, endpoints, UI e E2E | notificação externa por e-mail |
+| MAIL-001 | Governança de e-mail | EXTERNAL_DEPENDENCY | domínio, mailbox, alias, migração e DEMO_ONLY explícito | provider, DNS e credenciais reais |
+| OPS-001 | Health, link check e backup evidence | EXTERNAL_DEPENDENCY | health, worker SSRF-safe, tentativa manual e registro auditável | orquestração de backup/restore/monitoramento |
+| SEC-001 | Hardening e supply chain | DONE | headers, cookies, rate limit, SSRF, scans e testes negativos | WAF, rotação, pentest e SIEM |
+| A11Y-001 | WCAG 2.2 AA automatizada | DONE | axe serious/critical, teclado e E2E | aceite humano com tecnologia assistiva |
+| POC-001 | Demo reproduzível e reset seguro | DONE | E2E, seed DEMONSTRAÇÃO e reset que recusa Production | nenhuma |
+| DOC-001 | Runbooks e relatório operacional | DONE | verificador documental na CI e arquivos obrigatórios | políticas/valores institucionais finais |
