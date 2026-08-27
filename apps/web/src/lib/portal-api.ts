@@ -11,7 +11,8 @@ export type NewsSummary = { title: string; slug: string; summary: string; catego
 export type NewsDetail = NewsSummary & { body: string; updatedAt: string };
 export type Department = { name: string; slug: string; acronym: string; managerName: string; phone: string; email: string; address: string; openingHours: string };
 export type TransparencyLink = { title: string; category: string; url: string; description: string; isExternal?: boolean };
-export type SearchResult = { type: string; title: string; description: string; url: string };
+export type SearchResult = { type: string; title: string; description: string; url: string; score?: number };
+export type SearchResponse = { query: string; usedFuzzy?: boolean; results: SearchResult[] };
 export type GazetteEdition = { id?: string; number: number; year: number; type: string; publicationDate: string; verificationCode: string | null; sha256: string | null; documentObjectKey: string | null };
 export type GazetteVerification = { number: number; year: number; publicationDate: string; sha256: string; verificationCode: string; certificateSubject: string | null; certificateIssuer: string | null; signedAt: string | null; status: string };
 export type PortalResource = { id: string; kind: string; slug: string; title: string; summary: string; payload: unknown; displayOrder: number; startsAt: string | null; endsAt: string | null; publishedAt: string | null; version: number };
@@ -71,7 +72,7 @@ export async function getArticle(slug: string) { return request<NewsDetail>(`/ap
 export async function getDepartments() { return (await request<Department[]>("/api/v1/departments"))!; }
 export async function getDepartment(slug: string) { return request<Department>(`/api/v1/departments/${encodeURIComponent(slug)}`, true); }
 export async function getTransparency() { return (await request<TransparencyLink[]>("/api/v1/transparency"))!; }
-export async function searchPortal(q: string) { return (await request<{ query: string; results: SearchResult[] }>(`/api/v1/search?q=${encodeURIComponent(q)}`))!; }
+export async function searchPortal(q: string) { return (await request<SearchResponse>(`/api/v1/search/v2?q=${encodeURIComponent(q)}`))!; }
 export async function getGazette() { return (await request<GazetteEdition[]>("/api/v1/gazette"))!; }
 export async function verifyGazette(code: string) { return request<GazetteVerification>(`/api/v1/gazette/verify/${encodeURIComponent(code)}`, true); }
 export async function getResources(kind?: string) { const suffix = kind ? `?kind=${encodeURIComponent(kind)}` : ""; return (await request<PortalResource[]>(`/api/v1/resources${suffix}`))!; }
