@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { DocumentArchive, type ArchiveSearch } from "@/components/portal/document-archive";
 import { getResources, getTransparency } from "@/lib/portal-api";
 
@@ -29,6 +30,16 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
       description: "Consulte o acervo histórico preservado e acesse, separadamente, os sistemas oficiais que permanecem como fonte operacional dos processos atuais.",
     }}
   >
+    <section className="content-section" aria-labelledby="procurement-calendar">
+      <div className="page-shell">
+        <Link className="info-card" href="/licitacoes/calendario">
+          <span className="kicker">Agenda pública</span>
+          <h2 id="procurement-calendar">Calendário de licitações</h2>
+          <p>Consulte sessões e marcos dos processos de contratação publicados pela Prefeitura.</p>
+          <span className="section-link">Consultar calendário →</span>
+        </Link>
+      </div>
+    </section>
     {officialSources.length > 0 && <section className="content-section" aria-labelledby="official-procurement-sources">
       <div className="page-shell">
         <div className="section-heading">

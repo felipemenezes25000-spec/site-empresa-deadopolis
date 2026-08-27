@@ -14,6 +14,7 @@ public sealed class NewsArticle : ITenantEntity
         MunicipalityId = municipalityId;
         Title = RequireText(title, nameof(title), 180);
         Slug = RequireText(slug, nameof(slug), 180).ToLowerInvariant();
+        Category = "GERAL";
         CreatedBy = actorId;
         UpdatedBy = actorId;
         CreatedAt = DateTimeOffset.UtcNow;
@@ -27,6 +28,7 @@ public sealed class NewsArticle : ITenantEntity
     public string Slug { get; private set; } = string.Empty;
     public string Summary { get; private set; } = string.Empty;
     public string Body { get; private set; } = string.Empty;
+    public string Category { get; private set; } = "GERAL";
     public string? CoverImageUrl { get; private set; }
     public string? CoverImageAlt { get; private set; }
     public EditorialStatus Status { get; private set; }
@@ -53,6 +55,7 @@ public sealed class NewsArticle : ITenantEntity
         string body,
         string? coverImageUrl,
         string? coverImageAlt,
+        string? category,
         bool isFeatured,
         Guid actorId,
         DateTimeOffset changedAt)
@@ -63,6 +66,7 @@ public sealed class NewsArticle : ITenantEntity
         Body = RequireText(body, nameof(body), 100_000);
         CoverImageUrl = string.IsNullOrWhiteSpace(coverImageUrl) ? null : coverImageUrl.Trim();
         CoverImageAlt = string.IsNullOrWhiteSpace(coverImageAlt) ? null : coverImageAlt.Trim();
+        Category = NormalizeCategory(category);
         IsFeatured = isFeatured;
         Touch(actorId, changedAt);
     }
@@ -117,6 +121,15 @@ public sealed class NewsArticle : ITenantEntity
             throw new ArgumentException($"{parameterName} deve ter entre 1 e {maxLength} caracteres.", parameterName);
         }
 
+        return normalized;
+    }
+
+    private static string NormalizeCategory(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "GERAL";
+        var normalized = value.Trim().ToUpperInvariant();
+        if (normalized.Length > 80 || normalized.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))
+            throw new ArgumentException("Categoria deve conter apenas letras sem acento, números e sublinhado.", nameof(value));
         return normalized;
     }
 

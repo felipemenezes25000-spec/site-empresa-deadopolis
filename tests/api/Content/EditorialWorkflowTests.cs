@@ -5,6 +5,16 @@ namespace MunicipalPlatform.Api.Tests.Content;
 public sealed class EditorialWorkflowTests
 {
     [Fact]
+    public void UpdateDraftNormalizesEditorialCategory()
+    {
+        var article = NewsArticle.Create(Guid.NewGuid(), "Educação inicia matrículas", "educacao-inicia-matriculas", Guid.NewGuid());
+
+        article.UpdateDraft("Educação inicia matrículas", "Resumo da notícia.", "Conteúdo da notícia.", null, null, "educacao", false, Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        Assert.Equal("EDUCACAO", article.Category);
+    }
+
+    [Fact]
     public void SubmitForReviewTransitionsDraftAndRecordsActor()
     {
         var article = NewsArticle.Create(

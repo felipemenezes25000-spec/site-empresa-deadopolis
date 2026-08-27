@@ -117,6 +117,7 @@ public static class PortalEndpoints
                 article.Summary,
                 article.CoverImageUrl,
                 article.CoverImageAlt,
+                article.Category,
                 article.IsFeatured,
                 article.PublishedAt
             })
@@ -198,17 +199,25 @@ public static class PortalEndpoints
 
     private static async Task<IResult> GetNewsAsync(
         ApplicationDbContext database,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? category = null)
     {
-        var result = await database.NewsArticles
+        var query = database.NewsArticles
             .AsNoTracking()
-            .Where(article => article.Status == EditorialStatus.Published)
+            .Where(article => article.Status == EditorialStatus.Published);
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var normalizedCategory = category.Trim().ToUpperInvariant();
+            query = query.Where(article => article.Category == normalizedCategory);
+        }
+        var result = await query
             .OrderByDescending(article => article.PublishedAt)
             .Select(article => new
             {
                 article.Title,
                 article.Slug,
                 article.Summary,
+                article.Category,
                 article.PublishedAt,
                 article.CoverImageUrl,
                 article.CoverImageAlt
@@ -266,6 +275,7 @@ public static class PortalEndpoints
                 item.Body,
                 item.CoverImageUrl,
                 item.CoverImageAlt,
+                item.Category,
                 item.PublishedAt,
                 item.UpdatedAt
             })

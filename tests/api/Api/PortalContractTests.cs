@@ -35,6 +35,23 @@ public sealed class PortalContractTests : IClassFixture<MunicipalApiFactory>
     }
 
     [Fact]
+    public async Task NewsCanBeFilteredByEditorialCategory()
+    {
+        await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+
+        using var matchingResponse = await client.GetAsync(new Uri("/api/v1/news?category=PREFEITURA", UriKind.Relative));
+        using var otherResponse = await client.GetAsync(new Uri("/api/v1/news?category=SAUDE", UriKind.Relative));
+        var matching = await matchingResponse.Content.ReadFromJsonAsync<NewsPayload[]>();
+        var other = await otherResponse.Content.ReadFromJsonAsync<NewsPayload[]>();
+
+        Assert.Equal(HttpStatusCode.OK, matchingResponse.StatusCode);
+        Assert.Contains(matching ?? [], article => article.Slug == "feira-de-servicos" && article.Category == "PREFEITURA");
+        Assert.Empty(other ?? []);
+    }
+
+    [Fact]
     public async Task AuditEndpointRejectsAnonymousAccess()
     {
         await _factory.SeedAsync();
@@ -87,6 +104,6 @@ public sealed class PortalContractTests : IClassFixture<MunicipalApiFactory>
 
     private sealed record MunicipalityPayload(string Name);
     private sealed record ServicePayload(string Slug);
-    private sealed record NewsPayload(string Slug);
+    private sealed record NewsPayload(string Slug, string Category);
     private sealed record IntegrationPayload(string State);
 }

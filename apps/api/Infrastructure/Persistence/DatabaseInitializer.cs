@@ -86,7 +86,7 @@ public static class DatabaseInitializer
     private static NewsArticle CreatePublishedDemoArticle(string title, string slug, string summary, bool featured, DateTimeOffset publishedAt)
     {
         var article = NewsArticle.Create(DemoMunicipalityId, title, slug, DemoActorId);
-        article.UpdateDraft(title, summary, "Este é um conteúdo sintético usado exclusivamente para demonstrar o fluxo editorial da plataforma.", null, null, featured, DemoActorId, publishedAt.AddMinutes(-30));
+        article.UpdateDraft(title, summary, "Este é um conteúdo sintético usado exclusivamente para demonstrar o fluxo editorial da plataforma.", null, null, "GERAL", featured, DemoActorId, publishedAt.AddMinutes(-30));
         article.SubmitForReview(DemoActorId, publishedAt.AddMinutes(-20)); article.Approve(DemoActorId, publishedAt.AddMinutes(-10)); article.Publish(DemoActorId, publishedAt);
         return article;
     }

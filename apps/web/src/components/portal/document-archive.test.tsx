@@ -75,4 +75,16 @@ describe("DocumentArchive", () => {
     expect(getPublicDocuments).toHaveBeenLastCalledWith({ subcategory: "RREO", category: "PRESTACAO_CONTAS" });
     expect(view.container.querySelector('input[name="subcategory"]')).toHaveValue("RREO");
   });
+
+  it("offers normative classification for the legislation archive", async () => {
+    render(await DocumentArchive({
+      search: {},
+      category: "LEGISLACAO",
+      action: "/legislacao",
+    }));
+
+    expect(screen.getByRole("combobox", { name: "Espécie normativa" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Decretos" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Leis ordinárias" })).toBeInTheDocument();
+  });
 });

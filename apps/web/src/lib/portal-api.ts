@@ -7,7 +7,7 @@ export type PortalHomeContent = {
 };
 export type ServiceSummary = { name: string; slug: string; description: string; area: string; audience?: string; isOnline: boolean; onlineUrl: string | null; expectedDuration?: string; cost?: string };
 export type ServiceDetail = ServiceSummary & { requirements: string; documents: string; steps: string; channels: string; phone: string; address: string; openingHours: string; legalBasis: string; lastReviewedAt: string };
-export type NewsSummary = { title: string; slug: string; summary: string; coverImageUrl: string | null; coverImageAlt: string | null; isFeatured?: boolean; publishedAt: string | null };
+export type NewsSummary = { title: string; slug: string; summary: string; category: string; coverImageUrl: string | null; coverImageAlt: string | null; isFeatured?: boolean; publishedAt: string | null };
 export type NewsDetail = NewsSummary & { body: string; updatedAt: string };
 export type Department = { name: string; slug: string; acronym: string; managerName: string; phone: string; email: string; address: string; openingHours: string };
 export type TransparencyLink = { title: string; category: string; url: string; description: string; isExternal?: boolean };
@@ -66,7 +66,7 @@ async function request<T>(path: string, optional = false): Promise<T | null> {
 export async function getPortalHome() { return (await request<PortalHomeContent>("/api/v1/portal/home"))!; }
 export async function getServices(query?: string, area?: string) { const search = new URLSearchParams(); if (query) search.set("query", query); if (area) search.set("area", area); return (await request<ServiceSummary[]>(`/api/v1/services${search.size ? `?${search}` : ""}`))!; }
 export async function getService(slug: string) { return request<ServiceDetail>(`/api/v1/services/${encodeURIComponent(slug)}`, true); }
-export async function getNews() { return (await request<NewsSummary[]>("/api/v1/news"))!; }
+export async function getNews(category?: string) { const suffix = category && category !== "GERAL" ? `?category=${encodeURIComponent(category)}` : ""; return (await request<NewsSummary[]>(`/api/v1/news${suffix}`))!; }
 export async function getArticle(slug: string) { return request<NewsDetail>(`/api/v1/news/${encodeURIComponent(slug)}`, true); }
 export async function getDepartments() { return (await request<Department[]>("/api/v1/departments"))!; }
 export async function getDepartment(slug: string) { return request<Department>(`/api/v1/departments/${encodeURIComponent(slug)}`, true); }

@@ -29,14 +29,16 @@ export async function DocumentArchive({ search, category, subcategory, action = 
     {children}
     <section className="content-section document-archive">
       <div className="page-shell">
-        <form className={`archive-filters${subcategory ? " archive-filters--locked" : category ? " archive-filters--procurement" : ""}`} role="search" action={action}>
+        <form className={`archive-filters${subcategory ? " archive-filters--locked" : category ? " archive-filters--dedicated" : ""}`} role="search" action={action}>
           <div className="archive-query"><label htmlFor="document-q">Buscar no acervo</label><input id="document-q" name="q" type="search" defaultValue={search.q} placeholder="Título, número ou processo" /></div>
           {category
             ? <input type="hidden" name="category" value={category} />
-            : <div><label htmlFor="document-category">Categoria</label><select id="document-category" name="category" defaultValue={search.category ?? ""}><option value="">Todas</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option><option value="DOCUMENTOS">Documentos gerais</option></select></div>}
+            : <div><label htmlFor="document-category">Categoria</label><select id="document-category" name="category" defaultValue={search.category ?? ""}><option value="">Todas</option><option value="LICITACOES">Licitações</option><option value="LEGISLACAO">Legislação</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option><option value="DOCUMENTOS">Documentos gerais</option></select></div>}
           {subcategory
             ? <input type="hidden" name="subcategory" value={subcategory} />
-            : category === "LICITACOES" && <div><label htmlFor="document-subcategory">Etapa</label><select id="document-subcategory" name="subcategory" defaultValue={search.subcategory ?? ""}><option value="">Todas</option><option value="AVISOS">Avisos</option><option value="EDITAIS">Editais</option><option value="RESULTADOS">Resultados</option><option value="CONTRATOS">Contratos</option></select></div>}
+            : category === "LICITACOES"
+              ? <div><label htmlFor="document-subcategory">Etapa</label><select id="document-subcategory" name="subcategory" defaultValue={search.subcategory ?? ""}><option value="">Todas</option><option value="AVISOS">Avisos</option><option value="EDITAIS">Editais</option><option value="RESULTADOS">Resultados</option><option value="CONTRATOS">Contratos</option></select></div>
+              : category === "LEGISLACAO" && <div><label htmlFor="document-subcategory">Espécie normativa</label><select id="document-subcategory" name="subcategory" defaultValue={search.subcategory ?? ""}><option value="">Todas</option><option value="DECRETOS">Decretos</option><option value="LEIS_COMPLEMENTARES">Leis complementares</option><option value="LEIS_ORDINARIAS">Leis ordinárias</option><option value="PORTARIAS">Portarias</option><option value="RESOLUCOES">Resoluções</option><option value="INSTRUCOES_NORMATIVAS">Instruções normativas</option><option value="OUTRAS">Outras normas</option></select></div>}
           <div><label htmlFor="document-type">Tipo</label><select id="document-type" name="type" defaultValue={search.type ?? ""}><option value="">Todos</option><option value="PDF">PDF</option><option value="REPORT">Relatório</option><option value="EDITAL">Edital</option><option value="CONTRATO">Contrato</option><option value="OFFICE">Office</option></select></div>
           <div><label htmlFor="document-year">Ano</label><input id="document-year" name="year" inputMode="numeric" pattern="[0-9]{4}" defaultValue={search.year} placeholder="2025" /></div>
           <button type="submit">Pesquisar</button>

@@ -29,9 +29,9 @@ Famílias de grande volume observadas:
 
 ## Rotas novas confirmadas
 
-Rotas top-level existentes hoje na nova aplicação: `/`, `/acessibilidade`, `/acesso-a-informacao`, `/agenda`, `/buscar`, `/contatos`, `/dados-abertos`, `/diario-oficial`, `/legislacao`, `/licitacoes`, `/locais`, `/noticias`, `/ouvidoria`, `/privacidade`, `/secretarias`, `/servicos`, `/transparencia` e `/verificar`.
+Rotas top-level existentes hoje na nova aplicação: `/`, `/acessibilidade`, `/acesso-a-informacao`, `/agenda`, `/buscar`, `/conselhos`, `/contatos`, `/dados-abertos`, `/diario-oficial`, `/legislacao`, `/licitacoes`, `/locais`, `/noticias`, `/obras`, `/ouvidoria`, `/privacidade`, `/secretarias`, `/servicos`, `/transparencia` e `/verificar`.
 
-Importante: `/secretarias` é um diretório administrável, `/licitacoes` combina fontes operacionais declaradas com o acervo histórico filtrável, e `/legislacao` ainda é um acervo genérico. Não considerar subrotas inexistentes como entregues apenas porque o hub existe.
+Importante: `/secretarias` é um diretório administrável, `/licitacoes` combina fontes operacionais declaradas com o acervo histórico filtrável, e `/legislacao` usa o acervo documental governado com filtro por espécie normativa. A existência da rota não substitui a migração e validação do conteúdo oficial.
 
 ## Institucional e páginas históricas
 
@@ -39,52 +39,52 @@ Importante: `/secretarias` é um diretório administrável, `/licitacoes` combin
 |---|---|---|---|---|
 | `/` | `/` | PRESERVAR | EXISTE | Home canônica. |
 | `/index.php` | `/` | 301_APOS_DESTINO | EXISTE | Remover duplicidade da home. |
-| `/sobre.php` | `/municipio` | MIGRAR_CONTEUDO | IMPLEMENTAR | Página histórica observada; criar página institucional antes do 301. |
-| `/institucional/sobre` | `/municipio` | MIGRAR_CONTEUDO | IMPLEMENTAR | Mesma necessidade de página institucional. |
-| `/missao.php` | `/municipio/gestao` | MIGRAR_CONTEUDO | IMPLEMENTAR | Preservar missão/visão/gestão sem apontar para 404. |
-| `/institucional/missao` | `/municipio/gestao` | MIGRAR_CONTEUDO | IMPLEMENTAR | Destino ainda não existe. |
+| `/sobre.php` | `/municipio` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE | Página governada pelo CMS; validar conteúdo antes do 301. |
+| `/institucional/sobre` | `/municipio` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE | Mesma necessidade de validação editorial. |
+| `/missao.php` | `/municipio/gestao` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE | Preservar missão/visão/gestão no CMS antes do 301. |
+| `/institucional/missao` | `/municipio/gestao` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE | Destino administrável confirmado. |
 | `/pagina/97_Telefones-Uteis.html` | `/contatos` | 301_APOS_DESTINO | EXISTE | Validar que todos os telefones úteis foram migrados. |
-| `/pages/central-conselhos/` | `/conselhos` | MIGRAR_CONTEUDO | IMPLEMENTAR | Diretório/conteúdo de conselhos ainda não possui rota própria. |
+| `/pages/central-conselhos/` | `/conselhos` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE | Página própria governada pelo CMS; composição oficial ainda precisa ser migrada. |
 | `/pages/nova-lei-licitacoes/` | `/licitacoes` | MIGRAR_CONTEUDO | EXISTE | Conteúdo deve ser incorporado ao hub/acervo antes do redirect. |
 | `/pages/vpn/` | `/servicos/vtn-itr` | MIGRAR_CONTEUDO | DINAMICO | Confirmar serviço/slug antes do redirect. |
 
 ## Estrutura de governo e secretarias (`sec.php`)
 
-O legado usa IDs fixos para governo/órgãos. A nova aplicação ainda não possui `/secretarias/[slug]`; por isso os destinos detalhados abaixo são **planejados**, não redirects ativos.
+O legado usa IDs fixos para governo/órgãos. A nova aplicação possui `/secretarias/[slug]`, mas cada slug só responde quando o cadastro administrativo correspondente existe; por isso os redirects permanecem inativos até a validação dos registros.
 
 | URL antiga | Entidade observada | Destino planejado | Ação | Estado |
 |---|---|---|---|---|
-| `/sec.php?tipo=10` | Prefeito | `/governo/prefeito` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=12` | Vice-prefeito | `/governo/vice-prefeito` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=11` | Gabinete | `/secretarias/gabinete` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=13` | Procuradoria | `/secretarias/procuradoria` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=22` | Controladoria | `/secretarias/controladoria` | MIGRAR_CONTEUDO | IMPLEMENTAR |
+| `/sec.php?tipo=10` | Prefeito | `/governo/prefeito` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE |
+| `/sec.php?tipo=12` | Vice-prefeito | `/governo/vice-prefeito` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE |
+| `/sec.php?tipo=11` | Gabinete | `/secretarias/gabinete` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
+| `/sec.php?tipo=13` | Procuradoria | `/secretarias/procuradoria` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
+| `/sec.php?tipo=22` | Controladoria | `/secretarias/controladoria` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
 | `/sec.php?tipo=23` | Ouvidoria | `/ouvidoria` | MIGRAR_CONTEUDO | EXISTE |
-| `/sec.php?tipo=24` | Saúde | `/secretarias/saude` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=25` | Assistência Social / Habitação / Cidadania | `/secretarias/assistencia-social` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=26` | Obras / Infraestrutura / Produção / Meio Ambiente | `/secretarias/obras-infraestrutura` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=27` | Educação | `/secretarias/educacao` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=28` | Gestão Financeira / Administrativa | `/secretarias/administracao` | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/sec.php?tipo=29` | Esportes / Cultura / Turismo | `/secretarias/esportes-cultura-turismo` | MIGRAR_CONTEUDO | IMPLEMENTAR |
+| `/sec.php?tipo=24` | Saúde | `/secretarias/saude` | MIGRAR_CONTEUDO | ROTA DINÂMICA; VALIDAR CADASTRO |
+| `/sec.php?tipo=25` | Assistência Social / Habitação / Cidadania | `/secretarias/assistencia-social` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
+| `/sec.php?tipo=26` | Obras / Infraestrutura / Produção / Meio Ambiente | `/secretarias/obras-infraestrutura` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
+| `/sec.php?tipo=27` | Educação | `/secretarias/educacao` | MIGRAR_CONTEUDO | ROTA DINÂMICA; VALIDAR CADASTRO |
+| `/sec.php?tipo=28` | Gestão Financeira / Administrativa | `/secretarias/administracao` | MIGRAR_CONTEUDO | ROTA DINÂMICA; VALIDAR CADASTRO |
+| `/sec.php?tipo=29` | Esportes / Cultura / Turismo | `/secretarias/esportes-cultura-turismo` | MIGRAR_CONTEUDO | ROTA DINÂMICA; CADASTRO PENDENTE |
 | `/e-sic/sec.php?tipo={id}` | Duplicata da estrutura administrativa | mesmo destino de `sec.php?tipo={id}` | 301_APOS_DESTINO | DINAMICO |
 
 ## Notícias e informativos
 
-A página nova `/noticias` ainda **não possui filtro por categoria/secretaria**. As famílias de listagem devem ser inventariadas e só depois mapeadas para filtro ou coleção equivalente.
+A página nova `/noticias` possui filtro por área editorial e a API persiste essa classificação. As famílias de listagem continuam dependendo da migração item a item: uma notícia antiga só deve receber categoria após a correspondência ser confirmada.
 
 | URL antiga | Categoria observada | Destino planejado | Ação | Estado |
 |---|---|---|---|---|
 | `/noticias.php?page={n}&q=&tipo=all` | Feed histórico misto | `/noticias` + importação item-a-item | MIGRAR_CONTEUDO | EXISTE/DINAMICO |
-| `/noticias25.php?tipo=17` | Prefeitura | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=18` | Educação | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=19` | Infraestrutura | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=20` | Saúde | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=21` | Esporte | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=22` | Meio Ambiente | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=23` | Cultura | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=24` | Assistência Social | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=25` | AMHAD / Habitação | `/noticias` com filtro futuro | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
-| `/noticias25.php?tipo=26` | Covid-19 | `/noticias` com filtro futuro/arquivo | MIGRAR_CONTEUDO | IMPLEMENTAR FILTRO |
+| `/noticias25.php?tipo=17` | Prefeitura | `/noticias?category=PREFEITURA` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=18` | Educação | `/noticias?category=EDUCACAO` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=19` | Infraestrutura | `/noticias?category=INFRAESTRUTURA` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=20` | Saúde | `/noticias?category=SAUDE` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=21` | Esporte | `/noticias?category=ESPORTE` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=22` | Meio Ambiente | `/noticias?category=MEIO_AMBIENTE` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=23` | Cultura | `/noticias?category=CULTURA` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=24` | Assistência Social | `/noticias?category=ASSISTENCIA_SOCIAL` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=25` | AMHAD / Habitação | `/noticias?category=HABITACAO` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
+| `/noticias25.php?tipo=26` | Covid-19 | `/noticias?category=COVID_19` | MIGRAR_CONTEUDO | FILTRO EXISTE; MIGRAÇÃO PENDENTE |
 | `/exibe.php?id={id}` | Notícia individual | `/noticias/{slug}` | MIGRAR_CONTEUDO | DINAMICO |
 | `/exibe23.php?id={id}` | Notícia individual/duplicata | `/noticias/{slug}` | MIGRAR_CONTEUDO | DINAMICO |
 
@@ -123,8 +123,8 @@ Categorias observadas que precisam virar Dataset/categoria ou registro de migra�
 | URL antiga | Destino planejado | Ação | Estado |
 |---|---|---|---|
 | `/e-sic/` | `/acesso-a-informacao` | MIGRAR_CONTEUDO | EXISTE |
-| `/e-sic/estatisticas.php` | seção de estatísticas do e-SIC | MIGRAR_CONTEUDO | IMPLEMENTAR |
-| `/e-sic/perguntas-respostas.php` | seção de perguntas frequentes | MIGRAR_CONTEUDO | IMPLEMENTAR |
+| `/e-sic/estatisticas.php` | `/acesso-a-informacao/estatisticas` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE |
+| `/e-sic/perguntas-respostas.php` | `/acesso-a-informacao/perguntas` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE |
 | `/e-sic/cadastro.php` | `/acesso-a-informacao` / provider de solicitação | 301_APOS_DESTINO | EXISTE/INTEGRAÇÃO |
 | `/e-sic/contato.php` | `/acesso-a-informacao` ou `/contatos` | 301_APOS_DESTINO | EXISTE |
 | `/e-sic/diario.php?tipo=1` | `/diario-oficial` | 301_APOS_DESTINO | EXISTE |
@@ -149,7 +149,7 @@ A nova `/transparencia` é um hub e as categorias verificadas abaixo possuem pá
 | 14 | Recursos Federais | `/transparencia/recursos-federais` | EXISTE — ACERVO FILTRADO |
 | 15 | Estrutura Organizacional | `/secretarias` | EXISTE, validar conteúdo |
 | 16 | Relatório de Gestão SUS | `/transparencia/relatorios-gestao-sus` | EXISTE — ACERVO FILTRADO |
-| 17 | Decretos | `/legislacao` + classificação | EXISTE/IMPLEMENTAR FILTRO |
+| 17 | Decretos | `/legislacao?subcategory=DECRETOS` | EXISTE — ACERVO FILTRADO |
 | 18 | Receitas e Despesas COSIP | `/transparencia/cosip` | EXISTE — ACERVO FILTRADO |
 | 19 | Balanços | `/transparencia/balancos` | EXISTE — ACERVO FILTRADO |
 | 20 | UFID | `/transparencia/ufid` | EXISTE — ACERVO FILTRADO |
@@ -160,7 +160,7 @@ O tipo 5 não foi confirmado na auditoria manual; não inventar significado. O c
 
 ## Legislação do e-SIC
 
-Família: `/e-sic/legislacao.php?tipo={id}` → acervo legislativo novo. O frontend novo possui `/legislacao`, mas ainda não implementa filtros/tipos nem detalhe de documento.
+Família: `/e-sic/legislacao.php?tipo={id}` → acervo legislativo novo. O frontend novo possui `/legislacao` com busca, paginação, filtro por espécie, origem, hash e download governado. A associação exata entre cada `tipo` legado e a subcategoria nova continua dependente do inventário e da aprovação editorial.
 
 Taxonomias observadas no legado e que precisam de correspondência: Decretos; Leis Complementares; Leis Ordinárias; Lei Orgânica; Portarias; Editais; Resoluções; Plano de Cargos e Carreira; Estatuto do Servidor; Legislação Tributária; Lei Municipal; PPA; Regimento Interno; Plano Diretor Participativo; Recomendações do Ministério Público; Código de Ética do Servidor; Controladoria Geral do Município; Instrução Normativa; Plano Integrado de Saneamento/Resíduos; Requerimentos; LDO; Código Sanitário; Dados da Dengue; Conselho Municipal de Saúde; Coleta de Galhos; Organograma Institucional; Plano Municipal de Educação; Plano Municipal de Saúde; Manifestação de Interesse Social.
 
@@ -175,7 +175,7 @@ A associação exata `tipo -> taxonomia` deve ser produzida pelo crawl/inventár
 | `/e-sic/editais_licitacoes.php?tipo=1` | `/licitacoes?subcategory=EDITAIS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
 | `/e-sic/resultados_licitacoes.php?tipo=2` | `/licitacoes?subcategory=RESULTADOS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
 | `/e-sic/contratos.php?tipo=3` | `/licitacoes?subcategory=CONTRATOS` | MIGRAR_CONTEUDO | ACERVO EXISTE |
-| `/e-sic/calendario.php` | `/licitacoes` + calendário | MIGRAR_CONTEUDO | IMPLEMENTAR CALENDÁRIO |
+| `/e-sic/calendario.php` | `/licitacoes/calendario` | MIGRAR_CONTEUDO | ROTA EXISTE; CONTEÚDO PENDENTE |
 | `/licitacoes/contratos.php?tipo=3` | `/licitacoes?subcategory=CONTRATOS` | MIGRAR_CONTEUDO | ACERVO EXISTE; origem observada em 404 |
 | `/cadastro-fornecedor/` | fluxo/provider de fornecedores | MANTER_EXTERNO ou integrar | EXTERNO/DINAMICO |
 
@@ -221,9 +221,9 @@ Regra:
 
 | URL antiga | Destino planejado | Ação | Estado |
 |---|---|---|---|
-| `/GEO-OBRAS/` | área de obras/mapa ou integração equivalente | MANTER_EXTERNO / MIGRAR_METADADOS | IMPLEMENTAR |
+| `/GEO-OBRAS/` | `/obras` + integração equivalente validada | MANTER_EXTERNO / MIGRAR_METADADOS | ROTA EXISTE; INTEGRAÇÃO PENDENTE |
 
-Não redirecionar para `/obras` enquanto essa rota não existir.
+Não ativar o redirect para `/obras` enquanto a fonte externa, o conteúdo oficial e a responsabilidade pela atualização não forem validados. A rota existe e expõe estado vazio administrável, mas não simula mapa nem andamento de obra.
 
 ## Requisitos do crawler para fechar o inventário
 
@@ -255,7 +255,7 @@ O crawler não deve ser considerado completo se `truncatedByLimit=true`, se houv
 - [x] Inventariar avisos, editais, resultados e contratos.
 - [x] Inventariar PDFs/planilhas/downloads por hash.
 - [x] Separar integrações externas de conteúdo a migrar.
-- [ ] Implementar todos os destinos marcados `IMPLEMENTAR` antes de habilitar 301.
+- [x] Implementar todos os destinos previamente marcados `IMPLEMENTAR`; conteúdo e integrações pendentes continuam bloqueando os respectivos 301.
 - [ ] Validar que cada redirect de produção aponta para HTTP 200/rota válida.
 - [ ] Gerar evidência final de origem → destino → ação → razão → status.
 

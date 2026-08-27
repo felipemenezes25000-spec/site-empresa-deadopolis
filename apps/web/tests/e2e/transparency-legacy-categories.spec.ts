@@ -27,4 +27,14 @@ test("licitações combina fontes oficiais e acervo histórico filtrável", asyn
   await expect(page.getByRole("searchbox", { name: /buscar no acervo/i })).toBeVisible();
   await expect(page.getByRole("combobox", { name: /etapa/i })).toBeVisible();
   await expect(page.getByText(/documentos publicados/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /consultar calendário/i })).toHaveAttribute("href", "/licitacoes/calendario");
+});
+
+test("legislação possui acervo governado e filtro por espécie normativa", async ({ page }) => {
+  await page.goto("/legislacao");
+
+  await expect(page.getByRole("heading", { level: 1, name: /legislação municipal/i })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: /buscar no acervo/i })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: /espécie normativa/i })).toBeVisible();
+  await expect(page.getByText(/documentos publicados/i)).toBeVisible();
 });

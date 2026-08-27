@@ -32,13 +32,13 @@ public static class ContentEndpoints
 
     private static async Task<IResult> CreateAsync(NewsDraftRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
     {
-        var errors = Validate(request.Title, request.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt);
+        var errors = Validate(request.Title, request.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category);
         if (errors.Count > 0) return Results.ValidationProblem(errors);
         var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
         if (await database.NewsArticles.AnyAsync(article => article.Slug == normalizedSlug, cancellationToken)) return Results.Conflict(new { title = "Slug já utilizado", status = 409 });
         var actor = RequireActor(principal);
         var article = NewsArticle.Create(tenant.RequireMunicipalityId(), request.Title, request.Slug, actor);
-        article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.IsFeatured, actor, DateTimeOffset.UtcNow);
+        article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category, request.IsFeatured, actor, DateTimeOffset.UtcNow);
         database.NewsArticles.Add(article);
         AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
         AddAudit(database, tenant, actor, "content.news.created", article.Id, context.TraceIdentifier, new { article.Title, article.Slug, article.Version });
@@ -51,13 +51,13 @@ public static class ContentEndpoints
         var article = await database.NewsArticles.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (article is null) return Results.NotFound();
         if (article.Version != request.ExpectedVersion) return Results.Conflict(new { title = "Notícia alterada por outra pessoa", currentVersion = article.Version, status = 409 });
-        var errors = Validate(request.Title, article.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt);
+        var errors = Validate(request.Title, article.Slug, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category);
         if (errors.Count > 0) return Results.ValidationProblem(errors);
         var actor = RequireActor(principal);
         try
         {
             AddRevision(database, tenant.RequireMunicipalityId(), article, actor);
-            article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.IsFeatured, actor, DateTimeOffset.UtcNow);
+            article.UpdateDraft(request.Title, request.Summary, request.Body, request.CoverImageUrl, request.CoverImageAlt, request.Category, request.IsFeatured, actor, DateTimeOffset.UtcNow);
             AddAudit(database, tenant, actor, "content.news.updated", article.Id, context.TraceIdentifier, new { article.Version });
             await database.SaveChangesAsync(cancellationToken);
             return Results.Ok(ToResponse(article));
@@ -109,7 +109,7 @@ public static class ContentEndpoints
         return Results.Ok(revisions);
     }
 
-    private static Dictionary<string, string[]> Validate(string title, string slug, string summary, string body, string? coverImageUrl, string? coverImageAlt)
+    private static Dictionary<string, string[]> Validate(string title, string slug, string summary, string body, string? coverImageUrl, string? coverImageAlt, string? category)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 180) errors["title"] = ["Informe um título com até 180 caracteres."];
@@ -117,16 +117,17 @@ public static class ContentEndpoints
         if (string.IsNullOrWhiteSpace(summary) || summary.Trim().Length > 320) errors["summary"] = ["Informe uma linha fina com até 320 caracteres."];
         if (string.IsNullOrWhiteSpace(body) || body.Trim().Length > 100_000) errors["body"] = ["Informe o conteúdo da notícia."];
         if (!string.IsNullOrWhiteSpace(coverImageUrl) && string.IsNullOrWhiteSpace(coverImageAlt)) errors["coverImageAlt"] = ["Texto alternativo é obrigatório para imagem de capa."];
+        if (!string.IsNullOrWhiteSpace(category) && (category.Trim().Length > 80 || category.Trim().Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))) errors["category"] = ["Use somente letras sem acento, números e sublinhado na categoria."];
         return errors;
     }
 
     private static Guid RequireActor(ClaimsPrincipal principal) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) ? actor : throw new InvalidOperationException("Sessão sem identificador de usuário.");
     private static void AddAudit(ApplicationDbContext database, TenantContext tenant, Guid actor, string action, Guid id, string correlationId, object diff) => database.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), actor, action, "NewsArticle", id.ToString(), JsonSerializer.Serialize(diff), correlationId));
     private static void AddRevision(ApplicationDbContext database, Guid municipalityId, NewsArticle article, Guid actor) => database.ContentRevisions.Add(new ContentRevision(municipalityId, "NEWS", article.Id, article.Version, JsonSerializer.Serialize(ToResponse(article)), actor));
-    private static object ToResponse(NewsArticle article) => new { article.Id, article.Title, article.Slug, article.Summary, article.Body, article.CoverImageUrl, article.CoverImageAlt, Status = ToWireStatus(article.Status), article.Version, article.IsFeatured, article.UpdatedAt, article.ScheduledFor, article.PublishedAt };
+    private static object ToResponse(NewsArticle article) => new { article.Id, article.Title, article.Slug, article.Summary, article.Body, article.CoverImageUrl, article.CoverImageAlt, article.Category, Status = ToWireStatus(article.Status), article.Version, article.IsFeatured, article.UpdatedAt, article.ScheduledFor, article.PublishedAt };
     private static string ToWireStatus(EditorialStatus status) => status switch { EditorialStatus.Draft => "DRAFT", EditorialStatus.InReview => "IN_REVIEW", EditorialStatus.Approved => "APPROVED", EditorialStatus.Scheduled => "SCHEDULED", EditorialStatus.Published => "PUBLISHED", EditorialStatus.Archived => "ARCHIVED", _ => throw new ArgumentOutOfRangeException(nameof(status)) };
 
-    public sealed record NewsDraftRequest(string Title, string Slug, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, bool IsFeatured);
-    public sealed record NewsUpdateRequest(string Title, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, bool IsFeatured, int ExpectedVersion);
+    public sealed record NewsDraftRequest(string Title, string Slug, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, string? Category, bool IsFeatured);
+    public sealed record NewsUpdateRequest(string Title, string Summary, string Body, string? CoverImageUrl, string? CoverImageAlt, string? Category, bool IsFeatured, int ExpectedVersion);
     public sealed record ScheduleRequest(DateTimeOffset PublishAt);
 }

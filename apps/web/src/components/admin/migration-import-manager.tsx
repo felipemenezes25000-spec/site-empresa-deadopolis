@@ -314,7 +314,7 @@ export function MigrationImportManager() {
       <div className="admin-heading"><div><span className="kicker">LOTE SEGURO · {batchDocuments.length}/10</span><h3>Preparar documentos selecionados</h3><p>Processamento sequencial e auditável. O título vem do nome do arquivo; os documentos permanecem em rascunho e cada falha é exibida sem desfazer sucessos anteriores.</p></div><button type="button" className="action-button secondary" onClick={() => setBatchDocuments([])} disabled={busy}>Limpar lote</button></div>
       <div className="compact-list">{batchDocuments.map((item) => <div className="compact-item" key={item.id}><span><strong>{titleFromPath(item.normalizedPath)}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{item.normalizedPath}</small></span><button type="button" className="action-button secondary" onClick={() => toggleBatchDocument(item)} disabled={busy}>Remover</button></div>)}</div>
       <div className="editor-grid">
-        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
+        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="LEGISLACAO">Legislação</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
         <label className="field">Subcategoria comum<input name="subcategory" maxLength={120} placeholder="Ex.: EDITAL, CONTRATO, RREO" /></label>
         <label className="field">Órgão responsável<input name="responsibleDepartment" maxLength={180} /></label>
         <label className="field">Período de referência<input name="referencePeriod" maxLength={120} /></label>
@@ -338,7 +338,7 @@ export function MigrationImportManager() {
       <h3>Arquivar documento {selectedLegacy.normalizedPath}</h3>
       <p>O arquivo será revalidado e criado como <strong>DRAFT</strong>. A publicação exige aprovação do asset e ação administrativa explícita.</p>
       <div className="editor-grid">
-        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
+        <label className="field">Categoria<select name="category" required defaultValue="DOCUMENTOS"><option value="DOCUMENTOS">Documentos gerais</option><option value="LICITACOES">Licitações</option><option value="LEGISLACAO">Legislação</option><option value="PRESTACAO_CONTAS">Prestação de contas</option><option value="INFORMATIVOS">Informativos</option></select></label>
         <label className="field">Subcategoria<input name="subcategory" maxLength={120} placeholder="Ex.: RREO, EDITAL, CONTRATO" /></label>
       </div>
       <label className="field">Título<input name="title" required maxLength={220} defaultValue={titleFromPath(selectedLegacy.normalizedPath)} /></label>

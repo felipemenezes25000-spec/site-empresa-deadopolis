@@ -25,6 +25,7 @@ const content = {
       title: "Feira de serviços aproxima Prefeitura e moradores",
       slug: "feira-de-servicos",
       summary: "Atendimentos reunidos em um único local.",
+      category: "PREFEITURA",
       coverImageUrl: null,
       coverImageAlt: null,
       isFeatured: true,

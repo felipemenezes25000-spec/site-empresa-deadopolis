@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { NEWS_CATEGORIES } from "@/lib/news-categories";
 
-type Draft = { title: string; slug: string; summary: string; body: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
+type Draft = { title: string; slug: string; summary: string; body: string; category: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
 type Article = { id: string; status: string; version: number; verificationCode?: string };
-const EMPTY_DRAFT: Draft = { title: "", slug: "", summary: "", body: "", coverImageUrl: "", coverImageAlt: "", isFeatured: false };
+const EMPTY_DRAFT: Draft = { title: "", slug: "", summary: "", body: "", category: "GERAL", coverImageUrl: "", coverImageAlt: "", isFeatured: false };
 const STORAGE_KEY = "deodapolis.news.draft";
 
 export function NewsEditor() {
@@ -17,7 +18,7 @@ export function NewsEditor() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
     const timer = window.setTimeout(() => {
-      try { setDraft(JSON.parse(saved) as Draft); }
+      try { setDraft({ ...EMPTY_DRAFT, ...JSON.parse(saved) as Partial<Draft> }); }
       catch { localStorage.removeItem(STORAGE_KEY); }
     }, 0);
     return () => window.clearTimeout(timer);
@@ -56,6 +57,7 @@ export function NewsEditor() {
       <Field label="Título"><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={180} required /></Field>
       <Field label="Slug"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} maxLength={180} required /></Field>
       <Field label="Linha fina"><textarea value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} maxLength={320} rows={3} required /></Field>
+      <Field label="Área editorial"><select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{NEWS_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
       <Field label="Conteúdo"><textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} rows={12} required /></Field>
       <Field label="URL da imagem de capa (opcional)"><input value={draft.coverImageUrl} onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })} /></Field>
       <Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={(event) => setDraft({ ...draft, coverImageAlt: event.target.value })} /></Field>

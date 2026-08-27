@@ -133,7 +133,7 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(page.getByText(monitoredUrl, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: `Verificar ${monitoredUrl}` }).click();
   await expect(page.getByText("Verificação concluída: DEGRADED.")).toBeVisible();
-  await expect(page.getByText("DEGRADED", { exact: true })).toBeVisible();
+  await expect(page.getByText("DEGRADED", { exact: true }).first()).toBeVisible();
 
   const startedAt = new Date(Date.now() - 60_000).toISOString().slice(0, 16);
   const completedAt = new Date().toISOString().slice(0, 16);
