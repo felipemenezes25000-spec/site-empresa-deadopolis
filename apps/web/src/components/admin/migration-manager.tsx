@@ -81,6 +81,9 @@ export function MigrationManager() {
   const [inventory, setInventory] = useState<InventoryPage | null>(null);
   const [inventoryPage, setInventoryPage] = useState(1);
   const [inventoryQuery, setInventoryQuery] = useState("");
+  const [inventoryClassification, setInventoryClassification] = useState("");
+  const [inventoryState, setInventoryState] = useState("");
+  const [inventoryKind, setInventoryKind] = useState("");
   const [redirects, setRedirects] = useState<RedirectRule[]>([]);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
@@ -115,7 +118,7 @@ export function MigrationManager() {
     const controller = new AbortController();
     void Promise.all([
       fetch(`/api/v1/admin/migration/jobs/${selectedId}`, { signal: controller.signal }),
-      fetch(inventoryUrl(selectedId, inventoryPage, inventoryQuery), { signal: controller.signal }),
+      fetch(inventoryUrl(selectedId, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind), { signal: controller.signal }),
     ])
       .then(async ([detailResponse, inventoryResponse]) => {
         if (!detailResponse.ok) throw new Error(await errorText(detailResponse));
@@ -129,7 +132,7 @@ export function MigrationManager() {
         if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar o job.");
       });
     return () => controller.abort();
-  }, [selectedId, inventoryPage, inventoryQuery]);
+  }, [selectedId, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind]);
 
   const filteredJobs = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
@@ -150,7 +153,7 @@ export function MigrationManager() {
   async function refreshDetail(id: string) {
     const [detailResponse, inventoryResponse] = await Promise.all([
       fetch(`/api/v1/admin/migration/jobs/${id}`),
-      fetch(inventoryUrl(id, inventoryPage, inventoryQuery)),
+      fetch(inventoryUrl(id, inventoryPage, inventoryQuery, inventoryClassification, inventoryState, inventoryKind)),
     ]);
     if (!detailResponse.ok) throw new Error(await errorText(detailResponse));
     if (!inventoryResponse.ok) throw new Error(await errorText(inventoryResponse));
@@ -274,7 +277,7 @@ export function MigrationManager() {
     <div className="editor-grid" style={{ marginTop: 20 }}>
       <section className="admin-panel">
         <div className="resource-toolbar"><label>Buscar jobs <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Host, URL ou estado" /></label></div>
-        {loading ? <div className="empty-state" aria-busy="true"><h3>Carregando migrações…</h3></div> : filteredJobs.length === 0 ? <div className="empty-state"><h3>Nenhum job de migração</h3><p>Crie um dry-run para inventariar o portal legado sem importar ou alterar conteúdo.</p></div> : <div className="compact-list">{filteredJobs.map((job) => <button type="button" key={job.id} className="compact-item" onClick={() => { setSelectedId(job.id); setInventoryPage(1); setInventoryQuery(""); setDryRunSummary(null); }} style={{ width: "100%", cursor: "pointer" }}><span><strong>{job.allowedHost}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{job.sourceBaseUrl}</small><small style={{ display: "block" }}>{job.discoveredCount} descobertas · {job.failedCount} falhas</small></span><span className="status-pill">{stateLabel(job.state)}</span></button>)}</div>}
+        {loading ? <div className="empty-state" aria-busy="true"><h3>Carregando migrações…</h3></div> : filteredJobs.length === 0 ? <div className="empty-state"><h3>Nenhum job de migração</h3><p>Crie um dry-run para inventariar o portal legado sem importar ou alterar conteúdo.</p></div> : <div className="compact-list">{filteredJobs.map((job) => <button type="button" key={job.id} className="compact-item" onClick={() => { setSelectedId(job.id); setInventoryPage(1); setInventoryQuery(""); setInventoryClassification(""); setInventoryState(""); setInventoryKind(""); setDryRunSummary(null); }} style={{ width: "100%", cursor: "pointer" }}><span><strong>{job.allowedHost}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{job.sourceBaseUrl}</small><small style={{ display: "block" }}>{job.discoveredCount} descobertas · {job.failedCount} falhas</small></span><span className="status-pill">{stateLabel(job.state)}</span></button>)}</div>}
       </section>
 
       <form className="admin-panel editor-fields" onSubmit={createJob}>
@@ -290,7 +293,7 @@ export function MigrationManager() {
     {detail && selectedId === detail.job.id && <section className="admin-panel" style={{ marginTop: 20 }}>
       <div className="admin-heading">
         <div><span className="kicker">{stateLabel(detail.job.state)}</span><h2>Inventário de {detail.job.allowedHost}</h2><p style={{ overflowWrap: "anywhere" }}>{detail.job.sourceBaseUrl}</p></div>
-        <button type="button" className="action-button" onClick={() => void runDryRun()} disabled={busy || isRunning(detail.job.state)}>Executar dry-run seguro</button>
+        <div className="button-row"><a className="action-button secondary" href={`/api/v1/admin/migration/jobs/${detail.job.id}/report.csv`} download>Exportar relatório CSV</a><button type="button" className="action-button" onClick={() => void runDryRun()} disabled={busy || isRunning(detail.job.state)}>Executar dry-run seguro</button></div>
       </div>
 
       <div className="stat-grid">
@@ -307,6 +310,11 @@ export function MigrationManager() {
         <div>
           <h3>URLs inventariadas</h3>
           <label className="field">Buscar no inventário<input type="search" value={inventoryQuery} onChange={(event) => { setInventoryQuery(event.target.value); setInventoryPage(1); }} placeholder="Caminho ou URL de origem" /></label>
+          <div className="editor-grid">
+            <label className="field">Classificação<select value={inventoryClassification} onChange={(event) => { setInventoryClassification(event.target.value); setInventoryPage(1); }}><option value="">Todas</option><option value="MIGRATE">Migrar</option><option value="REDIRECT">Redirect</option><option value="IGNORE_WITH_REASON">Ignorar com motivo</option><option value="UNCLASSIFIED">Não classificada</option></select></label>
+            <label className="field">Estado<select value={inventoryState} onChange={(event) => { setInventoryState(event.target.value); setInventoryPage(1); }}><option value="">Todos</option><option value="DISCOVERED">Descoberta</option><option value="MAPPED">Mapeada</option><option value="FAILED">Falha</option></select></label>
+            <label className="field">Tipo<select value={inventoryKind} onChange={(event) => { setInventoryKind(event.target.value); setInventoryPage(1); }}><option value="">Todos</option><option value="HTML">HTML</option><option value="DOCUMENT">Documentos</option><option value="IMAGE">Imagens</option><option value="FAILURE">Falhas</option></select></label>
+          </div>
           {inventory?.items.length === 0 ? <div className="empty-state"><p>Execute o dry-run ou ajuste a busca para produzir resultados.</p></div> : <div className="compact-list">{inventory?.items.map((url) => <div className="compact-item" key={url.id}><div style={{ minWidth: 0 }}><strong>{url.normalizedPath}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{url.url}</small><small style={{ display: "block" }}>{url.classification} · profundidade {url.depth}{url.contentType ? ` · ${url.contentType}` : ""}{url.contentLength != null ? ` · ${formatBytes(url.contentLength)}` : ""}</small>{url.sha256 && <small style={{ display: "block" }}>SHA-256 <code>{url.sha256.slice(0, 20)}…</code></small>}{url.failureReason && <small style={{ display: "block" }}>Bloqueio/falha: {url.failureReason}</small>}</div><span className="status-pill">{url.state}</span></div>)}</div>}
           {inventory && inventory.totalPages > 1 && <div className="button-row" style={{ marginTop: 12 }}><button type="button" className="action-button secondary" disabled={busy || inventory.page <= 1} onClick={() => setInventoryPage((page) => Math.max(1, page - 1))}>Anterior</button><span>Página {inventory.page} de {inventory.totalPages} · {inventory.total} resultado(s)</span><button type="button" className="action-button secondary" disabled={busy || inventory.page >= inventory.totalPages} onClick={() => setInventoryPage((page) => page + 1)}>Próxima</button></div>}
         </div>
@@ -383,8 +391,11 @@ async function errorText(response: Response) {
   return body?.detail ?? body?.title ?? (validation || `Erro ${response.status}`);
 }
 
-function inventoryUrl(jobId: string, page: number, query: string) {
+function inventoryUrl(jobId: string, page: number, query: string, classification: string, state: string, kind: string) {
   const parameters = new URLSearchParams({ page: String(page), pageSize: "100" });
   if (query.trim()) parameters.set("q", query.trim());
+  if (classification) parameters.set("classification", classification);
+  if (state) parameters.set("state", state);
+  if (kind) parameters.set("kind", kind);
   return `/api/v1/admin/migration/jobs/${jobId}/urls?${parameters.toString()}`;
 }

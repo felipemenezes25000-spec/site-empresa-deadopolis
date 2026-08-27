@@ -60,6 +60,47 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task InventoryReportExportsEveryUrlWithoutSpreadsheetFormulaInjection()
+    {
+        await _factory.SeedAsync();
+        var jobId = await SeedInventoryAsync();
+        await AddFormulaLikeFailureAsync(jobId);
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        await LoginAsync(client);
+
+        using var response = await client.GetAsync(new Uri($"/api/v1/admin/migration/jobs/{jobId}/report.csv", UriKind.Relative));
+        var csv = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(622, csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Length);
+        Assert.Contains("arquivo-0619.pdf", csv, StringComparison.Ordinal);
+        Assert.Contains("'=HYPERLINK", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain(",=HYPERLINK", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InventoryCanIsolateFailuresForOperationalReview()
+    {
+        await _factory.SeedAsync();
+        var jobId = await SeedInventoryAsync(3);
+        await AddFormulaLikeFailureAsync(jobId);
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        await LoginAsync(client);
+
+        var payload = await client.GetFromJsonAsync<InventoryPage>(new Uri(
+            $"/api/v1/admin/migration/jobs/{jobId}/urls?page=1&pageSize=100&kind=FAILURE",
+            UriKind.Relative));
+
+        Assert.NotNull(payload);
+        Assert.Equal(1, payload.Total);
+        Assert.Single(payload.Items);
+        Assert.Equal("FAILED", payload.Items[0].State);
+    }
+
     private async Task<Guid> SeedInventoryAsync(int count = 620)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -80,6 +121,23 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
         }
         await database.SaveChangesAsync();
         return job.Id;
+    }
+
+    private async Task AddFormulaLikeFailureAsync(Guid jobId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var tenant = scope.ServiceProvider.GetRequiredService<TenantContext>();
+        tenant.SetMunicipality(MunicipalApiFactory.MunicipalityId, "deodapolis");
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var item = new LegacyUrl(
+            MunicipalApiFactory.MunicipalityId,
+            jobId,
+            "https://legacy.example.test/falha.pdf",
+            "/falha.pdf",
+            1);
+        item.Fail("=HYPERLINK(\"https://attacker.example\")");
+        database.LegacyUrls.Add(item);
+        await database.SaveChangesAsync();
     }
 
     private static async Task LoginAsync(HttpClient client)
