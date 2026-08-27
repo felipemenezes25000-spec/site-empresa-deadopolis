@@ -35,10 +35,10 @@ jobs:
           fi
       - name: Generate EF migration preview
         if: steps.schema.outputs.pending == 'true'
-        run: dotnet ef migrations add MunicipalDepthPreview --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations --configuration Release --no-build
+        run: dotnet ef migrations add MailArchiveInspectionEvidence --project apps/api --startup-project apps/api --output-dir Infrastructure/Persistence/Migrations --configuration Release --no-build
       - uses: actions/upload-artifact@v6
         if: steps.schema.outputs.pending == 'true'
         with:
-          name: municipal-depth-migration
+          name: mail-archive-inspection-migration
           path: apps/api/Infrastructure/Persistence/Migrations
           if-no-files-found: error
