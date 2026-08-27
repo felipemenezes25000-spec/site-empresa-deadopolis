@@ -10,9 +10,39 @@ namespace MunicipalPlatform.Api.Modules.Migration;
 
 public static class MigrationJobEndpoints
 {
-    public static IEndpointRouteBuilder MapMigrationJobEndpoints(this IEndpointRouteBuilder endpoints) { var group = endpoints.MapGroup("/api/v1/admin/migration/jobs").WithTags("Admin", "Migration").RequireAuthorization(p => p.RequireClaim("capability", "migration.manage")); group.MapGet("/", ListAsync); group.MapGet("/{id:guid}", GetAsync); group.MapPost("/", CreateAsync); group.MapPost("/{id:guid}/begin-dry-run", BeginDryRunAsync); group.MapPost("/{id:guid}/evidence", AddEvidenceAsync); return endpoints; }
+    public static IEndpointRouteBuilder MapMigrationJobEndpoints(this IEndpointRouteBuilder endpoints) { var group = endpoints.MapGroup("/api/v1/admin/migration/jobs").WithTags("Admin", "Migration").RequireAuthorization(p => p.RequireClaim("capability", "migration.manage")); group.MapGet("/", ListAsync); group.MapGet("/{id:guid}", GetAsync); group.MapGet("/{id:guid}/urls", ListUrlsAsync); group.MapPost("/", CreateAsync); group.MapPost("/{id:guid}/begin-dry-run", BeginDryRunAsync); group.MapPost("/{id:guid}/evidence", AddEvidenceAsync); return endpoints; }
     private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.MigrationJobs.AsNoTracking().OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct));
-    private static async Task<IResult> GetAsync(Guid id, ApplicationDbContext db, CancellationToken ct) { var job = await db.MigrationJobs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct); if (job is null) return Results.NotFound(); var urls = await db.LegacyUrls.AsNoTracking().Where(x => x.MigrationJobId == id).OrderBy(x => x.DiscoveredAt).Take(500).ToListAsync(ct); var evidence = await db.MigrationEvidences.AsNoTracking().Where(x => x.MigrationJobId == id).OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct); return Results.Ok(new { job, urls, evidence }); }
+    private static async Task<IResult> GetAsync(Guid id, ApplicationDbContext db, CancellationToken ct) { var job = await db.MigrationJobs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct); if (job is null) return Results.NotFound(); var urlCount = await db.LegacyUrls.AsNoTracking().CountAsync(x => x.MigrationJobId == id, ct); var urls = await db.LegacyUrls.AsNoTracking().Where(x => x.MigrationJobId == id).OrderBy(x => x.DiscoveredAt).Take(500).ToListAsync(ct); var evidence = await db.MigrationEvidences.AsNoTracking().Where(x => x.MigrationJobId == id).OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct); return Results.Ok(new { job, urlCount, urls, evidence }); }
+    private static async Task<IResult> ListUrlsAsync(Guid id, int? page, int? pageSize, string? q, string? classification, string? state, ApplicationDbContext db, CancellationToken ct)
+    {
+        var selectedPage = page ?? 1;
+        var selectedPageSize = pageSize ?? 100;
+        if (selectedPage < 1 || selectedPageSize is < 1 or > 500)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["pagination"] = ["Page deve ser maior que zero e pageSize deve estar entre 1 e 500."] });
+        if (!await db.MigrationJobs.AsNoTracking().AnyAsync(x => x.Id == id, ct)) return Results.NotFound();
+
+        var query = db.LegacyUrls.AsNoTracking().Where(x => x.MigrationJobId == id);
+        var search = q?.Trim();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            query = string.Equals(db.Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal)
+                ? query.Where(x => x.Url.Contains(search) || x.NormalizedPath.Contains(search))
+                : query.Where(x => EF.Functions.ILike(x.Url, pattern) || EF.Functions.ILike(x.NormalizedPath, pattern));
+        }
+        var selectedClassification = classification?.Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(selectedClassification))
+            query = query.Where(x => x.Classification == selectedClassification);
+        var selectedState = state?.Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(selectedState))
+            query = query.Where(x => x.State == selectedState);
+
+        var total = await query.CountAsync(ct);
+        var items = await query.OrderBy(x => x.NormalizedPath).ThenBy(x => x.Id)
+            .Skip((selectedPage - 1) * selectedPageSize).Take(selectedPageSize).ToListAsync(ct);
+        var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)selectedPageSize);
+        return Results.Ok(new { page = selectedPage, pageSize = selectedPageSize, total, totalPages, items });
+    }
     private static async Task<IResult> CreateAsync(CreateMigrationJobRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { if (!Uri.TryCreate(request.SourceBaseUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return Results.ValidationProblem(new Dictionary<string, string[]> { { "sourceBaseUrl", ["URL HTTP/HTTPS absoluta obrigatória."] } }); var allowed = request.AllowedHost.Trim().ToLowerInvariant(); if (!string.Equals(uri.Host, allowed, StringComparison.OrdinalIgnoreCase)) return Results.ValidationProblem(new Dictionary<string, string[]> { { "allowedHost", ["AllowedHost deve ser exatamente o host da URL de origem."] } }); if (request.MaxDepth is < 0 or > 10 || request.MaxPages is < 1 or > 20000) return Results.ValidationProblem(new Dictionary<string, string[]> { { "limits", ["MaxDepth 0-10 e MaxPages 1-20000."] } }); var job = new MigrationJob(tenant.RequireMunicipalityId(), uri.ToString(), allowed, request.MaxDepth, request.MaxPages); db.MigrationJobs.Add(job); AddAudit(db, tenant, principal, context, "migration.job.created", job.Id, new { job.SourceBaseUrl, job.AllowedHost, job.MaxDepth, job.MaxPages }); await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/migration/jobs/{job.Id}", job); }
     private static async Task<IResult> BeginDryRunAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { var job = await db.MigrationJobs.SingleOrDefaultAsync(x => x.Id == id, ct); if (job is null) return Results.NotFound(); if (job.State is MigrationJobState.Importing or MigrationJobState.Validating) return Results.Conflict(new { title = "Job já está em execução." }); job.Transition(MigrationJobState.DryRun, job.DiscoveredCount, job.ImportedCount, job.FailedCount); AddAudit(db, tenant, principal, context, "migration.dryrun.started", job.Id, new { job.State, job.DiscoveredCount }); await db.SaveChangesAsync(ct); return Results.Accepted($"/api/v1/admin/migration/jobs/{job.Id}", new { job, detail = "Estado de dry-run persistido. O crawler/importer só deve operar no host explicitamente autorizado." }); }
     private static async Task<IResult> AddEvidenceAsync(Guid id, EvidenceRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct) { if (!await db.MigrationJobs.AnyAsync(x => x.Id == id, ct)) return Results.NotFound(); try { using var _ = JsonDocument.Parse(request.PayloadJson); } catch (JsonException) { return Results.ValidationProblem(new Dictionary<string, string[]> { { "payloadJson", ["JSON inválido."] } }); } var evidence = new MigrationEvidence(tenant.RequireMunicipalityId(), id, request.Kind, request.Reference, request.PayloadJson); db.MigrationEvidences.Add(evidence); AddAudit(db, tenant, principal, context, "migration.evidence.added", evidence.Id, new { id, evidence.Kind, evidence.Reference }); await db.SaveChangesAsync(ct); return Results.Created($"/api/v1/admin/migration/jobs/{id}/evidence/{evidence.Id}", evidence); }

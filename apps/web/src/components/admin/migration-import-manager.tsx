@@ -21,7 +21,15 @@ type LegacyUrl = {
   state: string;
 };
 
-type JobDetail = { job: MigrationJob; urls: LegacyUrl[] };
+type JobDetail = { job: MigrationJob };
+
+type InventoryPage = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  items: LegacyUrl[];
+};
 
 type ImportedContent = {
   id: string;
@@ -50,6 +58,9 @@ export function MigrationImportManager() {
   const [jobs, setJobs] = useState<MigrationJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [detail, setDetail] = useState<JobDetail | null>(null);
+  const [inventory, setInventory] = useState<InventoryPage | null>(null);
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryQuery, setInventoryQuery] = useState("");
   const [imports, setImports] = useState<ImportedContent[]>([]);
   const [selectedLegacyId, setSelectedLegacyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,30 +89,33 @@ export function MigrationImportManager() {
     void Promise.all([
       fetch(`/api/v1/admin/migration/jobs/${selectedJobId}`, { signal: controller.signal }),
       fetch(`/api/v1/admin/migration/jobs/${selectedJobId}/imports`, { signal: controller.signal }),
+      fetch(inventoryUrl(selectedJobId, inventoryPage, inventoryQuery), { signal: controller.signal }),
     ])
-      .then(async ([detailResponse, importsResponse]) => {
+      .then(async ([detailResponse, importsResponse, inventoryResponse]) => {
         if (!detailResponse.ok) throw new Error(await errorText(detailResponse));
         if (!importsResponse.ok) throw new Error(await errorText(importsResponse));
+        if (!inventoryResponse.ok) throw new Error(await errorText(inventoryResponse));
         if (controller.signal.aborted) return;
         setDetail(await detailResponse.json() as JobDetail);
         setImports(await importsResponse.json() as ImportedContent[]);
+        setInventory(await inventoryResponse.json() as InventoryPage);
       })
       .catch((error) => {
         if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar candidatos de importação.");
       });
     return () => controller.abort();
-  }, [selectedJobId]);
+  }, [selectedJobId, inventoryPage, inventoryQuery]);
 
   const candidates = useMemo(() => {
-    if (!detail) return [];
+    if (!inventory) return [];
     const importedIds = new Set(imports.map((item) => item.legacyUrlId));
-    return detail.urls.filter((url) =>
+    return inventory.items.filter((url) =>
       url.state.toLocaleUpperCase("en-US") === "MAPPED"
       && url.classification.toLocaleUpperCase("en-US") === "MIGRATE"
       && (isHtml(url.contentType) || isDocument(url))
       && Boolean(url.sha256)
       && !importedIds.has(url.id));
-  }, [detail, imports]);
+  }, [inventory, imports]);
 
   const selectedLegacy = candidates.find((item) => item.id === selectedLegacyId) ?? null;
 
@@ -122,14 +136,17 @@ export function MigrationImportManager() {
   }
 
   async function refreshSelected(jobId: string) {
-    const [detailResponse, importsResponse] = await Promise.all([
+    const [detailResponse, importsResponse, inventoryResponse] = await Promise.all([
       fetch(`/api/v1/admin/migration/jobs/${jobId}`),
       fetch(`/api/v1/admin/migration/jobs/${jobId}/imports`),
+      fetch(inventoryUrl(jobId, inventoryPage, inventoryQuery)),
     ]);
     if (!detailResponse.ok) throw new Error(await errorText(detailResponse));
     if (!importsResponse.ok) throw new Error(await errorText(importsResponse));
+    if (!inventoryResponse.ok) throw new Error(await errorText(inventoryResponse));
     setDetail(await detailResponse.json() as JobDetail);
     setImports(await importsResponse.json() as ImportedContent[]);
+    setInventory(await inventoryResponse.json() as InventoryPage);
   }
 
   async function importPage(event: FormEvent<HTMLFormElement>) {
@@ -217,7 +234,7 @@ export function MigrationImportManager() {
     </div>
 
     {loading ? <div className="empty-state" aria-busy="true"><p>Carregando inventários…</p></div> : jobs.length === 0 ? <div className="empty-state"><h3>Nenhum inventário disponível</h3><p>Execute um dry-run acima antes de preparar conteúdo.</p></div> : <div className="compact-list" style={{ marginTop: 16 }}>
-      {jobs.map((job) => <button key={job.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedJobId(job.id); setSelectedLegacyId(null); setMessage(""); }}>
+      {jobs.map((job) => <button key={job.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedJobId(job.id); setSelectedLegacyId(null); setInventoryPage(1); setInventoryQuery(""); setMessage(""); }}>
         <span><strong>{job.allowedHost}</strong><small style={{ display: "block" }}>{job.discoveredCount} descobertas · {job.importedCount} importadas · {job.failedCount} falhas</small></span>
         <span className="status-pill">{String(job.state)}</span>
       </button>)}
@@ -225,13 +242,15 @@ export function MigrationImportManager() {
 
     {detail && detail.job.id === selectedJobId && <div className="editor-grid" style={{ marginTop: 20 }}>
       <div>
-        <h3>Conteúdos aptos</h3>
+        <div className="admin-heading"><div><h3>Conteúdos aptos</h3><p>{inventory?.total ?? 0} URL(s) mapeada(s) para migração.</p></div></div>
+        <label className="field">Buscar no inventário<input type="search" value={inventoryQuery} onChange={(event) => { setInventoryQuery(event.target.value); setInventoryPage(1); }} placeholder="Caminho ou URL de origem" /></label>
         {candidates.length === 0 ? <div className="empty-state"><p>Nenhum HTML ou documento mapeado e íntegro está pendente de importação neste job.</p></div> : <div className="compact-list">
           {candidates.map((url) => <button key={url.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedLegacyId(url.id); setMessage(""); }}>
             <span style={{ minWidth: 0 }}><strong>{url.normalizedPath}</strong><small style={{ display: "block", overflowWrap: "anywhere" }}>{url.url}</small><small style={{ display: "block" }}>{url.contentType} · SHA-256 {url.sha256?.slice(0, 16)}…</small></span>
             <span className="status-pill">{isHtml(url.contentType) ? "Página" : "Documento"}</span>
           </button>)}
         </div>}
+        {inventory && inventory.totalPages > 1 && <div className="button-row" style={{ marginTop: 12 }}><button type="button" className="action-button secondary" disabled={busy || inventory.page <= 1} onClick={() => setInventoryPage((page) => Math.max(1, page - 1))}>Anterior</button><span>Página {inventory.page} de {inventory.totalPages}</span><button type="button" className="action-button secondary" disabled={busy || inventory.page >= inventory.totalPages} onClick={() => setInventoryPage((page) => page + 1)}>Próxima</button></div>}
       </div>
 
       <div>
@@ -324,4 +343,15 @@ async function errorText(response: Response) {
   } catch {
     return `Falha HTTP ${response.status}`;
   }
+}
+
+function inventoryUrl(jobId: string, page: number, query: string) {
+  const parameters = new URLSearchParams({
+    page: String(page),
+    pageSize: "100",
+    classification: "MIGRATE",
+    state: "MAPPED",
+  });
+  if (query.trim()) parameters.set("q", query.trim());
+  return `/api/v1/admin/migration/jobs/${jobId}/urls?${parameters.toString()}`;
 }
