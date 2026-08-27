@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   generate-migration-preview:
@@ -41,13 +41,3 @@ jobs:
           name: municipal-depth-migration
           path: apps/api/Infrastructure/Persistence/Migrations
           if-no-files-found: error
-      - name: Commit generated migration to main
-        if: steps.schema.outputs.pending == 'true'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/api/Infrastructure/Persistence/Migrations
-          git diff --cached --quiet && exit 0
-          git commit -m "chore(db): persist generated media presentation migration"
-          git push origin HEAD:main
