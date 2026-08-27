@@ -3,6 +3,7 @@ using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Content.Domain;
 using MunicipalPlatform.Api.Modules.Operations.Domain;
 using MunicipalPlatform.Api.Modules.Search.Domain;
+using MunicipalPlatform.Api.Modules.Transparency.Domain;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
 namespace MunicipalPlatform.Api.Modules.Portal;
@@ -311,30 +312,155 @@ public static class PortalEndpoints
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Digite ao menos dois caracteres."] });
         }
 
-        var normalized = SearchNormalizer.Normalize(q);
-        var services = await database.Services.AsNoTracking()
-            .Where(item => item.Status == "PUBLISHED")
-            .OrderBy(item => item.Name)
-            .Take(500)
-            .Select(item => new { item.Name, item.Slug, item.Description, item.Area })
-            .ToListAsync(cancellationToken);
-        var news = await database.NewsArticles.AsNoTracking()
-            .Where(item => item.Status == EditorialStatus.Published)
-            .OrderByDescending(item => item.PublishedAt)
-            .Take(500)
-            .Select(item => new { item.Title, item.Slug, item.Summary, item.PublishedAt })
-            .ToListAsync(cancellationToken);
+        var requestedQuery = q.Trim();
+        var normalizedQuery = SearchNormalizer.Normalize(requestedQuery);
+        var databaseTerm = $"%{normalizedQuery}%";
+        var useInMemoryPredicates = string.Equals(
+            database.Database.ProviderName,
+            "Microsoft.EntityFrameworkCore.InMemory",
+            StringComparison.Ordinal);
 
-        var serviceResults = services
-            .Where(item => SearchNormalizer.Normalize($"{item.Name} {item.Description} {item.Area}").Contains(normalized, StringComparison.Ordinal))
-            .Take(20)
-            .Select(item => new { type = "SERVICE", title = item.Name, description = item.Description, url = $"/servicos/{item.Slug}" });
-        var newsResults = news
-            .Where(item => SearchNormalizer.Normalize($"{item.Title} {item.Summary}").Contains(normalized, StringComparison.Ordinal))
-            .Take(20)
-            .Select(item => new { type = "NEWS", title = item.Title, description = item.Summary, url = $"/noticias/{item.Slug}" });
-        return Results.Ok(new { query = q.Trim(), results = serviceResults.Concat(newsResults) });
+        var serviceQuery = database.Services.AsNoTracking().Where(item => item.Status == "PUBLISHED");
+        serviceQuery = useInMemoryPredicates
+            ? serviceQuery.Where(item => SearchNormalizer.Normalize(item.Name).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Description).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Area).Contains(normalizedQuery, StringComparison.Ordinal))
+            : serviceQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Name), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Description), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Area), databaseTerm));
+        var services = await serviceQuery
+            .OrderBy(item => item.Name)
+            .Take(10)
+            .Select(item => new PortalSearchResult("SERVICE", item.Name, item.Description, $"/servicos/{item.Slug}"))
+            .ToListAsync(cancellationToken);
+        var newsQuery = database.NewsArticles.AsNoTracking().Where(item => item.Status == EditorialStatus.Published);
+        newsQuery = useInMemoryPredicates
+            ? newsQuery.Where(item => SearchNormalizer.Normalize(item.Title).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Summary).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Body).Contains(normalizedQuery, StringComparison.Ordinal))
+            : newsQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Title), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Summary), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Body), databaseTerm));
+        var news = await newsQuery
+            .OrderByDescending(item => item.PublishedAt)
+            .Take(10)
+            .Select(item => new PortalSearchResult("NEWS", item.Title, item.Summary, $"/noticias/{item.Slug}"))
+            .ToListAsync(cancellationToken);
+        var departmentQuery = database.Departments.AsNoTracking().Where(item => item.IsActive);
+        departmentQuery = useInMemoryPredicates
+            ? departmentQuery.Where(item => SearchNormalizer.Normalize(item.Name).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Acronym).Contains(normalizedQuery, StringComparison.Ordinal))
+            : departmentQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Name), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Acronym), databaseTerm));
+        var departments = await departmentQuery
+            .OrderBy(item => item.DisplayOrder)
+            .ThenBy(item => item.Name)
+            .Take(10)
+            .Select(item => new PortalSearchResult("DEPARTMENT", item.Name, string.IsNullOrWhiteSpace(item.Acronym) ? "Secretaria municipal" : item.Acronym, $"/secretarias/{item.Slug}"))
+            .ToListAsync(cancellationToken);
+        var datasetQuery = database.Datasets.AsNoTracking().Where(item => item.Status == DatasetStatus.Published);
+        datasetQuery = useInMemoryPredicates
+            ? datasetQuery.Where(item => SearchNormalizer.Normalize(item.Title).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Description).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Category).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.ResponsibleDepartment).Contains(normalizedQuery, StringComparison.Ordinal))
+            : datasetQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Title), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Description), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Category), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.ResponsibleDepartment), databaseTerm));
+        var datasets = await datasetQuery
+            .OrderByDescending(item => item.LastUpdatedAt)
+            .Take(10)
+            .Select(item => new PortalSearchResult("DATASET", item.Title, item.Description, $"/dados-abertos/{item.Slug}"))
+            .ToListAsync(cancellationToken);
+        var documentQuery = database.PublicDocuments.AsNoTracking().Where(item => item.Status == "PUBLISHED");
+        documentQuery = useInMemoryPredicates
+            ? documentQuery.Where(item => SearchNormalizer.Normalize(item.Title).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Description).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.DocumentNumber).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.ProcessNumber).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.ReferencePeriod).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.ResponsibleDepartment).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Category).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Subcategory).Contains(normalizedQuery, StringComparison.Ordinal))
+            : documentQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Title), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Description), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.DocumentNumber), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.ProcessNumber), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.ReferencePeriod), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.ResponsibleDepartment), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Category), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Subcategory), databaseTerm));
+        var documents = await documentQuery
+            .OrderByDescending(item => item.PublicationDate)
+            .ThenBy(item => item.Title)
+            .Take(10)
+            .Select(item => new PortalSearchResult(
+                "DOCUMENT",
+                item.Title,
+                string.IsNullOrWhiteSpace(item.Description) ? item.Category : item.Description,
+                $"/api/v1/public/documents/{item.Id}/download"))
+            .ToListAsync(cancellationToken);
+        var pageQuery = database.PortalResources.AsNoTracking().Where(item => item.Status == "PUBLISHED" && item.Kind == "PAGE" && PublicPageSlugs.Contains(item.Slug));
+        pageQuery = useInMemoryPredicates
+            ? pageQuery.Where(item => SearchNormalizer.Normalize(item.Title).Contains(normalizedQuery, StringComparison.Ordinal)
+                || SearchNormalizer.Normalize(item.Summary).Contains(normalizedQuery, StringComparison.Ordinal))
+            : pageQuery.Where(item => EF.Functions.ILike(EF.Functions.Unaccent(item.Title), databaseTerm)
+                || EF.Functions.ILike(EF.Functions.Unaccent(item.Summary), databaseTerm));
+        var pageCandidates = await pageQuery
+            .OrderBy(item => item.DisplayOrder)
+            .ThenBy(item => item.Title)
+            .Take(10)
+            .Select(item => new { item.Slug, item.Title, item.Summary })
+            .ToListAsync(cancellationToken);
+        var pages = pageCandidates
+            .Select(item => new PortalSearchResult("PAGE", item.Title, item.Summary, PublicPageUrl(item.Slug)))
+            .Where(item => item.Url is not null)
+            .Select(item => item with { Url = item.Url! });
+
+        var results = services
+            .Concat(news)
+            .Concat(departments)
+            .Concat(pages)
+            .Concat(datasets)
+            .Concat(documents)
+            .Take(60)
+            .ToArray();
+        return Results.Ok(new { query = requestedQuery, results });
     }
+
+    private static string? PublicPageUrl(string slug) => slug switch
+    {
+        "acesso-a-informacao" => "/acesso-a-informacao",
+        "calendario-licitacoes" => "/licitacoes/calendario",
+        "conselhos" => "/conselhos",
+        "esic-estatisticas" => "/acesso-a-informacao/estatisticas",
+        "esic-perguntas-frequentes" => "/acesso-a-informacao/perguntas",
+        "gestao" => "/municipio/gestao",
+        "municipio" => "/municipio",
+        "obras" => "/obras",
+        "prefeito" => "/governo/prefeito",
+        "privacidade" => "/privacidade",
+        "vice-prefeito" => "/governo/vice-prefeito",
+        _ => null
+    };
+
+    private static readonly string[] PublicPageSlugs =
+    [
+        "acesso-a-informacao",
+        "calendario-licitacoes",
+        "conselhos",
+        "esic-estatisticas",
+        "esic-perguntas-frequentes",
+        "gestao",
+        "municipio",
+        "obras",
+        "prefeito",
+        "privacidade",
+        "vice-prefeito"
+    ];
+
+    private sealed record PortalSearchResult(string Type, string Title, string Description, string? Url);
 
     private static async Task<IResult> GetGazetteAsync(ApplicationDbContext database, CancellationToken cancellationToken)
     {

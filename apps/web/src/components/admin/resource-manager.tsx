@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { ResourcePayloadFields, serializeResourcePayload } from "./resource-payload-fields";
 
 type Resource = {
   id: string;
@@ -77,12 +78,19 @@ export function ResourceManager() {
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    let payloadJson: string;
+    try {
+      payloadJson = serializeResourcePayload(kind, form);
+    } catch {
+      setMessage("Os detalhes estruturados precisam ser um objeto JSON válido.");
+      return;
+    }
     const payload = {
       kind,
       slug: form.get("slug"),
       title: form.get("title"),
       summary: form.get("summary"),
-      payloadJson: String(form.get("payloadJson") || "{}"),
+      payloadJson,
       displayOrder: Number(form.get("displayOrder") || 0),
       startsAt: toIsoOrNull(form.get("startsAt")),
       endsAt: toIsoOrNull(form.get("endsAt")),
@@ -110,13 +118,20 @@ export function ResourceManager() {
     }
 
     const form = new FormData(event.currentTarget);
+    let payloadJson: string;
+    try {
+      payloadJson = serializeResourcePayload(selected.kind, form);
+    } catch {
+      setMessage("Os detalhes estruturados precisam ser um objeto JSON válido.");
+      return;
+    }
     const response = await fetch(`/api/v1/admin/resources/${selected.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: form.get("title"),
         summary: form.get("summary"),
-        payloadJson: String(form.get("payloadJson") || "{}"),
+        payloadJson,
         displayOrder: Number(form.get("displayOrder") || 0),
         startsAt: toIsoOrNull(form.get("startsAt")),
         endsAt: toIsoOrNull(form.get("endsAt")),
@@ -194,7 +209,7 @@ export function ResourceManager() {
         <label className="field">Ordem<input name="displayOrder" type="number" defaultValue={selected.displayOrder} disabled={selected.status === "ARCHIVED"} /></label>
         <label className="field">Início de exibição<input name="startsAt" type="datetime-local" defaultValue={toDateTimeLocal(selected.startsAt)} disabled={selected.status === "ARCHIVED"} /><small>Opcional. Antes desta data, mesmo publicado, o item não aparece no portal.</small></label>
         <label className="field">Fim de exibição<input name="endsAt" type="datetime-local" defaultValue={toDateTimeLocal(selected.endsAt)} disabled={selected.status === "ARCHIVED"} /><small>Opcional. O item deixa de aparecer automaticamente após esta data.</small></label>
-        <label className="field">Detalhes estruturados (JSON)<textarea name="payloadJson" rows={10} defaultValue={selected.payloadJson || "{}"} disabled={selected.status === "ARCHIVED"} /><small>Payload validado pelo backend; JSON inválido não é persistido.</small></label>
+        <ResourcePayloadFields kind={selected.kind} payloadJson={selected.payloadJson || "{}"} disabled={selected.status === "ARCHIVED"} />
         <button className="action-button" disabled={selected.status === "ARCHIVED"}>Salvar alterações</button>
       </form>
       <section aria-labelledby="revision-history-title">
@@ -210,7 +225,7 @@ export function ResourceManager() {
           </details>
         </div>)}</div>}
       </section>
-    </section> : <form className="admin-panel editor-fields" onSubmit={create}>
+    </section> : <form key={`new-${kind}`} className="admin-panel editor-fields" onSubmit={create}>
       <h2>Novo conteúdo</h2>
       <label className="field">Título<input name="title" required maxLength={220} /></label>
       <label className="field">Slug<input name="slug" required pattern="[a-z0-9-]+" /></label>
@@ -218,7 +233,7 @@ export function ResourceManager() {
       <label className="field">Ordem<input name="displayOrder" type="number" defaultValue={0} /></label>
       <label className="field">Início de exibição<input name="startsAt" type="datetime-local" /><small>Opcional. Permite preparar hoje e exibir somente a partir da data escolhida.</small></label>
       <label className="field">Fim de exibição<input name="endsAt" type="datetime-local" /><small>Opcional. Remove o item da área pública após a data escolhida sem apagar o histórico.</small></label>
-      <label className="field">Detalhes estruturados (JSON)<textarea name="payloadJson" rows={8} defaultValue="{}" /><small>Campo avançado. O backend valida o JSON antes de persistir.</small></label>
+      <ResourcePayloadFields kind={kind} payloadJson="{}" />
       <button className="action-button">Salvar rascunho</button>
     </form>}
   </div>;
