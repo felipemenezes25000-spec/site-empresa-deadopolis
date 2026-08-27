@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Mail.Domain;
 using MunicipalPlatform.Api.Modules.Mail.Providers;
+using MunicipalPlatform.Api.Modules.Mail.Services;
 using MunicipalPlatform.Api.Modules.Operations.Domain;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
@@ -25,6 +26,7 @@ public static class MailGovernanceEndpoints
         group.MapPost("/aliases/{id:guid}/deactivate", DeactivateAliasAsync);
         group.MapGet("/migration-jobs", ListMigrationJobsAsync);
         group.MapPost("/migration-jobs", CreateMigrationJobAsync);
+        group.MapPost("/migration-jobs/{id:guid}/inspect", InspectMigrationArchiveAsync).DisableAntiforgery();
         return endpoints;
     }
 
@@ -132,7 +134,16 @@ public static class MailGovernanceEndpoints
         if (target is null)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetAddress"] = ["Destino inválido."] });
 
-        var job = new MailMigrationJob(tenant.RequireMunicipalityId(), source, request.SourceReference, target);
+        MailMigrationJob job;
+        try
+        {
+            job = new MailMigrationJob(tenant.RequireMunicipalityId(), source, request.SourceReference, target);
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["migration"] = [exception.Message] });
+        }
+
         db.MailMigrationJobs.Add(job);
         AddAudit(
             db,
@@ -151,6 +162,94 @@ public static class MailGovernanceEndpoints
                 job,
                 externalDependency = "Credenciais/conector do provider devem ser configurados fora do repositório; nenhum segredo é persistido neste job."
             });
+    }
+
+    private static async Task<IResult> InspectMigrationArchiveAsync(
+        Guid id,
+        IFormFile file,
+        ClaimsPrincipal principal,
+        HttpContext context,
+        ApplicationDbContext db,
+        TenantContext tenant,
+        MailArchiveInspectionService inspector,
+        IInstitutionalEmailProvider provider,
+        CancellationToken ct)
+    {
+        var job = await db.MailMigrationJobs.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (job is null) return Results.NotFound();
+        if (job.SourceType == "IMAP")
+            return Results.Problem(
+                title: "Inspeção local indisponível para IMAP",
+                detail: "IMAP exige conector e credenciais externas; use EML ou MBOX para inspeção local sem segredos.",
+                statusCode: StatusCodes.Status409Conflict);
+        if (file.Length <= 0 || file.Length > MailArchiveInspectionService.MaxArchiveBytes)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Arquivo deve possuir até 25 MB."] });
+        if (!IsExpectedArchiveName(job.SourceType, file.FileName))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = [$"O arquivo selecionado não corresponde ao tipo {job.SourceType} do job."] });
+
+        MailArchiveInspectionResult result;
+        try
+        {
+            await using var source = file.OpenReadStream();
+            result = await inspector.InspectAsync(job.SourceType, source, ct);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = [exception.Message] });
+        }
+
+        var warning = result.Warnings.Count == 0 ? null : string.Join(" ", result.Warnings);
+        job.RecordLocalInspection(
+            result.CandidateMessages,
+            result.InvalidMessages,
+            result.SourceBytes,
+            result.SourceSha256,
+            warning,
+            DateTimeOffset.UtcNow);
+        AddAudit(
+            db,
+            tenant,
+            principal,
+            context,
+            "mail.migration.archive.inspected",
+            "MailMigrationJob",
+            job.Id,
+            new
+            {
+                job.SourceType,
+                job.TargetAddress,
+                job.State,
+                job.CandidateMessages,
+                job.FailedMessages,
+                job.SourceBytes,
+                job.SourceSha256,
+                providerState = provider.State,
+                importExecuted = false
+            });
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(new
+        {
+            job,
+            inspection = result,
+            importExecuted = false,
+            provider = new { provider.State, provider.Description },
+            nextStep = provider.State is "NOT_CONFIGURED" or "DEMO_ONLY"
+                ? "A inspeção local terminou. Configure um provider real antes de importar mensagens."
+                : "A inspeção local terminou. A etapa de importação depende do conector específico do provider."
+        });
+    }
+
+    private static bool IsExpectedArchiveName(string sourceType, string fileName)
+    {
+        var extension = Path.GetExtension(Path.GetFileName(fileName));
+        return sourceType switch
+        {
+            "EML" => extension.Equals(".eml", StringComparison.OrdinalIgnoreCase),
+            "MBOX" => extension.Equals(".mbox", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".mbx", StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
     }
 
     private static string? NormalizeDomain(string input)
