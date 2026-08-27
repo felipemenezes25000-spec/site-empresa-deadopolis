@@ -26,6 +26,8 @@ fi
 
 container_name="municipal-restore-verify-$$-$RANDOM"
 restore_password="restore-$RANDOM-$(date +%s)"
+postgres_password_env="POSTGRES_PASSWORD"
+export "$postgres_password_env=$restore_password"
 cleanup() {
   docker rm -f "$container_name" >/dev/null 2>&1 || true
 }
@@ -36,7 +38,7 @@ docker run -d \
   --security-opt no-new-privileges:true \
   -e POSTGRES_DB=municipal_restore \
   -e POSTGRES_USER=municipal \
-  -e POSTGRES_PASSWORD="$restore_password" \
+  -e "$postgres_password_env" \
   postgres:17-alpine >/dev/null
 
 ready=false
