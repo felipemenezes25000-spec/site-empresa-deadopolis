@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operações, Diário e Ouvidoria", async ({ page }) => {
+test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Operações, Diário e Ouvidoria", async ({ page }) => {
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -18,6 +18,18 @@ test("POC principal: cidadão, CMS, Dados Abertos, Migração, E-mail, Operaçõ
   await expect(page.getByRole("heading", { name: /Bom dia/i })).toBeVisible();
 
   const suffix = Date.now().toString().slice(-8);
+
+  const managedUsername = `comunicacao.${suffix}`;
+  await page.goto("/admin/usuarios");
+  await expect(page.getByRole("heading", { name: "Usuários e RBAC" })).toBeVisible();
+  await expect(page.getByText("users.manage", { exact: true })).toBeVisible();
+  await page.getByLabel("Usuário").fill(managedUsername);
+  await page.getByLabel("Nome de exibição").fill(`Comunicação POC ${suffix}`);
+  await page.getByLabel("Papel RBAC").selectOption("COMMUNICATION");
+  await page.getByLabel(/^Senha temporária/).fill(`Temporary-${suffix}-Aa!`);
+  await page.getByRole("button", { name: "Criar usuário" }).click();
+  await expect(page.getByText(/Usuário criado/)).toBeVisible();
+  await expect(page.getByText(new RegExp(managedUsername))).toBeVisible();
 
   const coverFileName = `capa-poc-${suffix}.png`;
   const coverAlt = `Imagem sintética de capa da POC ${suffix}`;

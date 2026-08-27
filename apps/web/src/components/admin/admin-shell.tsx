@@ -8,6 +8,7 @@ type User = { displayName: string; role: string; capabilities: string[] };
 
 const links = [
   ["/admin", "Visão geral"],
+  ["/admin/usuarios", "Usuários e RBAC"],
   ["/admin/comunicacao", "Comunicação"],
   ["/admin/conteudo", "Páginas e blocos"],
   ["/admin/governanca-conteudo", "Governança de conteúdo"],

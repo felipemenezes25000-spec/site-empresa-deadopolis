@@ -23,7 +23,104 @@ public static class IdentityEndpoints
         group.MapPost("/mfa/enroll", BeginMfaEnrollmentAsync).RequireAuthorization();
         group.MapPost("/mfa/confirm", ConfirmMfaAsync).RequireAuthorization().RequireRateLimiting("auth");
         group.MapPost("/sessions/revoke", RevokeSessionsAsync).RequireAuthorization();
+
+        var users = endpoints.MapGroup("/api/v1/admin/users")
+            .WithTags("Admin", "Identity")
+            .RequireAuthorization(policy => policy.RequireClaim("capability", "users.manage"));
+        users.MapGet("/", ListUsersAsync);
+        users.MapGet("/roles", ListRolesAsync);
+        users.MapPost("/", CreateUserAsync);
+        users.MapPut("/{id:guid}/role", AssignRoleAsync);
+        users.MapPost("/{id:guid}/state", SetUserStateAsync);
+        users.MapPost("/{id:guid}/sessions/revoke", RevokeUserSessionsAsync);
         return endpoints;
+    }
+
+    private static async Task<IResult> ListUsersAsync(ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var users = await database.Users.AsNoTracking().OrderBy(user => user.DisplayName).Take(500).ToListAsync(cancellationToken);
+        return Results.Ok(users.Select(ToAdminResponse));
+    }
+
+    private static async Task<IResult> ListRolesAsync(ApplicationDbContext database, CancellationToken cancellationToken)
+    {
+        var capabilities = await database.RoleCapabilities.AsNoTracking().OrderBy(item => item.Role).ThenBy(item => item.Capability).ToListAsync(cancellationToken);
+        return Results.Ok(capabilities.GroupBy(item => item.Role).Select(group => new { role = group.Key, capabilities = group.Select(item => item.Capability).ToArray() }));
+    }
+
+    private static async Task<IResult> CreateUserAsync(
+        AdminCreateUserRequest request,
+        ClaimsPrincipal principal,
+        HttpContext context,
+        ApplicationDbContext database,
+        TenantContext tenant,
+        IPasswordHasher<UserAccount> passwordHasher,
+        CancellationToken cancellationToken)
+    {
+        var username = request.Username?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (username.Length is < 3 or > 100 || username.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not ('.' or '_' or '-')))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["username"] = ["Use de 3 a 100 letras sem acento, números, ponto, hífen ou sublinhado."] });
+        if (string.IsNullOrWhiteSpace(request.DisplayName) || request.DisplayName.Trim().Length > 160)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["displayName"] = ["Informe um nome de exibição com até 160 caracteres."] });
+        if (!IsStrongTemporaryPassword(request.TemporaryPassword))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["temporaryPassword"] = ["A senha temporária deve ter de 14 a 128 caracteres, com maiúscula, minúscula, número e símbolo."] });
+        var role = request.Role?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!await database.RoleCapabilities.AnyAsync(item => item.Role == role, cancellationToken))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["role"] = ["Selecione um papel RBAC cadastrado."] });
+        if (await database.Users.AnyAsync(user => user.Username == username, cancellationToken))
+            return Results.Conflict(new { title = "Nome de usuário já cadastrado", status = 409 });
+
+        try
+        {
+            var passwordSubject = new UserAccount(tenant.RequireMunicipalityId(), username, request.DisplayName, role, "pending");
+            var passwordHash = passwordHasher.HashPassword(passwordSubject, request.TemporaryPassword);
+            var user = new UserAccount(tenant.RequireMunicipalityId(), username, request.DisplayName, role, passwordHash);
+            database.Users.Add(user);
+            database.AuditEvents.Add(AdminAudit(tenant, principal, context, "identity.user.created", user.Id, new { user.Username, user.Role, user.IsActive }));
+            await database.SaveChangesAsync(cancellationToken);
+            return Results.Created($"/api/v1/admin/users/{user.Id}", ToAdminResponse(user));
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["user"] = [exception.Message] });
+        }
+    }
+
+    private static async Task<IResult> AssignRoleAsync(Guid id, AdminRoleRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
+    {
+        var actor = RequireActor(principal);
+        if (id == actor) return Results.Conflict(new { title = "Não altere o próprio papel durante uma sessão ativa", status = 409 });
+        var role = request.Role?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!await database.RoleCapabilities.AnyAsync(item => item.Role == role, cancellationToken))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["role"] = ["Selecione um papel RBAC cadastrado."] });
+        var user = await database.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (user is null) return Results.NotFound();
+        user.AssignRole(role);
+        database.AuditEvents.Add(AdminAudit(tenant, principal, context, "identity.user.role.assigned", user.Id, new { user.Username, user.Role, sessionsRevoked = true }));
+        await database.SaveChangesAsync(cancellationToken);
+        return Results.Ok(ToAdminResponse(user));
+    }
+
+    private static async Task<IResult> SetUserStateAsync(Guid id, AdminUserStateRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
+    {
+        var actor = RequireActor(principal);
+        if (id == actor && !request.Active) return Results.Conflict(new { title = "A conta da sessão atual não pode ser desativada", status = 409 });
+        var user = await database.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (user is null) return Results.NotFound();
+        user.SetActive(request.Active);
+        database.AuditEvents.Add(AdminAudit(tenant, principal, context, "identity.user.state.changed", user.Id, new { user.Username, user.IsActive, sessionsRevoked = true }));
+        await database.SaveChangesAsync(cancellationToken);
+        return Results.Ok(ToAdminResponse(user));
+    }
+
+    private static async Task<IResult> RevokeUserSessionsAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
+    {
+        var user = await database.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (user is null) return Results.NotFound();
+        user.RevokeSessions();
+        database.AuditEvents.Add(AdminAudit(tenant, principal, context, "identity.user.sessions.revoked", user.Id, new { user.Username, sessionsRevoked = true }));
+        await database.SaveChangesAsync(cancellationToken);
+        return Results.Ok(ToAdminResponse(user));
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext httpContext, ApplicationDbContext database, IPasswordHasher<UserAccount> passwordHasher, MfaTotpService mfa, CancellationToken cancellationToken)
@@ -81,7 +178,18 @@ public static class IdentityEndpoints
     private static IResult GetCurrentUser(ClaimsPrincipal principal) => Results.Ok(new { id = principal.FindFirstValue(ClaimTypes.NameIdentifier), displayName = principal.Identity?.Name, role = principal.FindFirstValue(ClaimTypes.Role), capabilities = principal.FindAll("capability").Select(claim => claim.Value).Order().ToArray() });
     private static async Task<UserAccount?> FindCurrentUserAsync(ClaimsPrincipal principal, ApplicationDbContext database, CancellationToken cancellationToken) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? await database.Users.SingleOrDefaultAsync(x => x.Id == id && x.IsActive, cancellationToken) : null;
     private static AuditEvent Audit(TenantContext tenant, Guid actor, string action, Guid resourceId, string correlationId) => new(tenant.RequireMunicipalityId(), actor, action, "UserAccount", resourceId.ToString(), JsonSerializer.Serialize(new { securityEvent = true }), correlationId);
+    private static AuditEvent AdminAudit(TenantContext tenant, ClaimsPrincipal principal, HttpContext context, string action, Guid resourceId, object detail) => new(tenant.RequireMunicipalityId(), RequireActor(principal), action, "UserAccount", resourceId.ToString(), JsonSerializer.Serialize(detail), context.TraceIdentifier);
+    private static Guid RequireActor(ClaimsPrincipal principal) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) ? actor : throw new InvalidOperationException("Sessão sem identificador de usuário.");
+    private static object ToAdminResponse(UserAccount user) => new { user.Id, user.Username, user.DisplayName, user.Role, user.IsActive, user.MfaEnabled, user.CreatedAt, user.LastLoginAt, user.LockedUntil, user.SessionVersion };
+    private static bool IsStrongTemporaryPassword(string? password) => password is { Length: >= 14 and <= 128 }
+        && password.Any(char.IsUpper)
+        && password.Any(char.IsLower)
+        && password.Any(char.IsDigit)
+        && password.Any(character => !char.IsLetterOrDigit(character));
     private static IResult InvalidCredentials() => Results.Problem(title: "Não foi possível entrar", detail: "Credenciais inválidas.", statusCode: StatusCodes.Status401Unauthorized);
     public sealed record LoginRequest(string Username, string Password, string? TotpCode = null);
     public sealed record MfaConfirmRequest(string Code);
+    public sealed record AdminCreateUserRequest(string Username, string DisplayName, string Role, string TemporaryPassword);
+    public sealed record AdminRoleRequest(string Role);
+    public sealed record AdminUserStateRequest(bool Active);
 }

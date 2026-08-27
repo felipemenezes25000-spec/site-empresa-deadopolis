@@ -83,6 +83,21 @@ public sealed class UserAccount : ITenantEntity
 
     public void RevokeSessions() => SessionVersion++;
 
+    public void SetActive(bool active)
+    {
+        if (IsActive == active) return;
+        IsActive = active;
+        SessionVersion++;
+    }
+
+    public void AssignRole(string role)
+    {
+        var normalized = Required(role, 64).ToUpperInvariant();
+        if (Role == normalized) return;
+        Role = normalized;
+        SessionVersion++;
+    }
+
     private static string Required(string value, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException("Campo obrigatório.");

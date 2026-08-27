@@ -60,7 +60,9 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "media.manage"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "mail.manage"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"),
-            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "settings.manage"));
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "settings.manage"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "users.manage"),
+            new RoleCapability(MunicipalityId, "COMMUNICATION", "content.write"));
         var article = NewsArticle.Create(MunicipalityId, "Feira de serviços aproxima Prefeitura e moradores", "feira-de-servicos", actor);
         article.UpdateDraft("Feira de serviços aproxima Prefeitura e moradores", "Atendimentos municipais reunidos em um único local.", "Conteúdo sintético de demonstração.", null, null, "PREFEITURA", true, actor, DateTimeOffset.UtcNow);
         article.SubmitForReview(actor, DateTimeOffset.UtcNow); article.Approve(actor, DateTimeOffset.UtcNow); article.Publish(actor, DateTimeOffset.UtcNow);
