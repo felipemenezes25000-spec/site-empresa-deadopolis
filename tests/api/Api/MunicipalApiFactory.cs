@@ -36,7 +36,7 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
     {
         await using var scope = Services.CreateAsyncScope();
         var tenant = scope.ServiceProvider.GetRequiredService<TenantContext>();
-        tenant.SetMunicipality(MunicipalityId, "deodapolis");
+        tenant.SetMunicipality(MunicipalApiFactory.MunicipalityId, "deodapolis");
         var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await database.Database.EnsureCreatedAsync();
         if (await database.Municipalities.AnyAsync()) return;
@@ -57,6 +57,7 @@ public sealed class MunicipalApiFactory : WebApplicationFactory<Program>
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.write"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.sign"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "gazette.publish"),
+            new RoleCapability(MunicipalityId, "SUPER_ADMIN", "mail.manage"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "support.write"),
             new RoleCapability(MunicipalityId, "SUPER_ADMIN", "settings.manage"));
         var article = NewsArticle.Create(MunicipalityId, "Feira de serviços aproxima Prefeitura e moradores", "feira-de-servicos", actor);
