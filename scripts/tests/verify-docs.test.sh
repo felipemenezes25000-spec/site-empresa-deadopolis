@@ -23,7 +23,7 @@ if [[ $missing_status -eq 0 ]]; then
   echo "FAIL: repositório sem documentação obrigatória foi aceito"
   exit 1
 fi
-if [[ "$missing_output" != *"README.md"* || "$missing_output" != *"docs/FINAL_REPORT.md"* ]]; then
+if [[ "$missing_output" != *"README.md"* || "$missing_output" != *"docs/FINAL_REPORT.md"* || "$missing_output" != *"docs/LGPD.md"* ]]; then
   echo "FAIL: diagnóstico não identificou arquivos obrigatórios ausentes"
   printf '%s\n' "$missing_output"
   exit 1
@@ -32,13 +32,22 @@ fi
 required_files=(
   "README.md"
   "docs/ARCHITECTURE.md"
+  "docs/ACCESSIBILITY.md"
+  "docs/BACKUP_RESTORE.md"
   "docs/BACKUP_RESTORE_RUNBOOK.md"
   "docs/CURRENT_PORTAL_AUDIT.md"
+  "docs/DEPLOYMENT.md"
+  "docs/EMAIL.md"
   "docs/EXECUTIVE_DEMO.md"
   "docs/EXTERNAL_DEPENDENCIES.md"
   "docs/FINAL_REPORT.md"
+  "docs/GAZETTE.md"
+  "docs/ICP_BRASIL.md"
   "docs/IMPLEMENTATION_PLAN.md"
   "docs/LEGACY_MIGRATION_REPORT.md"
+  "docs/LGPD.md"
+  "docs/MIGRATION_PLAN.md"
+  "docs/OPERATIONS.md"
   "docs/POC_RUNBOOK.md"
   "docs/PRODUCTION_RUNBOOK.md"
   "docs/REQUIREMENTS_MATRIX.md"
