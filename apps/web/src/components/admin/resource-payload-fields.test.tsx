@@ -43,13 +43,15 @@ describe("serializeResourcePayload", () => {
     expect(screen.getByRole("textbox", { name: "Conteúdo da página" })).toHaveValue("Texto importado.");
   });
 
-  it("preserves explicit booleans in menu configuration", () => {
+  it("preserves menu placement and explicit booleans", () => {
     const form = new FormData();
+    form.set("payloadPlacement", "FOOTER");
     form.set("payloadLabel", "Transparência");
     form.set("payloadUrl", "/transparencia");
     form.set("payloadExternal", "on");
 
     expect(JSON.parse(serializeResourcePayload("MENU", form))).toEqual({
+      placement: "FOOTER",
       label: "Transparência",
       url: "/transparencia",
       parent: "",

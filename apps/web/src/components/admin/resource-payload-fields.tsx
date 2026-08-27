@@ -54,6 +54,7 @@ export function ResourcePayloadFields({ kind, payloadJson, disabled = false, men
       <label className="field">Destino do botão<input aria-label="Destino do botão" name="payloadUrl" type="text" defaultValue={text(payload.url)} disabled={disabled} /><small>Aceita uma rota interna ou uma URL externa completa.</small></label>
     </>}
     {normalizedKind === "MENU" && <>
+      <label className="field">Área do menu<select name="payloadPlacement" defaultValue={text(payload.placement) || "HEADER"} disabled={disabled}><option value="HEADER">Cabeçalho</option><option value="FOOTER">Rodapé</option><option value="INSTITUTIONAL">Institucional</option><option value="SERVICES">Serviços</option><option value="QUICK_ACCESS">Acesso rápido</option></select><small>Cada área é consumida diretamente pelo portal público.</small></label>
       <label className="field">Rótulo do item<input name="payloadLabel" required defaultValue={text(payload.label)} disabled={disabled} /></label>
       <label className="field">Destino do item<input name="payloadUrl" required type="text" defaultValue={text(payload.url)} disabled={disabled} /></label>
       <label className="field">Item superior<select name="payloadParent" defaultValue={currentParent} disabled={disabled}><option value="">Raiz do menu</option>{currentParent && !menuOptions.some((option) => option.value === currentParent) && <option value={currentParent}>{currentParent} (legado)</option>}{menuOptions.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.value})</option>)}</select><small>Escolha o item pai para montar a hierarquia sem digitar identificadores manualmente.</small></label>
@@ -115,6 +116,7 @@ export function serializeResourcePayload(kind: string, form: FormData) {
     url: value(form, "payloadUrl"),
   } : normalizedKind === "MENU" ? {
     ...base,
+    placement: value(form, "payloadPlacement") || "HEADER",
     label: value(form, "payloadLabel"),
     url: value(form, "payloadUrl"),
     parent: value(form, "payloadParent"),
