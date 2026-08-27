@@ -42,7 +42,13 @@ type MigrationEvidence = {
   createdAt: string;
 };
 
-type JobDetail = { job: MigrationJob; urlCount: number; evidence: MigrationEvidence[] };
+type JobDetail = {
+  job: MigrationJob;
+  urlCount: number;
+  runStartedAt: string | null;
+  runCompletedAt: string | null;
+  evidence: MigrationEvidence[];
+};
 
 type InventoryPage = {
   page: number;
@@ -326,7 +332,7 @@ export function MigrationManager() {
 
     {detail && selectedId === detail.job.id && <section className="admin-panel" style={{ marginTop: 20 }}>
       <div className="admin-heading">
-        <div><span className="kicker">{stateLabel(detail.job.state)}</span><h2>Inventário de {detail.job.allowedHost}</h2><p style={{ overflowWrap: "anywhere" }}>{detail.job.sourceBaseUrl}</p><small>Criado em {formatDate(detail.job.createdAt)} · atualizado em {formatDate(detail.job.updatedAt)} · concluído em {formatDate(detail.job.completedAt)}</small></div>
+        <div><span className="kicker">{stateLabel(detail.job.state)}</span><h2>Inventário de {detail.job.allowedHost}</h2><p style={{ overflowWrap: "anywhere" }}>{detail.job.sourceBaseUrl}</p><small>Criado em {formatDate(detail.job.createdAt)} · execução iniciada em {formatDate(detail.runStartedAt)} · execução concluída em {formatDate(detail.runCompletedAt)}</small></div>
         <div className="button-row"><a className="action-button secondary" href={`/api/v1/admin/migration/jobs/${detail.job.id}/report.csv`} download>Exportar relatório CSV</a><button type="button" className="action-button" onClick={() => void runDryRun()} disabled={busy || isRunning(detail.job.state)}>Executar dry-run seguro</button></div>
       </div>
 

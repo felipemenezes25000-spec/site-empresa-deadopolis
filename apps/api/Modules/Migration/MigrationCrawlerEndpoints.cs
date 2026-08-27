@@ -31,10 +31,21 @@ public static class MigrationCrawlerEndpoints
         if (job is null)
             return Results.NotFound();
 
+        var actor = RequireActor(principal);
+        database.AuditEvents.Add(new AuditEvent(
+            tenant.RequireMunicipalityId(),
+            actor,
+            "migration.dryrun.started",
+            "MigrationJob",
+            job.Id.ToString(),
+            JsonSerializer.Serialize(new { job.SourceBaseUrl, job.AllowedHost, job.MaxDepth, job.MaxPages }),
+            context.TraceIdentifier));
+        await database.SaveChangesAsync(cancellationToken);
+
         var summary = await crawler.RunDryRunAsync(job, database, cancellationToken);
         database.AuditEvents.Add(new AuditEvent(
             tenant.RequireMunicipalityId(),
-            RequireActor(principal),
+            actor,
             "migration.dryrun.completed",
             "MigrationJob",
             job.Id.ToString(),

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Identity.Domain;
 using MunicipalPlatform.Api.Modules.Migration.Domain;
+using MunicipalPlatform.Api.Modules.Operations.Domain;
 using MunicipalPlatform.Api.Platform.Tenancy;
 
 namespace MunicipalPlatform.Api.Tests.Api;
@@ -107,6 +108,7 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
     {
         await _factory.SeedAsync();
         var jobId = await SeedInventoryAsync();
+        await AddRunAuditAsync(jobId);
         using var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
         await LoginAsync(client);
@@ -117,6 +119,8 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(620, payload.RootElement.GetProperty("urlCount").GetInt32());
         Assert.False(payload.RootElement.TryGetProperty("urls", out _));
+        Assert.Equal(JsonValueKind.String, payload.RootElement.GetProperty("runStartedAt").ValueKind);
+        Assert.Equal(JsonValueKind.String, payload.RootElement.GetProperty("runCompletedAt").ValueKind);
     }
 
     private async Task<Guid> SeedInventoryAsync(int count = 620)
@@ -155,6 +159,19 @@ public sealed class MigrationInventoryContractTests : IClassFixture<MunicipalApi
             1);
         item.Fail("=HYPERLINK(\"https://attacker.example\")");
         database.LegacyUrls.Add(item);
+        await database.SaveChangesAsync();
+    }
+
+    private async Task AddRunAuditAsync(Guid jobId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var tenant = scope.ServiceProvider.GetRequiredService<TenantContext>();
+        tenant.SetMunicipality(MunicipalApiFactory.MunicipalityId, "deodapolis");
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var actor = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        database.AuditEvents.AddRange(
+            new AuditEvent(MunicipalApiFactory.MunicipalityId, actor, "migration.dryrun.started", "MigrationJob", jobId.ToString(), "{}", "contract-start"),
+            new AuditEvent(MunicipalApiFactory.MunicipalityId, actor, "migration.dryrun.completed", "MigrationJob", jobId.ToString(), "{}", "contract-complete"));
         await database.SaveChangesAsync();
     }
 

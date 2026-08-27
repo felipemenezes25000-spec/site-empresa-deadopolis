@@ -14,7 +14,22 @@ public static class MigrationJobEndpoints
 {
     public static IEndpointRouteBuilder MapMigrationJobEndpoints(this IEndpointRouteBuilder endpoints) { var group = endpoints.MapGroup("/api/v1/admin/migration/jobs").WithTags("Admin", "Migration").RequireAuthorization(p => p.RequireClaim("capability", "migration.manage")); group.MapGet("/", ListAsync); group.MapGet("/{id:guid}", GetAsync); group.MapGet("/{id:guid}/urls", ListUrlsAsync); group.MapGet("/{id:guid}/report.csv", ExportReportAsync); group.MapPost("/", CreateAsync); group.MapPost("/{id:guid}/begin-dry-run", BeginDryRunAsync); group.MapPost("/{id:guid}/evidence", AddEvidenceAsync); return endpoints; }
     private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.MigrationJobs.AsNoTracking().OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct));
-    private static async Task<IResult> GetAsync(Guid id, ApplicationDbContext db, CancellationToken ct) { var job = await db.MigrationJobs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct); if (job is null) return Results.NotFound(); var urlCount = await db.LegacyUrls.AsNoTracking().CountAsync(x => x.MigrationJobId == id, ct); var evidence = await db.MigrationEvidences.AsNoTracking().Where(x => x.MigrationJobId == id).OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct); return Results.Ok(new { job, urlCount, evidence }); }
+    private static async Task<IResult> GetAsync(Guid id, ApplicationDbContext db, CancellationToken ct)
+    {
+        var job = await db.MigrationJobs.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (job is null) return Results.NotFound();
+        var urlCount = await db.LegacyUrls.AsNoTracking().CountAsync(x => x.MigrationJobId == id, ct);
+        var evidence = await db.MigrationEvidences.AsNoTracking().Where(x => x.MigrationJobId == id)
+            .OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct);
+        var resourceId = id.ToString();
+        var runStartedAt = await db.AuditEvents.AsNoTracking()
+            .Where(x => x.Resource == "MigrationJob" && x.ResourceId == resourceId && x.Action == "migration.dryrun.started")
+            .OrderByDescending(x => x.OccurredAt).Select(x => (DateTimeOffset?)x.OccurredAt).FirstOrDefaultAsync(ct);
+        var runCompletedAt = await db.AuditEvents.AsNoTracking()
+            .Where(x => x.Resource == "MigrationJob" && x.ResourceId == resourceId && x.Action == "migration.dryrun.completed")
+            .OrderByDescending(x => x.OccurredAt).Select(x => (DateTimeOffset?)x.OccurredAt).FirstOrDefaultAsync(ct);
+        return Results.Ok(new { job, urlCount, runStartedAt, runCompletedAt, evidence });
+    }
     private static async Task<IResult> ListUrlsAsync(Guid id, int? page, int? pageSize, string? q, string? classification, string? state, string? kind, ApplicationDbContext db, CancellationToken ct)
     {
         var selectedPage = page ?? 1;
