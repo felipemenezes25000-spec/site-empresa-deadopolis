@@ -81,6 +81,7 @@ jobs:
           bash scripts/tests/verify-docs.test.sh
           bash scripts/verify-docs.sh
           bash scripts/tests/demo-reset.test.sh
+          bash -n scripts/db-backup.sh scripts/db-restore-verify.sh
       - run: ./scripts/secret-scan.sh
       - name: Reject certificate/private key artifacts
         run: test -z "$(find . -type f \( -name '*.pfx' -o -name '*.p12' -o -name '*.pem' -o -name '*.key' \) -not -path './.git/*' -print -quit)"
@@ -138,6 +139,10 @@ jobs:
           exit 1
       - run: npm run test:e2e
         working-directory: apps/web
+      - name: Database backup and isolated restore drill
+        run: |
+          backup_path="$(bash scripts/db-backup.sh /tmp/municipal-backups)"
+          bash scripts/db-restore-verify.sh "$backup_path"
       - name: Container logs
         if: always()
         run: docker compose logs --no-color > compose.log

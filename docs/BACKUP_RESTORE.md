@@ -16,10 +16,19 @@ O backup deve cobrir PostgreSQL e objetos persistidos no storage. Secrets e cert
 - RPO e RTO aprovados antes do go-live;
 - acesso restrito e auditável aos artefatos de backup.
 
+## Drill executável do PostgreSQL
+
+O repositório possui dois scripts reais para desenvolvimento, POC e CI:
+
+- `scripts/db-backup.sh [diretorio]`: executa `pg_dump` em formato custom usando o PostgreSQL 17 do próprio compose, grava de forma atômica e produz manifesto `.sha256`;
+- `scripts/db-restore-verify.sh <arquivo.dump>`: valida o checksum, cria um PostgreSQL 17 temporário isolado, restaura o dump e exige tabelas públicas e `__EFMigrationsHistory` antes de declarar sucesso.
+
+O workflow E2E executa esse drill contra o ambiente efêmero da CI. Ele não altera o banco original e destrói o container de restore ao final.
+
 ## Restore
 
-Restauração deve ocorrer em ambiente isolado primeiro, validar migrations, integridade lógica, amostra de documentos e health da aplicação. Restore em produção exige autorização operacional, janela, registro da causa e evidência pós-restore.
+Restauração de produção deve ocorrer em ambiente isolado primeiro, validar migrations, integridade lógica, amostra de documentos e health da aplicação. Restore em produção exige autorização operacional, janela, registro da causa e evidência pós-restore.
 
 ## Estado atual
 
-O código possui `BackupEvidence`, painel operacional e runbook, mas a orquestração real depende da infraestrutura escolhida. Portanto backup/restore de produção continua `EXTERNAL_DEPENDENCY` até existir job real, retenção, destino, restore testado e evidência aprovada. Não há simulação de sucesso de backup no modo de produção.
+O PostgreSQL possui **backup + restore drill local/CI executável e verificável**. Isso não equivale a backup de produção: retenção, cofre imutável, cópia do object storage, key ring, criptografia gerenciada, RPO/RTO e restore drill do provedor continuam `EXTERNAL_DEPENDENCY` até a infraestrutura contratada existir e gerar evidência real. O sistema não transforma o sucesso do drill local em alegação de proteção de produção.

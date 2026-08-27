@@ -1,6 +1,6 @@
 # Runbook de backup e restore
 
-O portal registra `BackupEvidence`, mas não executa backup automaticamente. A orquestração pertence à infraestrutura contratada; registrar evidência sem artefato real é proibido.
+O portal registra `BackupEvidence` e possui um drill executável para PostgreSQL em desenvolvimento/POC/CI. A orquestração, retenção e o cofre de produção pertencem à infraestrutura contratada; registrar evidência sem artefato real é proibido.
 
 ## Escopo mínimo
 
@@ -14,33 +14,29 @@ Um ponto de recuperação completo contém:
 
 RPO, RTO, retenção e residência dos dados precisam de aprovação institucional antes do go-live. A ausência dessa decisão bloqueia produção, não a POC.
 
-## Backup controlado do PostgreSQL
+## Drill local e CI
 
-Execute a partir de host confiável com `MUNICIPAL_DATABASE_URL` injetada pelo secret manager:
+Com o compose já em execução:
 
 ```bash
-umask 077
-backup_file="municipal-$(date -u +%Y%m%dT%H%M%SZ).dump"
-pg_dump --format=custom --no-owner --no-acl --dbname="$MUNICIPAL_DATABASE_URL" --file="$backup_file"
-sha256sum "$backup_file" > "$backup_file.sha256"
-pg_restore --list "$backup_file" >/dev/null
+backup_file="$(bash scripts/db-backup.sh /tmp/municipal-backups)"
+bash scripts/db-restore-verify.sh "$backup_file"
 ```
 
-Transfira dump e checksum para o cofre imutável do provider. Não deixe cópia permanente no host de aplicação. O backup de objetos deve usar snapshot/versionamento nativo do storage e registrar a mesma janela de consistência.
+O primeiro script usa `pg_dump --format=custom`, grava o dump com permissão restritiva e cria `<arquivo>.sha256`. O segundo valida o checksum e restaura em um container `postgres:17-alpine` temporário, distinto do banco de origem. O sucesso exige pelo menos uma tabela pública e histórico EF de migrations. O container temporário é removido mesmo em caso de erro.
 
-## Restore drill
+Esse drill prova o mecanismo de dump/restore do PostgreSQL usado pelo projeto. Ele **não** prova retenção, object storage, key ring, RPO/RTO ou recuperação do provedor de produção.
 
-O drill usa banco isolado e storage não público.
+## Backup controlado de produção
+
+A infraestrutura aprovada deve executar o equivalente com credenciais vindas do secret manager, retenção, criptografia e destino imutável. O artefato não deve permanecer no host da aplicação. O backup de objetos deve usar snapshot/versionamento nativo do storage e registrar uma janela de consistência compatível com o dump do banco.
+
+## Restore drill de produção
 
 1. Abra change request com responsável, janela e artefatos escolhidos.
 2. Valide checksums antes de abrir o dump.
 3. Crie banco vazio com credencial temporária.
-4. Restaure:
-
-```bash
-pg_restore --clean --if-exists --no-owner --no-acl --dbname="$MUNICIPAL_RESTORE_DATABASE_URL" "$backup_file"
-```
-
+4. Restaure sem substituir o ambiente produtivo existente.
 5. Restaure os objetos preservando chaves e hashes.
 6. Restaure o key ring correspondente; sem ele, sessões e dados protegidos anteriores podem ficar inválidos.
 7. Inicie API/Web isolados com `PresentationMode=false` e DNS não público.
