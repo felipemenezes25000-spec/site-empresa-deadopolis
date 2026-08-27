@@ -62,14 +62,16 @@ type RedirectRule = {
   lastValidatedAt: string | null;
 };
 
+type DryRunSummary = {
+  discovered: number; failed: number; externalLinks: number; redirects: number; html: number;
+  documents: number; pdf: number; office: number; images: number; duplicatesByHash: number;
+  uniqueNormalized: number; queueRemaining: number; truncatedByLimit: boolean;
+};
+
 type DryRunResponse = {
   id: string;
   state: string | number;
-  summary: {
-    discovered: number; failed: number; externalLinks: number; redirects: number; html: number;
-    documents: number; pdf: number; office: number; images: number; duplicatesByHash: number;
-    uniqueNormalized: number; queueRemaining: number; truncatedByLimit: boolean;
-  };
+  summary: DryRunSummary;
 };
 
 const migrationStateNames = ["Criado", "Descobrindo", "Mapeando", "Dry-run concluído", "Importando", "Validando", "Concluído", "Concluído com alertas", "Falhou"];
@@ -89,7 +91,7 @@ export function MigrationManager() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [dryRunSummary, setDryRunSummary] = useState<DryRunResponse["summary"] | null>(null);
+  const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,6 +142,12 @@ export function MigrationManager() {
     return jobs.filter((job) => [job.sourceBaseUrl, job.allowedHost, stateLabel(job.state)]
       .some((value) => value.toLocaleLowerCase("pt-BR").includes(normalized)));
   }, [jobs, query]);
+
+  const persistedDryRunSummary = useMemo(() => {
+    const evidence = detail?.evidence.find((item) => item.kind === "DRY_RUN_SUMMARY");
+    return evidence ? parseDryRunSummary(evidence.payloadJson) : null;
+  }, [detail]);
+  const visibleDryRunSummary = dryRunSummary ?? persistedDryRunSummary;
 
   async function refreshJobs(preferredId?: string) {
     const response = await fetch("/api/v1/admin/migration/jobs");
@@ -292,18 +300,21 @@ export function MigrationManager() {
 
     {detail && selectedId === detail.job.id && <section className="admin-panel" style={{ marginTop: 20 }}>
       <div className="admin-heading">
-        <div><span className="kicker">{stateLabel(detail.job.state)}</span><h2>Inventário de {detail.job.allowedHost}</h2><p style={{ overflowWrap: "anywhere" }}>{detail.job.sourceBaseUrl}</p></div>
+        <div><span className="kicker">{stateLabel(detail.job.state)}</span><h2>Inventário de {detail.job.allowedHost}</h2><p style={{ overflowWrap: "anywhere" }}>{detail.job.sourceBaseUrl}</p><small>Criado em {formatDate(detail.job.createdAt)} · atualizado em {formatDate(detail.job.updatedAt)} · concluído em {formatDate(detail.job.completedAt)}</small></div>
         <div className="button-row"><a className="action-button secondary" href={`/api/v1/admin/migration/jobs/${detail.job.id}/report.csv`} download>Exportar relatório CSV</a><button type="button" className="action-button" onClick={() => void runDryRun()} disabled={busy || isRunning(detail.job.state)}>Executar dry-run seguro</button></div>
       </div>
 
       <div className="stat-grid">
         <div className="stat-card"><strong>{detail.job.discoveredCount}</strong><span>URLs descobertas</span></div>
+        <div className="stat-card"><strong>{detail.job.importedCount}</strong><span>Itens importados</span></div>
         <div className="stat-card"><strong>{detail.job.failedCount}</strong><span>Falhas</span></div>
         <div className="stat-card"><strong>{detail.urlCount}</strong><span>URLs persistidas</span></div>
+        <div className="stat-card"><strong>{visibleDryRunSummary?.externalLinks ?? 0}</strong><span>Referências externas</span></div>
+        <div className="stat-card"><strong>{visibleDryRunSummary?.queueRemaining ?? 0}</strong><span>Itens na fila</span></div>
         <div className="stat-card"><strong>{detail.evidence.length}</strong><span>Evidências</span></div>
       </div>
 
-      {dryRunSummary && <div className={dryRunSummary.truncatedByLimit ? "warning-box" : "ok-box"} role="status">Resultado: {dryRunSummary.discovered} URLs únicas · {dryRunSummary.html} HTML · {dryRunSummary.documents} documentos ({dryRunSummary.pdf} PDF, {dryRunSummary.office} Office) · {dryRunSummary.images} imagens · {dryRunSummary.redirects} redirects · {dryRunSummary.externalLinks} externos · {dryRunSummary.duplicatesByHash} duplicatas por hash · {dryRunSummary.failed} falhas · {dryRunSummary.queueRemaining} na fila{dryRunSummary.truncatedByLimit ? " · limite atingido, inventário incompleto" : " · fila esvaziada"}.</div>}
+      {visibleDryRunSummary && <div className={visibleDryRunSummary.truncatedByLimit ? "warning-box" : "ok-box"} role="status">Resultado persistido: {visibleDryRunSummary.discovered} URLs únicas · {visibleDryRunSummary.html} HTML · {visibleDryRunSummary.documents} documentos ({visibleDryRunSummary.pdf} PDF, {visibleDryRunSummary.office} Office) · {visibleDryRunSummary.images} imagens · {visibleDryRunSummary.redirects} redirects · {visibleDryRunSummary.externalLinks} externos · {visibleDryRunSummary.duplicatesByHash} duplicatas por hash · {visibleDryRunSummary.failed} falhas · {visibleDryRunSummary.queueRemaining} na fila{visibleDryRunSummary.truncatedByLimit ? " · limite atingido, inventário incompleto" : " · fila esvaziada"}.</div>}
       {detail.job.lastError && <div className="warning-box"><strong>Último erro:</strong> {detail.job.lastError}</div>}
 
       <div className="editor-grid" style={{ marginTop: 20 }}>
@@ -383,6 +394,19 @@ function formatBytes(value: number) {
 
 function prettyJson(value: string) {
   try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+}
+
+function parseDryRunSummary(value: string): DryRunSummary | null {
+  try {
+    const parsed = JSON.parse(value) as Partial<DryRunSummary>;
+    return typeof parsed.discovered === "number"
+      && typeof parsed.queueRemaining === "number"
+      && typeof parsed.truncatedByLimit === "boolean"
+      ? parsed as DryRunSummary
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 async function errorText(response: Response) {
