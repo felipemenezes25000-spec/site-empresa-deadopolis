@@ -132,9 +132,9 @@ jobs:
         working-directory: apps/web
       - name: Start POC environment
         run: docker compose up -d --build
-      - name: Wait for services
+      - name: Wait for services and runtime media codec
         run: |
-          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5080/health/live >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null && exit 0; sleep 2; done
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5080/health/ready >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null && exit 0; sleep 2; done
           docker compose logs
           exit 1
       - run: npm run test:e2e

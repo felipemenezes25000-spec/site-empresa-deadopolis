@@ -13,6 +13,11 @@ public sealed class MediaVariantService
     public const long MaxSourcePixels = 40_000_000;
     public const long MaxOutputPixels = 8_000_000;
     private const int EncodeQuality = 82;
+    private readonly Lazy<MediaVariantCapabilities> _capabilities = new(
+        ProbeCapabilities,
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
+    public MediaVariantCapabilities Capabilities => _capabilities.Value;
 
     public MediaVariantDescriptor Describe(MediaAsset asset, MediaVariantRequest request)
     {
@@ -99,6 +104,39 @@ public sealed class MediaVariantService
         }
     }
 
+    private static MediaVariantCapabilities ProbeCapabilities()
+    {
+        try
+        {
+            using var bitmap = new SKBitmap(new SKImageInfo(2, 2, SKColorType.Rgba8888, SKAlphaType.Premul));
+            bitmap.Erase(SKColors.Transparent);
+            return new MediaVariantCapabilities(
+                ProbeCodec(bitmap, SKEncodedImageFormat.Webp),
+                ProbeCodec(bitmap, SKEncodedImageFormat.Avif));
+        }
+        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException or TypeInitializationException)
+        {
+            var detail = exception.GetBaseException().Message;
+            var unavailable = new MediaCodecCapability("UNAVAILABLE", detail);
+            return new MediaVariantCapabilities(unavailable, unavailable);
+        }
+    }
+
+    private static MediaCodecCapability ProbeCodec(SKBitmap bitmap, SKEncodedImageFormat format)
+    {
+        try
+        {
+            using var encoded = bitmap.Encode(format, EncodeQuality);
+            return encoded is { Size: > 0 }
+                ? new MediaCodecCapability("AVAILABLE", null)
+                : new MediaCodecCapability("UNAVAILABLE", $"O encoder {format} não retornou dados.");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+        {
+            return new MediaCodecCapability("UNAVAILABLE", exception.Message);
+        }
+    }
+
     private static SKRect ResolveSourceRect(MediaAsset asset, int sourceWidth, int sourceHeight, int targetWidth, int? targetHeight)
     {
         var cropX = (float)(asset.CropX ?? 0m);
@@ -178,6 +216,10 @@ public sealed record MediaVariantDescriptor(
     string CacheKey);
 
 public sealed record MediaVariantResult(byte[] Bytes, string MimeType, string Extension, int Width, int Height);
+
+public sealed record MediaCodecCapability(string State, string? Detail);
+
+public sealed record MediaVariantCapabilities(MediaCodecCapability Webp, MediaCodecCapability Avif);
 
 public sealed class MediaVariantFormatUnavailableException : InvalidOperationException
 {
