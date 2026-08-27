@@ -16,11 +16,25 @@ public static class MediaEndpoints
 {
     public static IEndpointRouteBuilder MapMediaEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/v1/media/{id:guid}", PublicReadAsync).AllowAnonymous().WithTags("Media");
         var group = endpoints.MapGroup("/api/v1/admin/media").WithTags("Admin", "Media").RequireAuthorization(p => p.RequireClaim("capability", "media.manage"));
         group.MapGet("/", ListAsync);
         group.MapPost("/upload", UploadAsync).DisableAntiforgery();
         group.MapPut("/{id:guid}/metadata", UpdateMetadataAsync);
         return endpoints;
+    }
+
+    private static async Task<IResult> PublicReadAsync(Guid id, HttpContext context, ApplicationDbContext db, IObjectStorageProvider storage, CancellationToken ct)
+    {
+        var asset = await db.MediaAssets.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.Status == "APPROVED", ct);
+        if (asset is null) return Results.NotFound();
+        if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Mídia indisponível", detail: "O storage público ainda não foi configurado.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        var etag = $"\"sha256-{asset.Sha256}\"";
+        context.Response.Headers.ETag = etag;
+        context.Response.Headers.CacheControl = "public,max-age=86400,immutable";
+        if (context.Request.Headers.IfNoneMatch.Any(value => string.Equals(value, etag, StringComparison.Ordinal))) return Results.StatusCode(StatusCodes.Status304NotModified);
+        var bytes = await storage.ReadAsync(asset.ObjectKey, ct);
+        return bytes is null ? Results.NotFound() : Results.File(bytes, asset.MimeType, enableRangeProcessing: false);
     }
 
     private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) =>

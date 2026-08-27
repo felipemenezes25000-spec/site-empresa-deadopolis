@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { MediaPicker, RichTextEditor, type MediaPickerItem } from "@/components/ui";
 import { NEWS_CATEGORIES } from "@/lib/news-categories";
 
 type Draft = { title: string; slug: string; summary: string; body: string; category: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
 type Article = { id: string; status: string; version: number; verificationCode?: string };
+type Asset = { id: string; originalFileName: string; mimeType: string; status: string; altText: string };
 const EMPTY_DRAFT: Draft = { title: "", slug: "", summary: "", body: "", category: "GERAL", coverImageUrl: "", coverImageAlt: "", isFeatured: false };
 const STORAGE_KEY = "deodapolis.news.draft";
 
 export function NewsEditor() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [article, setArticle] = useState<Article | null>(null);
+  const [media, setMedia] = useState<Asset[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -24,8 +27,18 @@ export function NewsEditor() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/v1/admin/media", { signal: controller.signal }).then(async (response) => {
+      if (response.ok && !controller.signal.aborted) setMedia(await response.json() as Asset[]);
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); }, [draft]);
   const canCreate = useMemo(() => Boolean(draft.title && draft.slug && draft.summary && draft.body), [draft]);
+  const imageMedia: MediaPickerItem[] = useMemo(() => media.filter((asset) => asset.status === "APPROVED" && asset.mimeType.startsWith("image/")).map((asset) => ({ id: asset.id, name: asset.originalFileName, mimeType: asset.mimeType, altText: asset.altText, status: asset.status })), [media]);
+  const selectedMediaId = draft.coverImageUrl.startsWith("/api/v1/media/") ? draft.coverImageUrl.split("/").at(-1) : undefined;
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,7 +71,8 @@ export function NewsEditor() {
       <Field label="Slug"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} maxLength={180} required /></Field>
       <Field label="Linha fina"><textarea value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} maxLength={320} rows={3} required /></Field>
       <Field label="Área editorial"><select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{NEWS_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-      <Field label="Conteúdo"><textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} rows={12} required /></Field>
+      <RichTextEditor label="Conteúdo" value={draft.body} onChange={(body) => setDraft({ ...draft, body })} required />
+      <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer font-semibold">Selecionar capa da biblioteca</summary><div className="mt-3">{imageMedia.length > 0 ? <MediaPicker items={imageMedia} selectedId={selectedMediaId} onSelect={(item) => setDraft({ ...draft, coverImageUrl: `/api/v1/media/${item.id}`, coverImageAlt: item.altText || item.name })} /> : <p className="text-muted">Nenhuma imagem aprovada disponível. Envie e aprove a mídia na biblioteca antes de selecioná-la.</p>}</div></details>
       <Field label="URL da imagem de capa (opcional)"><input value={draft.coverImageUrl} onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })} /></Field>
       <Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={(event) => setDraft({ ...draft, coverImageAlt: event.target.value })} /></Field>
       <label><input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft({ ...draft, isFeatured: event.target.checked })} /> Destaque na home</label>
