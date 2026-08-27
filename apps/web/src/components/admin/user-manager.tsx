@@ -104,7 +104,7 @@ export function UserManager() {
 
     <section className="admin-panel">
       <h2>Papéis e capabilities</h2>
-      <div className="compact-list">{roles.map((role) => <div className="compact-item" key={role.role}><div><strong>{role.role}</strong><small style={{ display: "block" }}>{role.capabilities.join(" · ")}</small></div><span className="status-pill">{role.capabilities.length}</span></div>)}</div>
+      <div className="compact-list">{roles.map((role) => <div className="compact-item" key={role.role}><div><strong>{role.role}</strong><ul aria-label={`Capabilities do papel ${role.role}`} style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0 0", padding: 0, listStyle: "none" }}>{role.capabilities.map((capability) => <li className="status-pill" key={capability}><code>{capability}</code></li>)}</ul></div><span className="status-pill" aria-label={`${role.capabilities.length} capabilities`}>{role.capabilities.length}</span></div>)}</div>
     </section>
 
     <section className="admin-panel" style={{ gridColumn: "1 / -1" }}>

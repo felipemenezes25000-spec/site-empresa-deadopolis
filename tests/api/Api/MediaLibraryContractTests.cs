@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
@@ -13,6 +14,45 @@ public sealed class MediaLibraryContractTests : IClassFixture<MunicipalApiFactor
     private readonly MunicipalApiFactory _factory;
 
     public MediaLibraryContractTests(MunicipalApiFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task AdminLibraryUsesDefaultPageWhenCallerOnlySetsPageSize()
+    {
+        await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        using var login = await client.PostAsJsonAsync(new Uri("/api/v1/auth/login", UriKind.Relative), new { username = "admin.demo", password = "Demo-Local-2026!" });
+        using var response = await client.GetAsync(new Uri("/api/v1/admin/media?status=APPROVED&pageSize=100", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.Contains("X-Total-Count"));
+    }
+
+    [Fact]
+    public async Task UploadPersistsAccessibilityMetadataFromMultipartForm()
+    {
+        await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Municipality", "deodapolis");
+        using var login = await client.PostAsJsonAsync(new Uri("/api/v1/auth/login", UriKind.Relative), new { username = "admin.demo", password = "Demo-Local-2026!" });
+        using var multipart = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        multipart.Add(file, "file", "metadata-contract.png");
+        multipart.Add(new StringContent("Descrição acessível preservada"), "altText");
+        multipart.Add(new StringContent("Legenda institucional"), "caption");
+        multipart.Add(new StringContent("Prefeitura de Deodápolis"), "credit");
+
+        using var upload = await client.PostAsync(new Uri("/api/v1/admin/media/upload", UriKind.Relative), multipart);
+        using var list = await client.GetAsync(new Uri("/api/v1/admin/media?page=1&pageSize=100&q=metadata-contract", UriKind.Relative));
+        var items = await list.Content.ReadFromJsonAsync<MediaPayload[]>();
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, upload.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        Assert.Equal("Descrição acessível preservada", Assert.Single(items ?? []).AltText);
+    }
 
     [Fact]
     public async Task AdminLibraryPaginatesAndFiltersApprovedMedia()
@@ -58,5 +98,5 @@ public sealed class MediaLibraryContractTests : IClassFixture<MunicipalApiFactor
         });
     }
 
-    private sealed record MediaPayload(string OriginalFileName, string Status);
+    private sealed record MediaPayload(string OriginalFileName, string Status, string AltText);
 }

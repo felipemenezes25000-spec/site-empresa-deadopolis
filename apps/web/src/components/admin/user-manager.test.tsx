@@ -10,7 +10,7 @@ describe("UserManager", () => {
     const created = { ...user, id: "two", username: "comunicacao.nova", displayName: "Comunicação Nova", role: "COMMUNICATION" };
     let userReads = 0;
     const fetchMock = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
-      if (url.endsWith("/roles")) return Promise.resolve(Response.json([{ role: "SUPER_ADMIN", capabilities: ["users.manage"] }, { role: "COMMUNICATION", capabilities: ["content.write"] }]));
+      if (url.endsWith("/roles")) return Promise.resolve(Response.json([{ role: "SUPER_ADMIN", capabilities: ["settings.manage", "users.manage"] }, { role: "COMMUNICATION", capabilities: ["content.write"] }]));
       if (options?.method === "POST") return Promise.resolve(Response.json(created, { status: 201 }));
       userReads++;
       return Promise.resolve(Response.json(userReads > 1 ? [user, created] : [user]));
@@ -19,6 +19,7 @@ describe("UserManager", () => {
     render(<UserManager />);
 
     expect(await screen.findByText(/admin\.demo/)).toBeInTheDocument();
+    expect(screen.getByText("users.manage", { exact: true })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Usuário"), { target: { value: "comunicacao.nova" } });
     fireEvent.change(screen.getByLabelText("Nome de exibição"), { target: { value: "Comunicação Nova" } });
     fireEvent.change(screen.getByLabelText("Papel RBAC"), { target: { value: "COMMUNICATION" } });

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MunicipalPlatform.Api.Infrastructure.Persistence;
 using MunicipalPlatform.Api.Modules.Media.Domain;
@@ -62,10 +63,10 @@ public static class MediaEndpoints
         });
     }
 
-    private static async Task<IResult> ListAsync(string? q, string? status, int page, int pageSize, HttpContext context, ApplicationDbContext db, CancellationToken ct)
+    private static async Task<IResult> ListAsync(string? q, string? status, int? page, int? pageSize, HttpContext context, ApplicationDbContext db, CancellationToken ct)
     {
-        var normalizedPage = Math.Clamp(page <= 0 ? 1 : page, 1, 1_000_000);
-        var normalizedPageSize = Math.Clamp(pageSize <= 0 ? 50 : pageSize, 1, 100);
+        var normalizedPage = Math.Clamp(page.GetValueOrDefault(1), 1, 1_000_000);
+        var normalizedPageSize = Math.Clamp(pageSize.GetValueOrDefault(50), 1, 100);
         var query = db.MediaAssets.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -110,7 +111,7 @@ public static class MediaEndpoints
         return Results.Ok(items);
     }
 
-    private static async Task<IResult> UploadAsync(IFormFile file, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct, string? altText = null, string? caption = null, string? credit = null)
+    private static async Task<IResult> UploadAsync(IFormFile file, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, IObjectStorageProvider storage, IMalwareScanner scanner, CancellationToken ct, [FromForm] string? altText = null, [FromForm] string? caption = null, [FromForm] string? credit = null)
     {
         if (file.Length <= 0 || file.Length > DocumentFileInspector.MaxBytes) return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Arquivo deve possuir até 25 MB."] });
         if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Storage não configurado", detail: storage.Description, statusCode: StatusCodes.Status503ServiceUnavailable);
