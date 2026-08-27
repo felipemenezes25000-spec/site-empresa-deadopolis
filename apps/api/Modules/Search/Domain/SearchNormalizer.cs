@@ -162,16 +162,45 @@ public static class SearchNormalizer
         var minimum = int.MaxValue;
         foreach (var candidate in titleTokens)
         {
-            minimum = Math.Min(minimum, LevenshteinDistance(token, candidate));
+            minimum = Math.Min(minimum, InflectionAwareDistance(token, candidate));
             if (minimum == 0) return 0;
         }
 
         foreach (var candidate in descriptionTokens)
         {
-            minimum = Math.Min(minimum, LevenshteinDistance(token, candidate));
+            minimum = Math.Min(minimum, InflectionAwareDistance(token, candidate));
             if (minimum == 0) return 0;
         }
 
         return minimum;
+    }
+
+    private static int InflectionAwareDistance(string left, string right)
+    {
+        var directDistance = LevenshteinDistance(left, right);
+        var normalizedLeft = NormalizeCommonInflection(left);
+        var normalizedRight = NormalizeCommonInflection(right);
+        if (string.Equals(normalizedLeft, left, StringComparison.Ordinal)
+            && string.Equals(normalizedRight, right, StringComparison.Ordinal))
+        {
+            return directDistance;
+        }
+
+        return Math.Min(directDistance, LevenshteinDistance(normalizedLeft, normalizedRight));
+    }
+
+    private static string NormalizeCommonInflection(string token)
+    {
+        if (token.Length > 4 && token.EndsWith("oes", StringComparison.Ordinal))
+        {
+            return token[..^3] + "ao";
+        }
+
+        if (token.Length > 4 && token.EndsWith('s'))
+        {
+            return token[..^1];
+        }
+
+        return token;
     }
 }
