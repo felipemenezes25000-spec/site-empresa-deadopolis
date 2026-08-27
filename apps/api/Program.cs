@@ -16,6 +16,7 @@ using MunicipalPlatform.Api.Modules.Identity;
 using MunicipalPlatform.Api.Modules.Identity.Domain;
 using MunicipalPlatform.Api.Modules.Mail;
 using MunicipalPlatform.Api.Modules.Mail.Providers;
+using MunicipalPlatform.Api.Modules.Mail.Services;
 using MunicipalPlatform.Api.Modules.Media;
 using MunicipalPlatform.Api.Modules.Media.Providers;
 using MunicipalPlatform.Api.Modules.Migration;
@@ -48,6 +49,7 @@ builder.Services.AddSingleton<ILegacySourceFetcher, SafeLegacySourceFetcher>();
 builder.Services.AddSingleton<LegacyImportService>();
 builder.Services.AddSingleton<LegacyDocumentImportService>();
 builder.Services.AddSingleton<LinkCheckProbeService>();
+builder.Services.AddSingleton<MailArchiveInspectionService>();
 builder.Services.AddHostedService<ScheduledPublicationWorker>();
 builder.Services.AddHostedService<LinkCheckWorker>();
 builder.Services.AddRateLimiter(options =>
