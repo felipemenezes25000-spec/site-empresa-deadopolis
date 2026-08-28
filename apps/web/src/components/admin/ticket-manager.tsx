@@ -11,6 +11,14 @@ type Violation = { id: string; protocol: string; firstResponseBreached: boolean;
 const priorities = [["CRITICAL", "Crítica · 1h/4h"], ["HIGH", "Alta · 4h/16h"], ["NORMAL", "Normal · 8h/40h"], ["LOW", "Baixa · 16h/80h"]] as const;
 const priorityLabels: Record<string, string> = { CRITICAL: "Crítica", HIGH: "Alta", NORMAL: "Normal", LOW: "Baixa" };
 
+// O filtro logo acima já oferece "Aberto / Em atendimento / Resolvido"; o selo mostrava o enum
+// cru em inglês na mesma tela. O rótulo passa a ser o mesmo vocabulário nos dois lugares.
+const ticketStatusLabels: Record<string, string> = { OPEN: "Aberto", IN_PROGRESS: "Em atendimento", RESOLVED: "Resolvido" };
+
+function ticketStatusLabel(status: string) {
+  return ticketStatusLabels[status.trim().toUpperCase()] ?? status;
+}
+
 export function TicketManager() {
   const [items, setItems] = useState<Ticket[]>([]);
   const [violations, setViolations] = useState<Violation[]>([]);
@@ -111,7 +119,7 @@ export function TicketManager() {
           <td>{item.protocol}<br /><small>{item.category}</small></td>
           <td>{item.requesterName}</td>
           <td>{priorityLabels[item.priority.toUpperCase()] ?? item.priority}</td>
-          <td><StatusBadge status={item.status} />{breached.has(item.id) && <><br /><small className="text-danger">SLA estourado</small></>}</td>
+          <td><StatusBadge status={ticketStatusLabel(item.status)} />{breached.has(item.id) && <><br /><small className="text-danger">SLA estourado</small></>}</td>
           <td>{formatDateTime(item.resolutionDueAt)}</td>
           <td><button type="button" className="action-button secondary" aria-expanded={selectedId === item.id} onClick={() => select(item.id)}>{selectedId === item.id ? "Fechar" : "Atender"}</button></td>
         </tr>)}</tbody>
