@@ -32,6 +32,11 @@ export function OperationsManager() {
   const [backups, setBackups] = useState<BackupEvidence[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  // Uma carga que falhou não é um inventário vazio: sem esta distinção, um erro de rede
+  // aparecia como "nenhuma URL cadastrada" e "nenhuma evidência de backup", que é a leitura
+  // oposta da verdade num painel de operações.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -50,13 +55,15 @@ export function OperationsManager() {
         setBackups(backupData);
       })
       .catch((error) => {
-        if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Falha ao carregar operações.");
+        if (controller.signal.aborted) return;
+        setLoadFailed(true);
+        setMessage(error instanceof Error ? error.message : "Falha ao carregar operações.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [reloadToken]);
 
   async function refreshLinks() {
     const response = await fetch("/api/v1/admin/operations/links");
@@ -162,7 +169,9 @@ export function OperationsManager() {
         <button className="action-button" disabled={busy}>Adicionar monitoramento</button>
       </form>
       <div className="compact-list" style={{ marginTop: 20 }}>
-        {links.length === 0 && <div className="empty-state"><p>Nenhuma URL cadastrada para monitoramento.</p></div>}
+        {loadFailed
+          ? <div className="warning-box" role="alert"><p>Não foi possível carregar o monitoramento de links.</p><p>Este painel não está afirmando que nenhuma URL está quebrada — a consulta não respondeu.</p><button type="button" className="action-button secondary" onClick={() => { setLoadFailed(false); setMessage(""); setReloadToken((current) => current + 1); }}>Tentar novamente</button></div>
+          : links.length === 0 && <div className="empty-state"><p>Nenhuma URL cadastrada para monitoramento.</p></div>}
         {links.map((link) => <div className="compact-item" key={link.id}>
           <div style={{ minWidth: 0 }}>
             <strong style={{ overflowWrap: "anywhere" }}>{link.url}</strong>
@@ -201,7 +210,9 @@ export function OperationsManager() {
         <button className="action-button secondary" disabled={busy}>Registrar evidência</button>
       </form>
       <div className="compact-list" style={{ marginTop: 20 }}>
-        {backups.length === 0 && <div className="empty-state"><p>Nenhuma evidência de backup registrada.</p></div>}
+        {loadFailed
+          ? <div className="warning-box" role="alert"><p>Não foi possível carregar as evidências de backup.</p><p>A ausência de itens abaixo é falta de resposta, não ausência de backup.</p></div>
+          : backups.length === 0 && <div className="empty-state"><p>Nenhuma evidência de backup registrada.</p></div>}
         {backups.map((backup) => <div className="compact-item" key={backup.id}>
           <div>
             <strong>{backup.provider} · {backup.backupType}</strong>

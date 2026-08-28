@@ -57,3 +57,11 @@
 /* Os formulários são apenas o envelope de submit: a superfície é o próprio componente. */
 .hero-search-form { max-width: 930px; margin: 0; }
 .portal-search-form { max-width: 680px; margin: 0 0 28px; }
+
+/* Estado atual no dock móvel: cor sozinha não basta, então o item ativo ganha peso,
+   fundo e um traço superior além do aria-current. */
+.public-mobile-dock > a.is-current { position: relative; background: #eaf2ed; color: #0c5139; font-weight: 800; }
+.public-mobile-dock > a.is-current::before { content: ""; position: absolute; top: 3px; left: 50%; width: 18px; height: 3px; border-radius: 99px; background: #176b4d; transform: translateX(-50%); }
+.public-mobile-dock > a.public-mobile-dock-search.is-current { background: transparent; }
+.public-mobile-dock > a.public-mobile-dock-search.is-current::before { display: none; }
+.public-mobile-dock > a.public-mobile-dock-search.is-current > span { box-shadow: 0 0 0 3px rgba(216, 237, 114, .55), 0 10px 24px rgba(10, 59, 42, .24); }

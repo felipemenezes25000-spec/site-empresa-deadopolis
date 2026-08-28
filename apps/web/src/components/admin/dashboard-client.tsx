@@ -22,17 +22,35 @@ const quickActions = [
 export function DashboardClient() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
-    fetch("/api/v1/admin/dashboard")
+    const controller = new AbortController();
+    fetch("/api/v1/admin/dashboard", { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error(`Dashboard retornou ${response.status}`);
-        setData(await response.json() as Data);
+        // Uma sessão expirada não é a mesma falha que uma API fora do ar, e a diferença muda
+        // o que o servidor precisa fazer a seguir.
+        if (response.status === 401) throw new Error("Sua sessão expirou. Entre novamente para ver a operação.");
+        if (!response.ok) throw new Error("Não foi possível carregar a visão operacional agora.");
+        const payload = await response.json() as Data;
+        if (!controller.signal.aborted) setData(payload);
       })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Falha"));
-  }, []);
+      .catch((reason) => {
+        if (controller.signal.aborted) return;
+        setError(reason instanceof Error ? reason.message : "Não foi possível carregar a visão operacional agora.");
+      });
+    return () => controller.abort();
+  }, [reloadToken]);
 
-  if (error) return <div className="form-message error">{error}</div>;
+  // Antes: a mensagem técnica crua, sem role de alerta e sem nenhuma forma de tentar de novo.
+  if (error) return <div className="admin-panel" role="alert">
+    <h2>A visão operacional não carregou</h2>
+    <p>{error}</p>
+    <div className="button-row">
+      <button type="button" className="action-button" onClick={() => { setError(""); setReloadToken((current) => current + 1); }}>Tentar novamente</button>
+      <Link className="action-button secondary" href="/admin/login">Ir para o login</Link>
+    </div>
+  </div>;
   if (!data) return <div className="admin-panel dashboard-loading" aria-busy="true"><span className="dashboard-loading-dot" />Carregando visão operacional…</div>;
 
   return <div className="dashboard-stack">
