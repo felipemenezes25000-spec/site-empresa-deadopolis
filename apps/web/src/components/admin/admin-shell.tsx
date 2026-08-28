@@ -72,10 +72,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setNavOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     function handleKeyboard(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -115,7 +111,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             {group !== "Visão geral" && <p>{group}</p>}
             {links.filter((item) => item.group === group).map(({ href, label, icon: Icon }) => {
               const active = href === "/admin" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-              return <Link key={href} href={href} className={active ? "is-active" : undefined} aria-current={active ? "page" : undefined}><Icon size={17} strokeWidth={1.9} aria-hidden="true" /><span>{label}</span></Link>;
+              return <Link key={href} href={href} onClick={() => setNavOpen(false)} className={active ? "is-active" : undefined} aria-current={active ? "page" : undefined}><Icon size={17} strokeWidth={1.9} aria-hidden="true" /><span>{label}</span></Link>;
             })}
           </div>)}
         </nav>
