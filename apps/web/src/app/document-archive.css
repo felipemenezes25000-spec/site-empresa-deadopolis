@@ -101,3 +101,12 @@
   .gazette-row-actions { justify-content: flex-start; }
   .gazette-row-actions > * { flex: 1 1 auto; }
 }
+
+/* --- Comprovante da Ouvidoria ------------------------------------------------ */
+.ticket-receipt { display: grid; gap: 14px; }
+.ticket-receipt h2 { margin: 0; font-family: "Iowan Old Style", Georgia, serif; }
+.ticket-receipt > p { margin: 0; }
+.ticket-receipt-item { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.ticket-receipt-item p { margin: 0; }
+.ticket-receipt-item code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .88rem; word-break: break-all; }
+.ticket-receipt .action-button { justify-self: start; }
