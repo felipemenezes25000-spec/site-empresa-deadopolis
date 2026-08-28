@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { PortalHome } from "./portal-home";
 
@@ -60,6 +60,18 @@ describe("PortalHome", () => {
     expect(screen.getByRole("link", { name: /emitir guia do iptu/i })).toHaveAttribute("href", "/servicos/emitir-guia-iptu");
     expect(screen.getByRole("link", { name: /portal da transparência/i })).toHaveAttribute("href", "https://example.test/transparencia");
     expect(screen.getByText("Ambiente de demonstração")).toBeInTheDocument();
+  });
+
+  it("renders the governed CMS menus in the home header and footer", () => {
+    render(<PortalHome content={content} menuResources={[
+      { id: "menu-1", kind: "MENU", slug: "servicos-online", title: "Serviços online", summary: "", displayOrder: 1, startsAt: null, endsAt: null, publishedAt: null, version: 1, payload: { label: "Serviços online", url: "/servicos", placement: "HEADER" } },
+      { id: "menu-2", kind: "MENU", slug: "ouvidoria-rodape", title: "Ouvidoria", summary: "", displayOrder: 1, startsAt: null, endsAt: null, publishedAt: null, version: 1, payload: { label: "Ouvidoria municipal", url: "/ouvidoria", placement: "FOOTER" } },
+    ]} />);
+
+    const navigation = screen.getByRole("navigation", { name: /principal/i });
+    expect(within(navigation).getAllByRole("link", { name: "Serviços online" }).length).toBeGreaterThan(0);
+    expect(within(navigation).queryByRole("link", { name: "Diário Oficial" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvidoria municipal" })).toHaveAttribute("href", "/ouvidoria");
   });
 
   it("renders an internal featured-news cover with responsive WebP variants", () => {

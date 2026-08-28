@@ -13,8 +13,16 @@ type MenuPayload = { label?: string; url?: string; parent?: string; external?: b
 type MenuNode = { resource: PortalResource; payload: MenuPayload; children: MenuNode[] };
 
 export async function PublicShell({ children }: { children: ReactNode }) {
-  let menuResources: PortalResource[] = [];
-  try { menuResources = await getResources("MENU"); } catch { menuResources = []; }
+  return <PortalChrome menuResources={await readMenuResources()} presentationMode={process.env.PRESENTATION_MODE === "true"}>
+    <main id="conteudo-principal">{children}</main>
+  </PortalChrome>;
+}
+
+export async function readMenuResources(): Promise<PortalResource[]> {
+  try { return await getResources("MENU"); } catch { return []; }
+}
+
+export function PortalChrome({ menuResources, presentationMode = false, children }: { menuResources: PortalResource[]; presentationMode?: boolean; children: ReactNode }) {
   const headerMenu = buildMenuTree(menuResources, "HEADER");
   const institutionalMenu = buildMenuTree(menuResources, "INSTITUTIONAL");
   const servicesMenu = buildMenuTree(menuResources, "SERVICES");
@@ -24,12 +32,13 @@ export async function PublicShell({ children }: { children: ReactNode }) {
 
   return <div className="public-page">
     <a className="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
+    {presentationMode && <div className="demo-bar" role="status"><span className="demo-dot" aria-hidden="true" />Ambiente de demonstração</div>}
     <header className="site-header">
       <div className="utility-bar"><div className="page-shell utility-inner"><p>Deodápolis · Mato Grosso do Sul</p><div className="utility-links">{quickMenu.flatMap(flattenMenu).slice(0, 5).map((node) => <MenuLink key={node.resource.id} node={node} />)}<Link href="/acessibilidade">Acessibilidade</Link><Link href="/contatos">Contatos</Link><Link href="/admin/login">Área administrativa</Link></div></div></div>
       <div className="page-shell brand-row"><Link className="municipal-brand" href="/" aria-label="Prefeitura de Deodápolis — início"><Image src="/brand/deodapolis-logo.png" width={278} height={74} priority alt="Prefeitura de Deodápolis — Juntos por um futuro ainda melhor" /></Link><div className="header-actions"><Link className="header-shortcut" href="/acesso-a-informacao"><CircleHelp size={18} aria-hidden="true" /> Acesso à informação</Link><Link className="header-shortcut" href="/ouvidoria"><Headphones size={18} aria-hidden="true" /> Ouvidoria</Link></div></div>
       <nav className="main-nav" aria-label="Navegação principal"><div className="page-shell nav-inner"><details className="mobile-navigation"><summary><Menu size={22} aria-hidden="true" /> Menu</summary><div>{hasManagedHeader ? <>{headerMenu.map((node) => <MobileMenuNode key={node.resource.id} node={node} />)}{institutionalMenu.length > 0 && <MobileMenuGroup label="Institucional" nodes={institutionalMenu} />}{servicesMenu.length > 0 && <MobileMenuGroup label="Serviços" nodes={servicesMenu} />}</> : fallbackNavigation.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div></details><div className="desktop-nav-links">{hasManagedHeader ? <>{headerMenu.map((node) => <DesktopMenuNode key={node.resource.id} node={node} />)}{institutionalMenu.length > 0 && <DesktopMenuGroup label="Institucional" nodes={institutionalMenu} />}{servicesMenu.length > 0 && <DesktopMenuGroup label="Serviços" nodes={servicesMenu} />}</> : fallbackNavigation.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div><Link className="emergency-link" href="/contatos#emergencia">Telefones úteis</Link></div></nav>
     </header>
-    <main id="conteudo-principal">{children}</main>
+    {children}
     <footer className="site-footer"><div className="page-shell footer-grid"><div className="footer-brand"><span className="brand-mark inverse" aria-hidden="true">D</span><div><strong>Prefeitura de Deodápolis</strong><p>Serviço público próximo, claro e acessível.</p></div></div><div><h2>Atendimento</h2><p>Consulte endereços e horários atualizados no diretório de contatos.</p><Link href="/contatos">Ver contatos</Link></div><div><h2>Acesso direto</h2>{footerMenu.length > 0 ? footerMenu.flatMap(flattenMenu).slice(0, 8).map((node) => <MenuLink key={node.resource.id} node={node} />) : fallbackFooter.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div></div><div className="page-shell footer-bottom"><span>© 2026 Prefeitura Municipal de Deodápolis</span><span>Portal preparado para dispositivos móveis.</span></div></footer>
   </div>;
 }
