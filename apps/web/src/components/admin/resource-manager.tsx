@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
 import { ResourcePayloadFields, serializeResourcePayload } from "./resource-payload-fields";
 
 type Resource = {
@@ -198,7 +199,7 @@ export function ResourceManager() {
           <small style={{ display: "block" }}>{item.slug} · v{item.version}{scheduleLabel(item)}</small>
         </div>
         <div className="button-row">
-          <span className="status-pill">{item.status}</span>
+          <StatusBadge status={item.status} />
           <button type="button" className="action-button secondary" onClick={() => void selectResource(item)} aria-label={`Editar ${item.title}`}>Editar</button>
           {item.status !== "PUBLISHED" && item.status !== "ARCHIVED" && <button type="button" className="action-button" onClick={() => void transition(item.id, "publish")}>Publicar</button>}
           {item.status !== "ARCHIVED" && <button type="button" className="action-button secondary" onClick={() => void transition(item.id, "archive")}>Arquivar</button>}

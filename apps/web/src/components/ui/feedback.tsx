@@ -5,17 +5,22 @@ export type StatusSeverity = "ok" | "attention" | "blocked" | "neutral";
 const severityByStatus: Record<string, StatusSeverity> = {
   ACTIVE: "ok", ATIVO: "ok", APPROVED: "ok", APROVADA: "ok", AVAILABLE: "ok", CONFIGURED: "ok",
   HEALTHY: "ok", IMPLEMENTED: "ok", OK: "ok", PUBLISHED: "ok", PUBLICADO: "ok", READY: "ok",
-  RESOLVED: "ok", SIGNED: "ok",
+  RESOLVED: "ok", SIGNED: "ok", PUBLICADA: "ok", VALIDADA: "ok", ATIVA: "ok", CONCLUIDO: "ok",
+  DISPONIVEL: "ok", OPERACIONAL: "ok",
 
   APPROVED_PENDING: "attention", DEGRADED: "attention", DEMO_ONLY: "attention",
   DEVELOPMENT_ONLY: "attention", DRAFT: "attention", EXTERNAL_DEPENDENCY: "attention",
   IN_PROGRESS: "attention", IN_REVIEW: "attention", NOT_CONFIGURED: "attention",
   NOT_READY: "attention", PARTIAL: "attention", PENDING: "attention", QUARANTINED: "attention",
-  REVIEW: "attention", SCHEDULED: "attention", TESTING_ONLY: "attention",
+  REVIEW: "attention", SCHEDULED: "attention", TESTING_ONLY: "attention", PENDENTE: "attention",
+  RASCUNHO: "attention", AGENDADA: "attention", AGENDADO: "attention", EM_REVISAO: "attention",
+  QUARENTENA: "attention", DEMONSTRACAO: "attention",
 
   BLOCKED: "blocked", ERROR: "blocked", EXPIRED: "blocked", FAILED: "blocked", INACTIVE: "blocked",
   INATIVO: "blocked", REJECTED: "blocked", REJEITADA: "blocked", REVOKED: "blocked",
-  UNAVAILABLE: "blocked", UNHEALTHY: "blocked",
+  UNAVAILABLE: "blocked", UNHEALTHY: "blocked", INATIVA: "blocked", FALHA: "blocked",
+  ERRO: "blocked", CANCELADA: "blocked", REVOGADA: "blocked", INDISPONIVEL: "blocked",
+  ARQUIVADO: "blocked", BROKEN: "blocked",
 };
 
 const severityStyles: Record<StatusSeverity, string> = {

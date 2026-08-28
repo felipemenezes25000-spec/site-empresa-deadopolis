@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
 
 type Provider = { state: string; description: string };
 type MailDomain = { id: string; domain: string; state: string; externalId: string | null; createdAt: string; updatedAt: string };
@@ -247,7 +248,7 @@ export function MailManager() {
     <div className="editor-grid" style={{ marginTop: 20 }}>
       <section className="admin-panel">
         <h2>Domínios institucionais</h2>
-        {domains.length === 0 ? <div className="empty-state"><p>Nenhum domínio cadastrado.</p></div> : <div className="compact-list">{domains.map((domain) => <div className="compact-item" key={domain.id}><div><strong>{domain.domain}</strong><small style={{ display: "block" }}>Atualizado em {formatDate(domain.updatedAt)}</small>{domain.externalId && <small style={{ display: "block" }}>ID externo: {domain.externalId}</small>}</div><span className="status-pill">{domain.state}</span></div>)}</div>}
+        {domains.length === 0 ? <div className="empty-state"><p>Nenhum domínio cadastrado.</p></div> : <div className="compact-list">{domains.map((domain) => <div className="compact-item" key={domain.id}><div><strong>{domain.domain}</strong><small style={{ display: "block" }}>Atualizado em {formatDate(domain.updatedAt)}</small>{domain.externalId && <small style={{ display: "block" }}>ID externo: {domain.externalId}</small>}</div><StatusBadge status={domain.state} /></div>)}</div>}
         <form className="editor-fields" onSubmit={createDomain} style={{ marginTop: 20 }}>
           <label className="field">Domínio institucional<input name="domain" required placeholder="deodapolis.ms.gov.br" /></label>
           <button className="action-button secondary" disabled={busy}>Cadastrar domínio</button>
@@ -256,7 +257,7 @@ export function MailManager() {
 
       <section className="admin-panel">
         <h2>Caixas postais</h2>
-        {mailboxes.length === 0 ? <div className="empty-state"><p>Nenhuma caixa cadastrada.</p></div> : <div className="compact-list">{mailboxes.map((mailbox) => <button type="button" className="compact-item" key={mailbox.id} onClick={() => setSelectedMailbox(mailbox)} style={{ width: "100%", cursor: "pointer" }}><div><strong>{mailbox.address}</strong><small style={{ display: "block" }}>{mailbox.displayName} · {mailbox.quotaMegabytes} MB</small></div><span className="status-pill">{mailbox.status}</span></button>)}</div>}
+        {mailboxes.length === 0 ? <div className="empty-state"><p>Nenhuma caixa cadastrada.</p></div> : <div className="compact-list">{mailboxes.map((mailbox) => <button type="button" className="compact-item" key={mailbox.id} onClick={() => setSelectedMailbox(mailbox)} style={{ width: "100%", cursor: "pointer" }}><div><strong>{mailbox.address}</strong><small style={{ display: "block" }}>{mailbox.displayName} · {mailbox.quotaMegabytes} MB</small></div><StatusBadge status={mailbox.status} /></button>)}</div>}
         <form className="editor-fields" onSubmit={createMailbox} style={{ marginTop: 20 }}>
           <h3>Nova caixa</h3>
           <label className="field">Endereço da caixa<input name="address" type="email" required placeholder="contato@deodapolis.ms.gov.br" /></label>
@@ -279,7 +280,7 @@ export function MailManager() {
     <div className="editor-grid" style={{ marginTop: 20 }}>
       <section className="admin-panel">
         <h2>Aliases</h2>
-        {aliases.length === 0 ? <div className="empty-state"><p>Nenhum alias cadastrado.</p></div> : <div className="compact-list">{aliases.map((alias) => <div className="compact-item" key={alias.id}><div><strong>{alias.address}</strong><small style={{ display: "block" }}>→ {alias.targetAddress}</small></div><div className="button-row"><span className="status-pill">{alias.isActive ? "ATIVO" : "INATIVO"}</span>{alias.isActive && <button type="button" className="action-button secondary" disabled={busy} onClick={() => void deactivateAlias(alias.id)}>Desativar</button>}</div></div>)}</div>}
+        {aliases.length === 0 ? <div className="empty-state"><p>Nenhum alias cadastrado.</p></div> : <div className="compact-list">{aliases.map((alias) => <div className="compact-item" key={alias.id}><div><strong>{alias.address}</strong><small style={{ display: "block" }}>→ {alias.targetAddress}</small></div><div className="button-row"><StatusBadge status={alias.isActive ? "ATIVO" : "INATIVO"} />{alias.isActive && <button type="button" className="action-button secondary" disabled={busy} onClick={() => void deactivateAlias(alias.id)}>Desativar</button>}</div></div>)}</div>}
         <form className="editor-fields" onSubmit={createAlias} style={{ marginTop: 20 }}>
           <label className="field">Endereço do alias<input name="address" type="email" required placeholder="ouvidoria@deodapolis.ms.gov.br" /></label>
           <label className="field">Destino do alias<input name="targetAddress" type="email" required placeholder="contato@deodapolis.ms.gov.br" /></label>

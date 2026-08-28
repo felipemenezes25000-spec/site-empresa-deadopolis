@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
 
 type Dataset = {
   id: string;
@@ -197,7 +198,7 @@ export function DatasetManager() {
           <label>Buscar <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Título, slug, categoria ou órgão" /></label>
           <label>Status <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | StatusKey)}><option value="ALL">Todos</option><option value="DRAFT">Rascunhos</option><option value="PUBLISHED">Publicados</option><option value="ARCHIVED">Arquivados</option></select></label>
         </div>
-        {loading ? <div className="empty-state" aria-busy="true"><h3>Carregando datasets…</h3></div> : filtered.length === 0 ? <div className="empty-state"><h3>Nenhum dataset encontrado</h3><p>Crie o primeiro dataset ou ajuste os filtros.</p></div> : <div className="compact-list">{filtered.map((item) => <button type="button" className="compact-item" key={item.id} onClick={() => setSelected(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.title}</strong><small style={{ display: "block" }}>{item.category || "Sem categoria"} · {item.responsibleDepartment || "Órgão não informado"}</small></span><span className="status-pill">{statusLabel(item.status)}</span></button>)}</div>}
+        {loading ? <div className="empty-state" aria-busy="true"><h3>Carregando datasets…</h3></div> : filtered.length === 0 ? <div className="empty-state"><h3>Nenhum dataset encontrado</h3><p>Crie o primeiro dataset ou ajuste os filtros.</p></div> : <div className="compact-list">{filtered.map((item) => <button type="button" className="compact-item" key={item.id} onClick={() => setSelected(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.title}</strong><small style={{ display: "block" }}>{item.category || "Sem categoria"} · {item.responsibleDepartment || "Órgão não informado"}</small></span><StatusBadge status={statusLabel(item.status)} /></button>)}</div>}
       </section>
 
       <form className="admin-panel editor-fields" onSubmit={createDataset}>

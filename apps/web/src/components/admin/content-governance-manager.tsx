@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { StatusBadge } from "@/components/ui";
 
 type CalendarItem = { id: string; kind: string; title: string; status: string; actionAt: string; publishedAt: string | null; endsAt: string | null; publicUrl: string | null; adminUrl: string };
 type CalendarResponse = { from: string; to: string; items: CalendarItem[] };
@@ -30,13 +31,13 @@ export function ContentGovernanceManager() {
     {message && <div className="form-message" role="status">{message}</div>}
     <section className="admin-panel">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h2>Calendário unificado de publicação</h2><p>Notícias, páginas/blocos e Diário Oficial na mesma linha do tempo.</p></div>{calendar && <small>{formatDate(calendar.from)} → {formatDate(calendar.to)}</small>}</div>
-      {!calendar ? <p aria-busy="true">Carregando calendário…</p> : calendar.items.length === 0 ? <div className="empty-state"><h3>Nenhuma publicação no período</h3><p>O calendário será preenchido por publicações e agendamentos reais.</p></div> : <div className="compact-list">{calendar.items.map((item) => <div className="compact-item" key={`${item.kind}-${item.id}-${item.actionAt}`}><div><strong>{item.title}</strong><small style={{ display: "block" }}>{item.kind} · {formatDateTime(item.actionAt)}{item.endsAt ? ` · encerra ${formatDateTime(item.endsAt)}` : ""}</small></div><div className="button-row"><span className="status-pill">{item.status}</span>{item.publicUrl && <Link className="action-button secondary" href={item.publicUrl}>Ver público</Link>}<Link className="action-button secondary" href={item.adminUrl}>Administrar</Link></div></div>)}</div>}
+      {!calendar ? <p aria-busy="true">Carregando calendário…</p> : calendar.items.length === 0 ? <div className="empty-state"><h3>Nenhuma publicação no período</h3><p>O calendário será preenchido por publicações e agendamentos reais.</p></div> : <div className="compact-list">{calendar.items.map((item) => <div className="compact-item" key={`${item.kind}-${item.id}-${item.actionAt}`}><div><strong>{item.title}</strong><small style={{ display: "block" }}>{item.kind} · {formatDateTime(item.actionAt)}{item.endsAt ? ` · encerra ${formatDateTime(item.endsAt)}` : ""}</small></div><div className="button-row"><StatusBadge status={item.status} />{item.publicUrl && <Link className="action-button secondary" href={item.publicUrl}>Ver público</Link>}<Link className="action-button secondary" href={item.adminUrl}>Administrar</Link></div></div>)}</div>}
     </section>
 
     <section className="admin-panel">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h2>Conteúdo desatualizado</h2><p>Itens que ultrapassaram o prazo de revisão editorial.</p></div><label className="field">Revisão vencida após<input type="number" min={30} max={730} value={days} onChange={(event) => setDays(Math.min(730, Math.max(30, Number(event.target.value) || 180)))} /><small>dias</small></label></div>
       {stale && <div className="mb-3 flex flex-wrap gap-3"><span className="status-pill">{stale.count} pendentes</span><span className="status-pill">{stale.unassigned} sem responsável identificável</span></div>}
-      {!stale ? <p aria-busy="true">Carregando revisão…</p> : stale.items.length === 0 ? <div className="empty-state"><h3>Revisão em dia</h3><p>Nenhum conteúdo excedeu o limite configurado.</p></div> : <div className="compact-list">{stale.items.map((item) => <div className="compact-item" key={`${item.kind}-${item.id}`}><div><strong>{item.title}</strong><small style={{ display: "block" }}>{item.kind} · {item.daysSinceReview} dias sem revisão · responsável: {item.ownerName ?? "não atribuído"}</small></div><span className="status-pill">{item.status}</span></div>)}</div>}
+      {!stale ? <p aria-busy="true">Carregando revisão…</p> : stale.items.length === 0 ? <div className="empty-state"><h3>Revisão em dia</h3><p>Nenhum conteúdo excedeu o limite configurado.</p></div> : <div className="compact-list">{stale.items.map((item) => <div className="compact-item" key={`${item.kind}-${item.id}`}><div><strong>{item.title}</strong><small style={{ display: "block" }}>{item.kind} · {item.daysSinceReview} dias sem revisão · responsável: {item.ownerName ?? "não atribuído"}</small></div><StatusBadge status={item.status} /></div>)}</div>}
     </section>
   </div>;
 }

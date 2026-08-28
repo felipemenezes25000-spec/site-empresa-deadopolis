@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
 
 type Edition = {
   id: string;
@@ -206,7 +207,7 @@ export function GazetteComposer() {
           <button type="button" className="action-button secondary" onClick={() => action("sign")} disabled={busy || current.status !== "GENERATED"}>Assinar</button>
           <button type="button" className="action-button" onClick={() => action("publish")} disabled={busy || current.status !== "SIGNED"}>Publicar</button>
         </div>
-        <p><span className="status-pill">{current.status}</span>{current.sha256 && <> · SHA <code>{current.sha256.slice(0, 16)}…</code></>}</p>
+        <p><StatusBadge status={current.status} />{current.sha256 && <> · SHA <code>{current.sha256.slice(0, 16)}…</code></>}</p>
         {current.verificationCode && <a href={`/verificar/${current.verificationCode}`} target="_blank" rel="noreferrer">Abrir verificação pública ↗</a>}
       </div>}
 
@@ -227,7 +228,7 @@ export function GazetteComposer() {
       {listState === "LOADING" && <p role="status" aria-live="polite">Carregando edições do Diário…</p>}
       {listState === "ERROR" && <div className="form-message error" role="alert">Não foi possível carregar as edições. <button type="button" className="action-button secondary" onClick={() => setReloadToken((current) => current + 1)}>Tentar novamente</button></div>}
       {listState === "READY" && items.length === 0 && <div className="empty-state"><h3>Nenhuma edição registrada</h3><p>Crie a primeira edição no formulário ao lado.</p></div>}
-      {listState === "READY" && items.length > 0 && <div className="compact-list">{items.map((item) => <button type="button" key={item.id} className="compact-item" onClick={() => void selectEdition(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.number}/{item.year}</strong><small style={{ display: "block" }}>{item.type}</small></span><span className="status-pill">{item.status}</span></button>)}</div>}
+      {listState === "READY" && items.length > 0 && <div className="compact-list">{items.map((item) => <button type="button" key={item.id} className="compact-item" onClick={() => void selectEdition(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.number}/{item.year}</strong><small style={{ display: "block" }}>{item.type}</small></span><StatusBadge status={item.status} /></button>)}</div>}
       {message && <div className="form-message" role="status">{message}</div>}
       <div className="warning-box" style={{ marginTop: 16 }}><strong>Assinatura:</strong> em POC pode existir provider <code>DEMO_ONLY</code>, explicitamente sem valor ICP-Brasil. Produção permanece <code>NOT_CONFIGURED</code> até certificado/serviço real.</div>
     </aside>
@@ -240,7 +241,7 @@ function IntegrityPanel({ integrity }: { integrity: Integrity | null }) {
     <h2 id="gazette-integrity-title">Cadeia de integridade</h2>
     <div className="compact-list">
       {integrity.signatures.length === 0
-        ? <div className="compact-item"><span><strong>Assinatura</strong><small style={{ display: "block" }}>Ainda não registrada.</small></span><span className="status-pill">PENDENTE</span></div>
+        ? <div className="compact-item"><span><strong>Assinatura</strong><small style={{ display: "block" }}>Ainda não registrada.</small></span><StatusBadge status="PENDENTE" /></div>
         : integrity.signatures.map((signature) => <div className="compact-item" key={signature.id}>
           <div>
             <strong>{signature.provider} · {signature.isIcpBrasil ? "ICP-Brasil" : "não ICP"}</strong>
@@ -252,8 +253,8 @@ function IntegrityPanel({ integrity }: { integrity: Integrity | null }) {
           <span className="status-pill">{signature.validationState.startsWith("VALID:") ? "VALIDADA" : signature.validationState}</span>
         </div>)}
       {integrity.publication
-        ? <div className="compact-item"><div><strong>Publicação registrada</strong><small style={{ display: "block" }}>{formatDateTime(integrity.publication.publishedAt)}</small><small style={{ display: "block" }}>Código: {integrity.publication.verificationCode}</small><a href={integrity.publication.publicUrl} target="_blank" rel="noreferrer">Abrir PDF público ↗</a></div><span className="status-pill">PUBLICADA</span></div>
-        : <div className="compact-item"><span><strong>Publicação</strong><small style={{ display: "block" }}>Registro ainda não criado.</small></span><span className="status-pill">PENDENTE</span></div>}
+        ? <div className="compact-item"><div><strong>Publicação registrada</strong><small style={{ display: "block" }}>{formatDateTime(integrity.publication.publishedAt)}</small><small style={{ display: "block" }}>Código: {integrity.publication.verificationCode}</small><a href={integrity.publication.publicUrl} target="_blank" rel="noreferrer">Abrir PDF público ↗</a></div><StatusBadge status="PUBLICADA" /></div>
+        : <div className="compact-item"><span><strong>Publicação</strong><small style={{ display: "block" }}>Registro ainda não criado.</small></span><StatusBadge status="PENDENTE" /></div>}
     </div>
     {integrity.corrects.length > 0 && <div><h3>Corrige</h3>{integrity.corrects.map((link) => <p key={link.id}>Edição original <code>{link.originalEditionId}</code>: {link.reason}</p>)}</div>}
     {integrity.corrections.length > 0 && <div><h3>Correções vinculadas</h3>{integrity.corrections.map((link) => <p key={link.id}>Edição de correção <code>{link.correctionEditionId}</code>: {link.reason}</p>)}</div>}
