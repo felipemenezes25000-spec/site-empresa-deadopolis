@@ -213,7 +213,7 @@ button, input { font: inherit; }
 }
 
 @media print {
-  .demo-bar, .utility-bar, .main-nav, .universal-search, .quick-needs { display: none !important; }
+  .demo-bar, .utility-bar, .main-nav, .universal-search, .quick-needs { display: none; }
   body { background: #fff; color: #000; }
   a { text-decoration: none; }
 }
