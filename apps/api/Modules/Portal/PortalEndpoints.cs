@@ -145,7 +145,7 @@ public static class PortalEndpoints
         var integrations = integrationRecords.Select(status => new
         {
             status.Provider,
-            State = ToExternalState(status.State),
+            State = IntegrationStateVocabulary.ToExternalState(status.State),
             status.Message,
             status.LastCheckedAt
         });
@@ -519,12 +519,4 @@ public static class PortalEndpoints
         return Results.Ok(events);
     }
 
-    private static string ToExternalState(IntegrationState state) => state switch
-    {
-        IntegrationState.Configured => "CONFIGURED",
-        IntegrationState.Degraded => "DEGRADED",
-        IntegrationState.Unavailable => "UNAVAILABLE",
-        IntegrationState.NotConfigured => "NOT_CONFIGURED",
-        _ => throw new ArgumentOutOfRangeException(nameof(state))
-    };
 }

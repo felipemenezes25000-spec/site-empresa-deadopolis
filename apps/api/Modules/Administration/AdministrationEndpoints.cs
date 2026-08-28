@@ -50,7 +50,7 @@ public static class AdministrationEndpoints
                 services = await db.Services.CountAsync(ct),
                 mediaQuarantined = await db.MediaAssets.CountAsync(x => x.Status == "QUARANTINED", ct)
             },
-            integrations = await db.IntegrationStatuses.AsNoTracking().Select(x => new { x.Provider, x.State, x.Message, x.LastCheckedAt }).ToListAsync(ct)
+            integrations = (await db.IntegrationStatuses.AsNoTracking().OrderBy(x => x.Provider).ToListAsync(ct)).Select(ToIntegrationResponse)
         });
     }
 
@@ -97,7 +97,9 @@ public static class AdministrationEndpoints
         catch (ArgumentException ex) { return Results.ValidationProblem(new Dictionary<string, string[]> { ["department"] = [ex.Message] }); }
     }
 
-    private static async Task<IResult> IntegrationsAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok(await db.IntegrationStatuses.AsNoTracking().OrderBy(x => x.Provider).ToListAsync(ct));
+    private static async Task<IResult> IntegrationsAsync(ApplicationDbContext db, CancellationToken ct) => Results.Ok((await db.IntegrationStatuses.AsNoTracking().OrderBy(x => x.Provider).ToListAsync(ct)).Select(ToIntegrationResponse));
+
+    private static object ToIntegrationResponse(IntegrationStatus status) => new { status.Provider, state = status.State.ToExternalState(), status.Message, status.LastErrorCode, status.LastCheckedAt };
 
     private static async Task<IResult> ComplianceAsync(
         ApplicationDbContext db,
@@ -145,7 +147,7 @@ public static class AdministrationEndpoints
                 backups = new { total = backupTotal, restoreTested },
                 gazette = new { signatures, publications, corrections }
             },
-            integrations = integrations.Select(item => new { item.Provider, state = item.State.ToString().ToUpperInvariant(), item.Message, item.LastCheckedAt }),
+            integrations = integrations.Select(ToIntegrationResponse),
             externalDependencies = new[]
             {
                 new { name = "Storage de produção", state = storage.State, requirement = "Configurar storage compatível com retenção, backup e credenciais gerenciadas." },

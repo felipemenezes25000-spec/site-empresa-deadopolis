@@ -7,10 +7,11 @@ const severityByStatus: Record<string, StatusSeverity> = {
   HEALTHY: "ok", IMPLEMENTED: "ok", OK: "ok", PUBLISHED: "ok", PUBLICADO: "ok", READY: "ok",
   RESOLVED: "ok", SIGNED: "ok",
 
-  APPROVED_PENDING: "attention", DEGRADED: "attention", DEMO_ONLY: "attention", DRAFT: "attention",
-  EXTERNAL_DEPENDENCY: "attention", IN_PROGRESS: "attention", IN_REVIEW: "attention",
-  NOT_CONFIGURED: "attention", NOT_READY: "attention", PARTIAL: "attention", PENDING: "attention",
-  QUARANTINED: "attention", REVIEW: "attention", SCHEDULED: "attention",
+  APPROVED_PENDING: "attention", DEGRADED: "attention", DEMO_ONLY: "attention",
+  DEVELOPMENT_ONLY: "attention", DRAFT: "attention", EXTERNAL_DEPENDENCY: "attention",
+  IN_PROGRESS: "attention", IN_REVIEW: "attention", NOT_CONFIGURED: "attention",
+  NOT_READY: "attention", PARTIAL: "attention", PENDING: "attention", QUARANTINED: "attention",
+  REVIEW: "attention", SCHEDULED: "attention", TESTING_ONLY: "attention",
 
   BLOCKED: "blocked", ERROR: "blocked", EXPIRED: "blocked", FAILED: "blocked", INACTIVE: "blocked",
   INATIVO: "blocked", REJECTED: "blocked", REJEITADA: "blocked", REVOKED: "blocked",
