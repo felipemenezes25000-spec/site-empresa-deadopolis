@@ -115,6 +115,9 @@ public static class IdentityEndpoints
 
     private static async Task<IResult> RevokeUserSessionsAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext database, TenantContext tenant, CancellationToken cancellationToken)
     {
+        var actor = RequireActor(principal);
+        if (id == actor)
+            return Results.Conflict(new { title = "Use o fluxo explícito da conta atual para encerrar as próprias sessões", status = 409 });
         var user = await database.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (user is null) return Results.NotFound();
         user.RevokeSessions();

@@ -8,6 +8,7 @@
 **/.next/
 **/playwright-report/
 **/test-results/
+**/TestResults/
 
 # Local runtime data
 .env

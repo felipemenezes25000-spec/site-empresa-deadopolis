@@ -4,10 +4,12 @@ import { useEffect, useState, type FormEvent } from "react";
 
 type User = { id: string; username: string; displayName: string; role: string; isActive: boolean; mfaEnabled: boolean; createdAt: string; lastLoginAt: string | null; lockedUntil: string | null };
 type Role = { role: string; capabilities: string[] };
+type CurrentUser = { id: string };
 
 export function UserManager() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -17,11 +19,13 @@ export function UserManager() {
     void Promise.all([
       fetch("/api/v1/admin/users", { signal: controller.signal }),
       fetch("/api/v1/admin/users/roles", { signal: controller.signal }),
-    ]).then(async ([usersResponse, rolesResponse]) => {
+      fetch("/api/v1/auth/me", { signal: controller.signal }),
+    ]).then(async ([usersResponse, rolesResponse, currentUserResponse]) => {
       if (!usersResponse.ok) throw new Error(await errorText(usersResponse));
       if (!rolesResponse.ok) throw new Error(await errorText(rolesResponse));
-      const [userData, roleData] = await Promise.all([usersResponse.json() as Promise<User[]>, rolesResponse.json() as Promise<Role[]>]);
-      if (!controller.signal.aborted) { setUsers(userData); setRoles(roleData); }
+      if (!currentUserResponse.ok) throw new Error(await errorText(currentUserResponse));
+      const [userData, roleData, currentUser] = await Promise.all([usersResponse.json() as Promise<User[]>, rolesResponse.json() as Promise<Role[]>, currentUserResponse.json() as Promise<CurrentUser>]);
+      if (!controller.signal.aborted) { setUsers(userData); setRoles(roleData); setCurrentUserId(currentUser.id); }
     }).catch((error) => {
       if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Não foi possível carregar os usuários.");
     }).finally(() => {
@@ -109,13 +113,13 @@ export function UserManager() {
 
     <section className="admin-panel" style={{ gridColumn: "1 / -1" }}>
       <h2>Contas do município</h2>
-      {users.length === 0 ? <div className="empty-state"><p>Nenhuma conta cadastrada.</p></div> : <div className="compact-list">{users.map((user) => <article className="compact-item" key={user.id}>
-        <div><strong>{user.displayName}</strong><small style={{ display: "block" }}>{user.username} · {user.mfaEnabled ? "MFA ativo" : "MFA pendente"}</small><small style={{ display: "block" }}>{user.lastLoginAt ? `Último acesso ${formatDate(user.lastLoginAt)}` : "Ainda não acessou"}{user.lockedUntil ? ` · bloqueado até ${formatDate(user.lockedUntil)}` : ""}</small></div>
+      {users.length === 0 ? <div className="empty-state"><p>Nenhuma conta cadastrada.</p></div> : <div className="compact-list">{users.map((user) => { const isCurrent = user.id === currentUserId; return <article className="compact-item" key={user.id} aria-label={`${user.displayName} · ${user.username}${isCurrent ? " · sessão atual" : ""}`}>
+        <div><strong>{user.displayName}</strong>{isCurrent && <span className="status-pill" style={{ marginLeft: 8 }}>SESSÃO ATUAL</span>}<small style={{ display: "block" }}>{user.username} · {user.mfaEnabled ? "MFA ativo" : "MFA pendente"}</small><small style={{ display: "block" }}>{user.lastLoginAt ? `Último acesso ${formatDate(user.lastLoginAt)}` : "Ainda não acessou"}{user.lockedUntil ? ` · bloqueado até ${formatDate(user.lockedUntil)}` : ""}</small></div>
         <div>
-          <form className="button-row" onSubmit={(event) => void assignRole(user.id, event)}><select name="role" defaultValue={user.role} aria-label={`Papel de ${user.username}`}>{roles.map((role) => <option key={role.role} value={role.role}>{role.role}</option>)}</select><button className="action-button secondary" disabled={busy}>Salvar papel</button></form>
-          <div className="button-row"><span className="status-pill">{user.isActive ? "ATIVO" : "INATIVO"}</span><button type="button" className="action-button secondary" disabled={busy} onClick={() => void revokeSessions(user)}>Revogar sessões</button><button type="button" className="action-button secondary" disabled={busy} onClick={() => void setActive(user)}>{user.isActive ? "Desativar" : "Reativar"}</button></div>
+          <form className="button-row" onSubmit={(event) => void assignRole(user.id, event)}><select key={`${user.id}-${user.role}`} name="role" defaultValue={user.role} aria-label={`Papel de ${user.username}`} disabled={isCurrent || busy}>{roles.map((role) => <option key={role.role} value={role.role}>{role.role}</option>)}</select><button className="action-button secondary" disabled={isCurrent || busy}>Salvar papel</button></form>
+          <div className="button-row"><span className="status-pill">{user.isActive ? "ATIVO" : "INATIVO"}</span><button type="button" className="action-button secondary" disabled={isCurrent || busy} onClick={() => void revokeSessions(user)}>Revogar sessões</button><button type="button" className="action-button secondary" disabled={isCurrent || busy} onClick={() => void setActive(user)}>{user.isActive ? "Desativar" : "Reativar"}</button></div>
         </div>
-      </article>)}</div>}
+      </article>; })}</div>}
       {message && <div className="form-message" role="status" aria-live="polite" style={{ marginTop: 16 }}>{message}</div>}
     </section>
   </div>;

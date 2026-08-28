@@ -30,6 +30,24 @@ test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Ope
   await page.getByRole("button", { name: "Criar usuário" }).click();
   await expect(page.getByText(/Usuário criado/)).toBeVisible();
   await expect(page.getByText(new RegExp(managedUsername))).toBeVisible();
+  const currentAccount = page.getByRole("article", { name: /admin\.demo.*sessão atual/i });
+  await expect(currentAccount.getByRole("button", { name: "Salvar papel" })).toBeDisabled();
+  await expect(currentAccount.getByRole("button", { name: "Revogar sessões" })).toBeDisabled();
+  await expect(currentAccount.getByRole("button", { name: "Desativar" })).toBeDisabled();
+  const managedAccount = page.getByRole("article", { name: new RegExp(managedUsername) });
+  await managedAccount.getByLabel(`Papel de ${managedUsername}`).selectOption("SUPER_ADMIN");
+  await managedAccount.getByRole("button", { name: "Salvar papel" }).click();
+  await expect(page.getByText("Papel atualizado e sessões anteriores revogadas.")).toBeVisible();
+  await managedAccount.getByRole("button", { name: "Revogar sessões" }).click();
+  await expect(page.getByText(`Sessões de ${managedUsername} revogadas.`)).toBeVisible();
+  await managedAccount.getByRole("button", { name: "Desativar" }).click();
+  await expect(page.getByText("Conta desativada e sessões revogadas.")).toBeVisible();
+  await expect(managedAccount.getByText("INATIVO", { exact: true })).toBeVisible();
+  const auditResponse = await page.request.get("/api/v1/admin/audit");
+  expect(auditResponse.ok()).toBeTruthy();
+  const auditEvents = await auditResponse.json() as Array<{ action: string; resourceId: string }>;
+  const managedAuditActions = auditEvents.filter((event) => event.resourceId === managedUsername || event.action.startsWith("identity.user.")).map((event) => event.action);
+  expect(managedAuditActions).toEqual(expect.arrayContaining(["identity.user.created", "identity.user.role.assigned", "identity.user.sessions.revoked", "identity.user.state.changed"]));
 
   const coverFileName = `capa-poc-${suffix}.png`;
   const coverAlt = `Imagem sintética de capa da POC ${suffix}`;
