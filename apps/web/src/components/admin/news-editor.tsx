@@ -15,6 +15,7 @@ export function NewsEditor({ articleId }: { articleId?: string }) {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [article, setArticle] = useState<Article | null>(null);
   const [media, setMedia] = useState<Asset[]>([]);
+  const [mediaState, setMediaState] = useState<"LOADING" | "READY" | "ERROR">("LOADING");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingArticle, setLoadingArticle] = useState(Boolean(articleId));
@@ -55,8 +56,12 @@ export function NewsEditor({ articleId }: { articleId?: string }) {
   useEffect(() => {
     const controller = new AbortController();
     void fetch("/api/v1/admin/media?status=APPROVED&pageSize=100", { signal: controller.signal }).then(async (response) => {
-      if (response.ok && !controller.signal.aborted) setMedia(await response.json() as Asset[]);
-    }).catch(() => undefined);
+      if (!response.ok) throw new Error("media");
+      const assets = await response.json() as Asset[];
+      if (controller.signal.aborted) return;
+      setMedia(assets);
+      setMediaState("READY");
+    }).catch(() => { if (!controller.signal.aborted) setMediaState("ERROR"); });
     return () => controller.abort();
   }, []);
 
@@ -114,7 +119,7 @@ export function NewsEditor({ articleId }: { articleId?: string }) {
       <Field label="Linha fina"><textarea value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} maxLength={320} rows={3} required /></Field>
       <Field label="Área editorial"><select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{NEWS_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
       <RichTextEditor label="Conteúdo" value={draft.body} onChange={(body) => setDraft({ ...draft, body })} required />
-      <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer font-semibold">Selecionar capa da biblioteca</summary><div className="mt-3">{imageMedia.length > 0 ? <MediaPicker items={imageMedia} selectedId={selectedMediaId} onSelect={(item) => setDraft({ ...draft, coverImageUrl: `/api/v1/media/${item.id}`, coverImageAlt: item.altText || item.name })} /> : <p className="text-muted">Nenhuma imagem aprovada disponível. Envie e aprove a mídia na biblioteca antes de selecioná-la.</p>}</div></details>
+      <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer font-semibold">Selecionar capa da biblioteca</summary><div className="mt-3">{mediaState === "LOADING" ? <p role="status" aria-live="polite">Carregando biblioteca de mídia…</p> : mediaState === "ERROR" ? <p className="form-message error" role="alert">Não foi possível carregar a biblioteca de mídia; a lista abaixo pode estar incompleta. Recarregue a página antes de escolher uma capa.</p> : imageMedia.length > 0 ? <MediaPicker items={imageMedia} selectedId={selectedMediaId} onSelect={(item) => setDraft({ ...draft, coverImageUrl: `/api/v1/media/${item.id}`, coverImageAlt: item.altText || item.name })} /> : <p className="text-muted">Nenhuma imagem aprovada disponível. Envie e aprove a mídia na biblioteca antes de selecioná-la.</p>}</div></details>
       {draft.coverImageUrl && <div className="compact-item" aria-live="polite"><span><strong>Capa selecionada</strong><small style={{ display: "block" }}>{draft.coverImageUrl}</small></span><button type="button" className="action-button secondary" onClick={() => setDraft({ ...draft, coverImageUrl: "", coverImageAlt: "" })}>Remover capa</button></div>}
       <Field label="Texto alternativo"><input value={draft.coverImageAlt} onChange={(event) => setDraft({ ...draft, coverImageAlt: event.target.value })} /></Field>
       <label><input type="checkbox" checked={draft.isFeatured} onChange={(event) => setDraft({ ...draft, isFeatured: event.target.checked })} /> Destaque na home</label>

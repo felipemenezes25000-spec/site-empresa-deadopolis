@@ -33,6 +33,9 @@ public sealed class OmbudsmanContractTests : IClassFixture<MunicipalApiFactory>
             new { body = "Resposta oficial publicada no acompanhamento.", @internal = false });
         Assert.Equal(HttpStatusCode.Created, internalNote.StatusCode);
         Assert.Equal(HttpStatusCode.Created, publicAnswer.StatusCode);
+        var answerBody = await publicAnswer.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("municipalityId", answerBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("authorId", answerBody, StringComparison.OrdinalIgnoreCase);
 
         var tracked = await citizen.GetFromJsonAsync<TrackedTicket>(new Uri($"/api/v1/tickets/{opened.Protocol}?code={opened.TrackingCode}", UriKind.Relative));
         Assert.NotNull(tracked);

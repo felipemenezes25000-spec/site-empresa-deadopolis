@@ -12,6 +12,14 @@ describe("ResourceManager", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("reports a failed listing instead of showing an empty catalogue", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+    render(<ResourceManager />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar este tipo de conteúdo.");
+    expect(screen.queryByText("Nenhum conteúdo deste tipo")).not.toBeInTheDocument();
+  });
+
   it("offers a structured page form without exposing raw JSON", async () => {
     render(<ResourceManager />);
 

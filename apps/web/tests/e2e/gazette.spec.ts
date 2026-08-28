@@ -26,7 +26,8 @@ test("Diário Oficial entrega PDF, hash, QR e verificação pública da edição
   await page.getByRole("button", { name: "Publicar" }).click();
   const verificationLink = page.getByRole("link", { name: /Abrir verificação pública/ });
   await expect(verificationLink).toBeVisible();
-  await expect(page.getByText("PUBLISHED", { exact: true }).first()).toBeVisible();
+  // A edição corrente só aceita correção depois de publicada: é o sinal preciso desta edição.
+  await expect(page.getByLabel("Número da nova edição")).toBeVisible();
   const verificationHref = await verificationLink.getAttribute("href");
   const verificationCode = verificationHref?.split("/").pop();
   expect(verificationCode, "código de verificação emitido na publicação").toBeTruthy();

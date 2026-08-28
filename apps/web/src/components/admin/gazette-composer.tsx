@@ -61,6 +61,8 @@ type CorrectionResponse = {
 
 export function GazetteComposer() {
   const [items, setItems] = useState<Edition[]>([]);
+  const [listState, setListState] = useState<"LOADING" | "READY" | "ERROR">("LOADING");
+  const [reloadToken, setReloadToken] = useState(0);
   const [current, setCurrent] = useState<Edition | null>(null);
   const [integrity, setIntegrity] = useState<Integrity | null>(null);
   const [message, setMessage] = useState("");
@@ -73,11 +75,15 @@ export function GazetteComposer() {
     const controller = new AbortController();
     void fetch("/api/v1/admin/gazette", { signal: controller.signal })
       .then(async (response) => {
-        if (response.ok && !controller.signal.aborted) setItems(await response.json() as Edition[]);
+        if (!response.ok) throw new Error("gazette");
+        const next = await response.json() as Edition[];
+        if (controller.signal.aborted) return;
+        setItems(next);
+        setListState("READY");
       })
-      .catch(() => undefined);
+      .catch(() => { if (!controller.signal.aborted) setListState("ERROR"); });
     return () => controller.abort();
-  }, []);
+  }, [reloadToken]);
 
   async function load() {
     const response = await fetch("/api/v1/admin/gazette");
@@ -218,7 +224,10 @@ export function GazetteComposer() {
     </section>
     <aside className="admin-panel">
       <h2>Edições</h2>
-      <div className="compact-list">{items.map((item) => <button type="button" key={item.id} className="compact-item" onClick={() => void selectEdition(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.number}/{item.year}</strong><small style={{ display: "block" }}>{item.type}</small></span><span className="status-pill">{item.status}</span></button>)}</div>
+      {listState === "LOADING" && <p role="status" aria-live="polite">Carregando edições do Diário…</p>}
+      {listState === "ERROR" && <div className="form-message error" role="alert">Não foi possível carregar as edições. <button type="button" className="action-button secondary" onClick={() => setReloadToken((current) => current + 1)}>Tentar novamente</button></div>}
+      {listState === "READY" && items.length === 0 && <div className="empty-state"><h3>Nenhuma edição registrada</h3><p>Crie a primeira edição no formulário ao lado.</p></div>}
+      {listState === "READY" && items.length > 0 && <div className="compact-list">{items.map((item) => <button type="button" key={item.id} className="compact-item" onClick={() => void selectEdition(item)} style={{ width: "100%", cursor: "pointer" }}><span><strong>{item.number}/{item.year}</strong><small style={{ display: "block" }}>{item.type}</small></span><span className="status-pill">{item.status}</span></button>)}</div>}
       {message && <div className="form-message" role="status">{message}</div>}
       <div className="warning-box" style={{ marginTop: 16 }}><strong>Assinatura:</strong> em POC pode existir provider <code>DEMO_ONLY</code>, explicitamente sem valor ICP-Brasil. Produção permanece <code>NOT_CONFIGURED</code> até certificado/serviço real.</div>
     </aside>

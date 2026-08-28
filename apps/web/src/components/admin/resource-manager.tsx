@@ -37,6 +37,8 @@ export function ResourceManager() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [message, setMessage] = useState("");
+  const [listState, setListState] = useState<"LOADING" | "READY" | "ERROR">("LOADING");
+  const [reloadToken, setReloadToken] = useState(0);
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const menuOptions = items.filter((item) => item.id !== selectedId).map((item) => ({ value: item.slug, label: item.title }));
 
@@ -44,11 +46,15 @@ export function ResourceManager() {
     const controller = new AbortController();
     void fetch(`/api/v1/admin/resources?kind=${encodeURIComponent(kind)}`, { signal: controller.signal })
       .then(async (response) => {
-        if (response.ok && !controller.signal.aborted) setItems(await response.json() as Resource[]);
+        if (!response.ok) throw new Error("resources");
+        const next = await response.json() as Resource[];
+        if (controller.signal.aborted) return;
+        setItems(next);
+        setListState("READY");
       })
-      .catch(() => undefined);
+      .catch(() => { if (!controller.signal.aborted) setListState("ERROR"); });
     return () => controller.abort();
-  }, [kind]);
+  }, [kind, reloadToken]);
 
   function changeKind(value: string) {
     setKind(value);
@@ -59,9 +65,10 @@ export function ResourceManager() {
 
   async function load(preferredId?: string) {
     const response = await fetch(`/api/v1/admin/resources?kind=${encodeURIComponent(kind)}`);
-    if (!response.ok) return;
+    if (!response.ok) { setListState("ERROR"); return; }
     const nextItems = await response.json() as Resource[];
     setItems(nextItems);
+    setListState("READY");
     if (preferredId) setSelectedId(nextItems.some((item) => item.id === preferredId) ? preferredId : null);
   }
 
@@ -183,7 +190,9 @@ export function ResourceManager() {
         {selected && <button type="button" className="action-button secondary" onClick={() => { setSelectedId(null); setRevisions([]); setMessage(""); }}>Novo conteúdo</button>}
       </div>
       {kind === "MENU" && items.length > 0 && <MenuStructureOverview items={items} />}
-      {items.length === 0 ? <div className="empty-state"><h3>Nenhum conteúdo deste tipo</h3><p>Crie um item no formulário ao lado.</p></div> : <div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}>
+      {listState === "LOADING" && <p role="status" aria-live="polite">Carregando conteúdo governado…</p>}
+      {listState === "ERROR" && <div className="form-message error" role="alert">Não foi possível carregar este tipo de conteúdo. <button type="button" className="action-button secondary" onClick={() => setReloadToken((current) => current + 1)}>Tentar novamente</button></div>}
+      {listState === "READY" && (items.length === 0 ? <div className="empty-state"><h3>Nenhum conteúdo deste tipo</h3><p>Crie um item no formulário ao lado.</p></div> : <div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}>
         <div>
           <strong>{item.title}</strong>
           <small style={{ display: "block" }}>{item.slug} · v{item.version}{scheduleLabel(item)}</small>
@@ -195,7 +204,7 @@ export function ResourceManager() {
           {item.status !== "ARCHIVED" && <button type="button" className="action-button secondary" onClick={() => void transition(item.id, "archive")}>Arquivar</button>}
           {item.status === "ARCHIVED" && <button type="button" className="action-button secondary" onClick={() => void transition(item.id, "restore")}>Restaurar</button>}
         </div>
-      </div>)}</div>}
+      </div>)}</div>)}
       {message && <div className="form-message" role="status">{message}</div>}
     </section>
 
