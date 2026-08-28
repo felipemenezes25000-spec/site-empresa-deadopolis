@@ -11,6 +11,7 @@ import {
   LogOut,
   Mail,
   Megaphone,
+  Menu,
   MessageSquareText,
   PlugZap,
   Search,
@@ -18,6 +19,7 @@ import {
   Users,
   Waypoints,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -53,6 +55,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const commands = useMemo(() => links.map(({ href, label }) => ({ id: href, label, description: `Abrir ${label}`, keywords: ["admin", "navegação"], run: () => window.location.assign(href) })), []);
 
   useEffect(() => {
@@ -69,11 +72,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     function handleKeyboard(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setCommandOpen((current) => !current);
       }
+      if (event.key === "Escape") setNavOpen(false);
     }
     window.addEventListener("keydown", handleKeyboard);
     return () => window.removeEventListener("keydown", handleKeyboard);
@@ -95,10 +103,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <button type="button" className="admin-command-trigger" onClick={() => setCommandOpen(true)} aria-keyshortcuts="Control+K Meta+K"><Search size={16} aria-hidden="true" /><span>Buscar</span><kbd>Ctrl K</kbd></button>
         <div className="admin-user-chip"><span className="admin-avatar" aria-hidden="true">{initials(user.displayName)}</span><span><strong>{user.displayName}</strong><small>{user.role}</small></span></div>
         <button className="admin-icon-button" onClick={logout} aria-label="Sair"><LogOut size={18} aria-hidden="true" /></button>
+        <button className="admin-icon-button admin-mobile-menu" type="button" onClick={() => setNavOpen((current) => !current)} aria-expanded={navOpen} aria-controls="admin-navigation" aria-label={navOpen ? "Fechar menu" : "Abrir menu"}>{navOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}</button>
       </div>
     </header>
     <div className="admin-layout">
-      <aside className="admin-sidebar">
+      {navOpen && <button className="admin-nav-backdrop" type="button" aria-label="Fechar menu" onClick={() => setNavOpen(false)} />}
+      <aside id="admin-navigation" className={`admin-sidebar${navOpen ? " is-open" : ""}`}>
+        <div className="admin-mobile-nav-heading"><span>Navegação</span><button type="button" onClick={() => setNavOpen(false)} aria-label="Fechar menu"><X size={18} aria-hidden="true" /></button></div>
         <nav aria-label="Administração">
           {groups.map((group) => <div className="admin-nav-group" key={group}>
             {group !== "Visão geral" && <p>{group}</p>}
