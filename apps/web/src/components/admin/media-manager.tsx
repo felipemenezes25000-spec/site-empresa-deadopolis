@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SearchField, StatusBadge } from "@/components/ui";
 import { ResponsiveMediaImage } from "@/components/portal/responsive-media-image";
+import { MediaFramingEditor, type FramingPayload } from "./media-framing-editor";
 import { MediaUploader } from "./media-uploader";
 
 const PAGE_SIZE = 24;
@@ -103,25 +104,13 @@ export function MediaManager() {
     setBusy(false);
   }
 
-  async function savePresentation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function savePresentation(payload: FramingPayload) {
     if (!selected) return;
-    const form = new FormData(event.currentTarget);
-    const cropEnabled = form.get("cropEnabled") === "on";
-    const normalized = (name: string) => Number(form.get(name) ?? 0) / 100;
     setBusy(true);
     const response = await fetch(`/api/v1/admin/media/${selected.id}/presentation`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tags: form.get("tags"),
-        focalPointX: normalized("focalPointX"),
-        focalPointY: normalized("focalPointY"),
-        cropX: cropEnabled ? normalized("cropX") : null,
-        cropY: cropEnabled ? normalized("cropY") : null,
-        cropWidth: cropEnabled ? normalized("cropWidth") : null,
-        cropHeight: cropEnabled ? normalized("cropHeight") : null,
-      }),
+      body: JSON.stringify(payload),
     });
     setMessage(response.ok ? "Tags, ponto focal e recorte governado atualizados." : await errorText(response));
     if (response.ok) refresh(selected.id);
@@ -186,21 +175,8 @@ export function MediaManager() {
             <label className="field">Crédito<input name="credit" defaultValue={selected.credit} maxLength={500} /></label>
             <button className="action-button" disabled={busy}>Salvar metadados</button>
           </form>
-          {selected.mimeType.startsWith("image/") && <form key={`presentation-${selected.id}-${selected.tagsCsv}-${selected.focalPointX}-${selected.focalPointY}-${selected.cropX}-${selected.cropY}-${selected.cropWidth}-${selected.cropHeight}`} className="editor-fields" onSubmit={savePresentation}>
-            <h3>Enquadramento editorial</h3>
-            <label className="field">Tags<input name="tags" defaultValue={selected.tagsCsv ?? ""} maxLength={2000} placeholder="saúde, obras, evento" /><small>Até 20 tags, separadas por vírgula.</small></label>
-            <label className="field">Ponto focal horizontal · {percent(selected.focalPointX)}%<input name="focalPointX" type="range" min="0" max="100" step="1" defaultValue={percent(selected.focalPointX)} /></label>
-            <label className="field">Ponto focal vertical · {percent(selected.focalPointY)}%<input name="focalPointY" type="range" min="0" max="100" step="1" defaultValue={percent(selected.focalPointY)} /></label>
-            <label><input name="cropEnabled" type="checkbox" defaultChecked={hasCrop(selected)} /> Definir recorte editorial normalizado</label>
-            <div className="editor-grid">
-              <label className="field">X (%)<input name="cropX" type="number" min="0" max="100" step="1" defaultValue={percent(selected.cropX, 0)} /></label>
-              <label className="field">Y (%)<input name="cropY" type="number" min="0" max="100" step="1" defaultValue={percent(selected.cropY, 0)} /></label>
-              <label className="field">Largura (%)<input name="cropWidth" type="number" min="1" max="100" step="1" defaultValue={percent(selected.cropWidth, 100)} /></label>
-              <label className="field">Altura (%)<input name="cropHeight" type="number" min="1" max="100" step="1" defaultValue={percent(selected.cropHeight, 100)} /></label>
-            </div>
-            <small>O recorte é salvo como coordenadas 0..1 e não destrói o original. Derivados WebP/AVIF só serão declarados quando houver encoder testado no runtime de produção.</small>
-            <button className="action-button" disabled={busy}>Salvar enquadramento</button>
-          </form>}
+          {selected.mimeType.startsWith("image/") && selected.status === "APPROVED" && <MediaFramingEditor key={`presentation-${selected.id}-${selected.tagsCsv}-${selected.focalPointX}-${selected.focalPointY}-${selected.cropX}-${selected.cropY}-${selected.cropWidth}-${selected.cropHeight}`} asset={selected} busy={busy} onSave={savePresentation} />}
+          {selected.mimeType.startsWith("image/") && selected.status !== "APPROVED" && <div className="empty-state"><h3>Enquadramento indisponível</h3><p>O ponto focal e o recorte só podem ser ajustados depois que o scanner aprovar a mídia.</p></div>}
         </div>
       </div>
       <div className="button-row">
@@ -211,7 +187,6 @@ export function MediaManager() {
   </div>;
 }
 
-function hasCrop(asset: Asset) { return [asset.cropX, asset.cropY, asset.cropWidth, asset.cropHeight].every((value) => typeof value === "number"); }
 function percent(value: number | null | undefined, fallback = 50) { return Math.round((value ?? fallback / 100) * 100); }
 function shortHash(value: string) { return value ? `SHA ${value.slice(0, 12)}…` : "SHA —"; }
 function formatDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date); }
