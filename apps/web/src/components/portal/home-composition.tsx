@@ -1,44 +1,19 @@
 import { ArrowRight, BookOpenText, Building2, CalendarDays, ChevronRight, FileCheck2, Headphones, Landmark, MapPin, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { internalMediaUrl, readPageBlocks, type PageBlock, type PageBlockType } from "@/lib/page-blocks";
 import type { PortalHomeContent } from "@/lib/portal-api";
 import { PageBlockRenderer } from "./page-block-renderer";
 import { ResponsiveMediaImage } from "./responsive-media-image";
 
-type HomeBlock = {
-  id?: string;
-  type: string;
-  title?: string;
-  content?: string;
-  reference?: string;
-  enabled?: boolean;
-};
-
-const allowedTypes = new Set([
-  "Hero",
-  "ServiceSearch",
-  "QuickAccess",
-  "FeaturedNews",
-  "NewsGrid",
-  "ServiceGrid",
-  "DepartmentGrid",
-  "Events",
-  "Banner",
-  "Alert",
-  "Documents",
-  "Statistics",
-  "Contact",
-  "Video",
-  "Gallery",
-  "CustomLinks",
-]);
+type HomeBlock = PageBlock;
 
 const defaultBlocks: HomeBlock[] = [
-  { id: "default-search", type: "ServiceSearch" },
-  { id: "default-services", type: "ServiceGrid" },
-  { id: "default-news", type: "NewsGrid" },
-  { id: "default-participation", type: "CustomLinks" },
-  { id: "default-quick-access", type: "QuickAccess" },
+  defaultBlock("default-search", "ServiceSearch"),
+  defaultBlock("default-services", "ServiceGrid"),
+  defaultBlock("default-news", "NewsGrid"),
+  defaultBlock("default-participation", "CustomLinks"),
+  defaultBlock("default-quick-access", "QuickAccess"),
 ];
 
 export function HomeComposition({ content, payload }: { content: PortalHomeContent; payload?: unknown }) {
@@ -51,6 +26,8 @@ export function HomeComposition({ content, payload }: { content: PortalHomeConte
 }
 
 function HomeBlockView({ block, content }: { block: HomeBlock; content: PortalHomeContent }) {
+  if (block.items.length > 0 && ["QuickAccess", "FeaturedNews", "NewsGrid", "ServiceGrid", "DepartmentGrid", "CustomLinks"].includes(block.type))
+    return <PageBlockRenderer payload={{ blocks: [block] }} />;
   switch (block.type) {
     case "Hero":
     case "ServiceSearch":
@@ -63,8 +40,9 @@ function HomeBlockView({ block, content }: { block: HomeBlock; content: PortalHo
     case "CustomLinks":
       return <ParticipationSection block={block} content={content} />;
     case "QuickAccess":
-    case "Contact":
       return <UsefulSection block={block} />;
+    case "Contact":
+      return <PageBlockRenderer payload={{ blocks: [block] }} />;
     default:
       return <PageBlockRenderer payload={{ blocks: [block] }} />;
   }
@@ -119,28 +97,7 @@ function UsefulSection({ block }: { block: HomeBlock }) {
 }
 
 export function readHomeBlocks(payload: unknown): HomeBlock[] {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
-  const raw = (payload as Record<string, unknown>).blocks;
-  if (!Array.isArray(raw)) return [];
-  return raw.flatMap((entry, index) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
-    const candidate = entry as Record<string, unknown>;
-    const type = clean(candidate.type);
-    if (!type || !allowedTypes.has(type) || candidate.enabled === false) return [];
-    return [{
-      id: clean(candidate.id) || `cms-${index + 1}`,
-      type,
-      title: bounded(candidate.title, 220),
-      content: bounded(candidate.content, 4_000),
-      reference: bounded(candidate.reference, 2_048),
-      enabled: true,
-    }];
-  }).slice(0, 30);
-}
-
-function bounded(value: unknown, max: number) {
-  const normalized = clean(value);
-  return normalized ? normalized.slice(0, max) : undefined;
+  return readPageBlocks(payload);
 }
 
 function clean(value: unknown) {
@@ -164,7 +121,11 @@ function safeInternalOrHttpUrl(value: string | undefined) {
 }
 
 function isInternalMediaUrl(value: string | null) {
-  return typeof value === "string" && value.startsWith("/api/v1/media/");
+  return typeof value === "string" && internalMediaUrl(value) !== null;
+}
+
+function defaultBlock(id: string, type: PageBlockType): PageBlock {
+  return { id, type, title: "", content: "", reference: "", imageUrl: "", imageAlt: "", linkLabel: "", items: [], enabled: true };
 }
 
 function formatDate(value: string | null) {

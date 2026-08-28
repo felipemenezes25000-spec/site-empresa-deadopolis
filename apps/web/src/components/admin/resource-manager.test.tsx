@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResourceManager } from "./resource-manager";
 
@@ -31,5 +31,46 @@ describe("ResourceManager", () => {
     expect(screen.getByRole("textbox", { name: "Texto alternativo da imagem" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Texto do botão" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Destino do botão" })).toBeInTheDocument();
+  });
+
+  it("reloads and selects a resource after creating its governed draft", async () => {
+    const created = {
+      id: "page-home",
+      kind: "PAGE",
+      slug: "home",
+      title: "Página inicial governada",
+      summary: "Composição do portal",
+      payloadJson: "{\"blocks\":[]}",
+      status: "DRAFT",
+      displayOrder: 0,
+      startsAt: null,
+      endsAt: null,
+      publishedAt: null,
+      version: 1,
+      updatedAt: "2026-08-27T12:00:00Z",
+      updatedBy: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    };
+    let resourceReads = 0;
+    const fetchMock = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes("/admin/media")) return Promise.resolve(Response.json([]));
+      if (url.includes("/revisions")) return Promise.resolve(Response.json([]));
+      if (options?.method === "POST") return Promise.resolve(Response.json(created, { status: 201 }));
+      if (url.includes("/admin/resources")) {
+        resourceReads++;
+        return Promise.resolve(Response.json(resourceReads > 1 ? [created] : []));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ResourceManager />);
+
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: created.title } });
+    fireEvent.change(screen.getByLabelText("Slug"), { target: { value: created.slug } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+
+    expect(await screen.findByText("Conteúdo criado como rascunho.")).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/resources?kind=PAGE"));
+    expect(await screen.findByRole("heading", { name: "Editar conteúdo" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue(created.title)).toBeInTheDocument();
   });
 });

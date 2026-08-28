@@ -78,7 +78,8 @@ export function ResourceManager() {
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     let payloadJson: string;
     try {
       payloadJson = serializeResourcePayload(kind, form);
@@ -104,7 +105,7 @@ export function ResourceManager() {
     setMessage(response.ok ? "Conteúdo criado como rascunho." : await errorText(response));
     if (response.ok) {
       const created = await response.json() as Resource;
-      event.currentTarget.reset();
+      formElement.reset();
       await load(created.id);
       await loadRevisions(created.id);
     }

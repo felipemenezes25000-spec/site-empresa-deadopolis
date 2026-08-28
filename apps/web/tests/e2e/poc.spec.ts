@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Operações, Diário e Ouvidoria", async ({ page }) => {
+  test.setTimeout(75_000);
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -78,11 +79,39 @@ test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Ope
   await page.goto("/acesso-a-informacao");
   await expect(page.getByText(cmsSummary, { exact: true })).toBeVisible();
 
+  await page.goto("/admin/conteudo");
+  const newContentButton = page.getByRole("button", { name: "Novo conteúdo" });
+  if (await newContentButton.count()) await newContentButton.click();
+  const homeForm = page.getByRole("heading", { name: "Novo conteúdo" }).locator("xpath=ancestor::form");
+  await homeForm.getByLabel("Título").fill(`Página inicial POC ${suffix}`);
+  await homeForm.getByLabel("Slug").fill("home");
+  await homeForm.getByLabel("Resumo").fill("Composição governada da página inicial criada pelo teste executivo.");
+  const homeBuilder = homeForm.getByRole("region", { name: "Page Builder" });
+  await homeBuilder.getByLabel("Tipo do novo bloco").selectOption("Hero");
+  await homeBuilder.getByRole("button", { name: "Adicionar bloco" }).click();
+  const heroBlock = homeBuilder.getByRole("article").nth(0);
+  await heroBlock.getByLabel("Título").fill("Olá! O que você precisa?");
+  await heroBlock.getByRole("textbox", { name: "Conteúdo", exact: true }).fill("Composição administrada e publicada pelo CMS municipal.");
+  await homeBuilder.getByLabel("Tipo do novo bloco").selectOption("Alert");
+  await homeBuilder.getByRole("button", { name: "Adicionar bloco" }).click();
+  const alertBlock = homeBuilder.getByRole("article").nth(1);
+  await alertBlock.getByLabel("Título").fill(`Aviso governado POC ${suffix}`);
+  await alertBlock.getByRole("textbox", { name: "Conteúdo", exact: true }).fill("Este aviso comprova a renderização pública da composição estruturada.");
+  await homeForm.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByText("Conteúdo criado como rascunho.")).toBeVisible();
+  const homeResource = page.getByText(`Página inicial POC ${suffix}`, { exact: true }).locator("xpath=ancestor::div[contains(@class, 'compact-item')]");
+  await homeResource.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByText("Ação publish concluída.")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Olá! O que você precisa?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Aviso governado POC ${suffix}` })).toBeVisible();
+
   const newsSlug = `poc-noticia-${suffix}`;
   await page.goto("/admin/noticias/nova");
   await page.getByLabel("Título").fill(`[DEMONSTRAÇÃO] Notícia POC ${suffix}`);
   await page.getByLabel("Slug").fill(newsSlug);
   await page.getByLabel("Linha fina").fill("Publicação sintética criada pelo teste E2E.");
+  await page.getByLabel("Área editorial").selectOption("PREFEITURA");
   await page.getByLabel("Conteúdo").fill("Conteúdo de demonstração sem valor de comunicado oficial. Este texto comprova persistência e workflow editorial.");
   await page.getByText("Selecionar capa da biblioteca", { exact: true }).click();
   await page.getByRole("button", { name: new RegExp(coverFileName) }).click();

@@ -120,6 +120,29 @@ describe("PortalHome", () => {
     expect(news.compareDocumentPosition(services) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("preserves governed structured items when rendering the home composition", () => {
+    const mediaUrl = "/api/v1/media/11111111-1111-1111-1111-111111111111";
+    render(<PortalHome content={content} homeLayout={{ blocks: [
+      {
+        id: "gallery-home",
+        type: "Gallery",
+        title: "Obras em andamento",
+        enabled: true,
+        items: [{ id: "photo-1", label: "Praça central", mediaUrl, mediaAlt: "Equipe trabalhando na praça central" }],
+      },
+      {
+        id: "links-home",
+        type: "CustomLinks",
+        title: "Atalhos governados",
+        enabled: true,
+        items: [{ id: "link-1", label: "Coleta seletiva", description: "Consulte dias e bairros.", url: "/servicos/coleta-seletiva" }],
+      },
+    ] }} />);
+
+    expect(screen.getByRole("img", { name: "Equipe trabalhando na praça central" })).toHaveAttribute("src", mediaUrl);
+    expect(screen.getByRole("link", { name: /Coleta seletiva/i })).toHaveAttribute("href", "/servicos/coleta-seletiva");
+  });
+
   it("rejects unknown CMS block types instead of rendering arbitrary structures", () => {
     render(<PortalHome content={content} homeLayout={{ blocks: [
       { id: "unsafe", type: "ArbitraryHtml", title: "Não deve aparecer", enabled: true },
