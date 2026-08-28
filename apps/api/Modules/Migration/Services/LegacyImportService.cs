@@ -51,8 +51,8 @@ public sealed class LegacyImportService(ILegacySourceFetcher sourceFetcher)
         if (!string.IsNullOrWhiteSpace(options.RedirectDestination))
         {
             var destination = options.RedirectDestination.Trim();
-            if (!destination.StartsWith('/'))
-                throw new LegacyImportValidationException("O destino do redirect deve ser um caminho interno iniciado por '/'.");
+            if (!RedirectRule.IsInternalDestination(destination))
+                throw new LegacyImportValidationException("O destino do redirect deve ser um caminho interno iniciado por '/' e nunca pode apontar para outro host.");
             if (string.Equals(legacyUrl.NormalizedPath, destination, StringComparison.OrdinalIgnoreCase))
                 throw new LegacyImportValidationException("O redirect não pode apontar para a própria URL legada.");
             if (await database.RedirectRules.AnyAsync(item => item.LegacyPath == legacyUrl.NormalizedPath, cancellationToken))

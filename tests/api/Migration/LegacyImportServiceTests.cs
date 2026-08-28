@@ -106,6 +106,32 @@ public sealed class LegacyImportServiceTests
         }
     }
 
+    [Theory]
+    [InlineData("//example.test/evil")]
+    [InlineData("/\\example.test/evil")]
+    [InlineData("https://example.test/evil")]
+    public async Task ImportRefusesARedirectDestinationThatLeavesTheMunicipalHost(string destination)
+    {
+        var body = Encoding.UTF8.GetBytes("<html><head><title>Página histórica</title></head><body><h1>Serviço antigo</h1></body></html>");
+        var hash = Convert.ToHexString(SHA256.HashData(body)).ToLowerInvariant();
+        var (database, job, legacyUrl) = await CreateContextAsync(hash, body.LongLength);
+        await using (database)
+        {
+            var service = new LegacyImportService(new StaticFetcher(new LegacyFetchResult(200, "text/html", body, null)));
+
+            var failure = await Assert.ThrowsAsync<LegacyImportValidationException>(() => service.PreparePageDraftAsync(
+                job,
+                legacyUrl,
+                new LegacyPageImportOptions("pagina-hostil", null, null, destination, true),
+                ActorId,
+                database,
+                CancellationToken.None));
+
+            Assert.Contains("outro host", failure.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.False(await database.RedirectRules.AnyAsync());
+        }
+    }
+
     private static async Task<(ApplicationDbContext Database, MigrationJob Job, LegacyUrl LegacyUrl)> CreateContextAsync(string hash, long contentLength)
     {
         var tenant = new TenantContext();
