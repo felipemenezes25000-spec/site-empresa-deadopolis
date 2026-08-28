@@ -129,7 +129,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="admin-main" id="admin-conteudo" tabIndex={-1}>{children}</main>
     </div>
-    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={commands} title="Ir para uma área" />
+    {/* Montada só enquanto aberta: fechar pelo atalho Ctrl+K descarta a consulta anterior sem
+        precisar zerar estado dentro de um efeito. */}
+    {commandOpen && <CommandPalette open onClose={() => setCommandOpen(false)} items={commands} title="Ir para uma área" />}
   </div>;
 }
 
