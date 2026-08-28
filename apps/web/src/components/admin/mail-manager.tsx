@@ -280,7 +280,11 @@ export function MailManager() {
     <div className="editor-grid" style={{ marginTop: 20 }}>
       <section className="admin-panel">
         <h2>Aliases</h2>
-        {aliases.length === 0 ? <div className="empty-state"><p>Nenhum alias cadastrado.</p></div> : <div className="compact-list">{aliases.map((alias) => <div className="compact-item" key={alias.id}><div><strong>{alias.address}</strong><small style={{ display: "block" }}>→ {alias.targetAddress}</small></div><div className="button-row"><StatusBadge status={alias.isActive ? "ATIVO" : "INATIVO"} />{alias.isActive && <button type="button" className="action-button secondary" disabled={busy} onClick={() => void deactivateAlias(alias.id)}>Desativar</button>}</div></div>)}</div>}
+        {/* Enquanto o provider não estiver operacional, um alias é intenção de roteamento
+            registrada — não entrega de e-mail. O rótulo acompanha esse fato em vez de exibir
+            "ATIVO" em verde sobre uma configuração que nenhum servidor de e-mail leu. */}
+        {!mailProviderOperational(provider?.state) && <p className="muted-note">Estes aliases estão registrados na plataforma. Nenhum provedor de e-mail os aplica enquanto o estado acima não for operacional.</p>}
+        {aliases.length === 0 ? <div className="empty-state"><p>Nenhum alias cadastrado.</p></div> : <div className="compact-list">{aliases.map((alias) => <div className="compact-item" key={alias.id}><div><strong>{alias.address}</strong><small style={{ display: "block" }}>→ {alias.targetAddress}</small></div><div className="button-row"><StatusBadge status={aliasState(alias.isActive, provider?.state)} />{alias.isActive && <button type="button" className="action-button secondary" disabled={busy} onClick={() => void deactivateAlias(alias.id)}>Desativar</button>}</div></div>)}</div>}
         <form className="editor-fields" onSubmit={createAlias} style={{ marginTop: 20 }}>
           <label className="field">Endereço do alias<input name="address" type="email" required placeholder="ouvidoria@deodapolis.ms.gov.br" /></label>
           <label className="field">Destino do alias<input name="targetAddress" type="email" required placeholder="contato@deodapolis.ms.gov.br" /></label>
@@ -320,6 +324,18 @@ export function MailManager() {
 
     {message && <div className="form-message" role="status" style={{ marginTop: 16 }}>{message}</div>}
   </>;
+}
+
+// Só um provider realmente operacional autoriza chamar um alias de ativo.
+const operationalMailStates = new Set(["ACTIVE", "AVAILABLE", "CONFIGURED", "OPERATIONAL", "READY"]);
+
+function mailProviderOperational(state: string | undefined) {
+  return operationalMailStates.has((state ?? "").trim().toUpperCase());
+}
+
+function aliasState(isActive: boolean, providerState: string | undefined) {
+  if (!isActive) return "DESATIVADO";
+  return mailProviderOperational(providerState) ? "ATIVO" : "REGISTRADO";
 }
 
 function formatDate(value: string | null) {
