@@ -4,7 +4,7 @@ import { PageIntro, PublicShell } from "@/components/portal/public-shell";
 
 export default function NotFound() {
   return <PublicShell>
-    <div className="not-found-stage"><PageIntro eyebrow="Erro 404" title="Essa página tomou outro caminho." description="O endereço pode ter mudado. Quando existe um destino validado, a estratégia de migração preserva URLs antigas por redirecionamento." /></div>
+    <div className="not-found-stage"><PageIntro eyebrow="Erro 404" title="Esta página não foi encontrada." description="O endereço pode ter mudado. Quando existe um destino validado, a estratégia de migração preserva URLs antigas por redirecionamento." /></div>
     <section className="content-section"><div className="page-shell detail-grid">
       <article className="prose-card not-found-card">
         <p className="eyebrow dark">Encontre em segundos</p>
