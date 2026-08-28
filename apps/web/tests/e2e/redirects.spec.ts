@@ -38,4 +38,19 @@ test("redirect legado só aceita destino interno e nunca leva o cidadão para ou
     data: { legacyUrl: `/laco-${suffix}`, destinationPath: `/laco-${suffix}`, permanent: true },
   });
   expect(selfReference.status(), "um redirect não pode apontar para si mesmo").toBe(400);
+
+  // A → B precisa impedir B → A: o navegador entraria em um laço de 301.
+  const forward = await page.request.post("/api/v1/admin/redirects", {
+    data: { legacyUrl: `/ciclo-a-${suffix}`, destinationPath: `/ciclo-b-${suffix}`, permanent: true },
+  });
+  expect(forward.status()).toBe(201);
+  const backward = await page.request.post("/api/v1/admin/redirects", {
+    data: { legacyUrl: `/ciclo-b-${suffix}`, destinationPath: `/ciclo-a-${suffix}`, permanent: true },
+  });
+  expect(backward.status(), "um ciclo de redirects não pode ser registrado").toBe(400);
+
+  const duplicated = await page.request.post("/api/v1/admin/redirects", {
+    data: { legacyUrl: legacyPath, destinationPath: "/noticias", permanent: true },
+  });
+  expect(duplicated.status(), "a mesma URL legada não pode ser mapeada duas vezes").toBe(409);
 });

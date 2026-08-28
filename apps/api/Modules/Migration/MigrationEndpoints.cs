@@ -44,10 +44,27 @@ public static class MigrationEndpoints
         if (!rule.DestinationPath.StartsWith('/')) return Results.ValidationProblem(new Dictionary<string, string[]> { ["destinationPath"] = ["Destino interno deve começar com '/'."] });
         if (rule.LegacyPath == rule.DestinationPath) return Results.ValidationProblem(new Dictionary<string, string[]> { ["destinationPath"] = ["Redirect não pode apontar para si mesmo."] });
         if (await db.RedirectRules.AnyAsync(x => x.LegacyPath == rule.LegacyPath, ct)) return Results.Conflict(new { title = "URL legada já mapeada", status = 409 });
+        if (await ClosesALoopAsync(rule, db, ct)) return Results.ValidationProblem(new Dictionary<string, string[]> { ["destinationPath"] = ["O destino volta para esta URL legada e criaria um laço de redirect no navegador."] });
         db.RedirectRules.Add(rule);
         db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), RequireActor(principal), "redirect.created", "RedirectRule", rule.Id.ToString(), JsonSerializer.Serialize(new { rule.LegacyPath, rule.DestinationPath, rule.StatusCode }), context.TraceIdentifier));
         await db.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/admin/redirects/{rule.Id}", ToResponse(rule));
+    }
+
+    /// <summary>Percorre a cadeia de destinos para impedir que o navegador entre em um laço 301.</summary>
+    private static async Task<bool> ClosesALoopAsync(RedirectRule rule, ApplicationDbContext db, CancellationToken ct)
+    {
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { rule.LegacyPath };
+        var current = rule.DestinationPath;
+        for (var hop = 0; hop < 10; hop++)
+        {
+            if (!visited.Add(current)) return true;
+            var next = await db.RedirectRules.AsNoTracking().SingleOrDefaultAsync(item => item.LegacyPath == current && item.IsActive, ct);
+            if (next is null) return false;
+            if (string.Equals(next.DestinationPath, rule.LegacyPath, StringComparison.OrdinalIgnoreCase)) return true;
+            current = next.DestinationPath;
+        }
+        return true;
     }
 
     private static async Task<IResult> DeactivateAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)

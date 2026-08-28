@@ -10,7 +10,7 @@ Este documento descreve os controles presentes no código e as condições obrig
 - Rate limit no login e confirmação MFA.
 - Auditoria tenant-scoped, correlation ID e logs estruturados sem corpo, cookie ou credencial.
 - Proteção SSRF com validação de esquema, DNS, IP privado/local/reservado, portas e redirects.
-- Redirect legado restrito a destino interno: `//host`, `/\host`, esquema absoluto, caractere de controle e auto-referência são recusados na criação, na importação, no middleware e no resolvedor público.
+- Redirect legado restrito a destino interno: `//host`, `/\host`, esquema absoluto, caractere de controle, auto-referência e ciclo entre regras são recusados na criação, na importação, no middleware e no resolvedor público.
 - Limite de requisição também nas rotas anônimas de abertura e acompanhamento de manifestação.
 - Upload com limite, magic bytes, MIME, SHA-256, quarentena e liberação condicionada ao scanner.
 - CSP, HSTS em produção, `nosniff`, `frame-ancestors`, Referrer Policy e Permissions Policy.
