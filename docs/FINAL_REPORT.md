@@ -64,7 +64,7 @@ Cada item abaixo foi reproduzido no runtime empacotado antes da correção e cob
 | cartões de conta não quebravam linha | `/admin/usuarios` rolava lateralmente em 375px | cenário responsivo em 375, 768, 1024 e 1440 pixels |
 | Ouvidoria não expunha acompanhamento ao cidadão | protocolo e código eram emitidos sem tela de consulta | fluxo completo cidadão/servidor em E2E e contrato |
 
-O baseline anterior a este fechamento passou no [workflow CI 33049689836](https://github.com/felipemenezes25000-spec/site-empresa-deadopolis/actions/runs/33049689836) e no [schema preview 33049689905](https://github.com/felipemenezes25000-spec/site-empresa-deadopolis/actions/runs/33049689905). Cada commit posterior precisa repetir os mesmos gates; um relatório não substitui o status do SHA implantado.
+O estado descrito aqui passou integralmente no [workflow CI 33141796026](https://github.com/felipemenezes25000-spec/site-empresa-deadopolis/actions/runs/33141796026), com backend, frontend, segurança, containers e E2E aprovados. Cada commit posterior precisa repetir os mesmos gates; um relatório não substitui o status do SHA implantado.
 
 ## Dependências externas restantes
 
