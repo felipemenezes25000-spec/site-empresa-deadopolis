@@ -26,11 +26,15 @@ public static class MigrationEndpoints
         try { normalized = LegacyUrlNormalizer.Normalize(url); }
         catch (ArgumentException) { return Results.BadRequest(); }
         var rule = await db.RedirectRules.AsNoTracking().SingleOrDefaultAsync(x => x.LegacyPath == normalized && x.IsActive, ct);
-        return rule is null ? Results.NotFound() : Results.Ok(new { source = normalized, destination = rule.DestinationPath, statusCode = rule.StatusCode });
+        return rule is null || !RedirectRule.IsInternalDestination(rule.DestinationPath)
+            ? Results.NotFound()
+            : Results.Ok(new { source = normalized, destination = rule.DestinationPath, statusCode = rule.StatusCode });
     }
 
     private static async Task<IResult> ListAsync(ApplicationDbContext db, CancellationToken ct) =>
-        Results.Ok(await db.RedirectRules.AsNoTracking().OrderBy(x => x.LegacyPath).ToListAsync(ct));
+        Results.Ok((await db.RedirectRules.AsNoTracking().OrderBy(x => x.LegacyPath).ToListAsync(ct)).Select(ToResponse));
+
+    private static object ToResponse(RedirectRule rule) => new { rule.Id, rule.LegacyPath, rule.DestinationPath, rule.StatusCode, rule.IsActive, rule.CreatedAt, rule.LastValidatedAt };
 
     private static async Task<IResult> CreateAsync(RedirectRequest request, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
     {
@@ -43,7 +47,7 @@ public static class MigrationEndpoints
         db.RedirectRules.Add(rule);
         db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), RequireActor(principal), "redirect.created", "RedirectRule", rule.Id.ToString(), JsonSerializer.Serialize(new { rule.LegacyPath, rule.DestinationPath, rule.StatusCode }), context.TraceIdentifier));
         await db.SaveChangesAsync(ct);
-        return Results.Created($"/api/v1/admin/redirects/{rule.Id}", rule);
+        return Results.Created($"/api/v1/admin/redirects/{rule.Id}", ToResponse(rule));
     }
 
     private static async Task<IResult> DeactivateAsync(Guid id, ClaimsPrincipal principal, HttpContext context, ApplicationDbContext db, TenantContext tenant, CancellationToken ct)
@@ -53,7 +57,7 @@ public static class MigrationEndpoints
         rule.Deactivate();
         db.AuditEvents.Add(new AuditEvent(tenant.RequireMunicipalityId(), RequireActor(principal), "redirect.deactivated", "RedirectRule", rule.Id.ToString(), JsonSerializer.Serialize(new { rule.LegacyPath }), context.TraceIdentifier));
         await db.SaveChangesAsync(ct);
-        return Results.Ok(rule);
+        return Results.Ok(ToResponse(rule));
     }
 
     private static Guid RequireActor(ClaimsPrincipal p) => Guid.TryParse(p.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new InvalidOperationException("Sessão inválida.");
@@ -82,7 +86,10 @@ public sealed class LegacyRedirectMiddleware(RequestDelegate next)
             if (normalized.Length > 0)
             {
                 var rule = await database.RedirectRules.AsNoTracking().SingleOrDefaultAsync(x => x.LegacyPath == normalized && x.IsActive, context.RequestAborted);
-                if (rule is not null && !string.Equals(rule.DestinationPath, normalized, StringComparison.OrdinalIgnoreCase))
+                // Regras persistidas antes desta validacao nunca podem emitir um destino externo.
+                if (rule is not null
+                    && RedirectRule.IsInternalDestination(rule.DestinationPath)
+                    && !string.Equals(rule.DestinationPath, normalized, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.StatusCode = rule.StatusCode;
                     context.Response.Headers.Location = rule.DestinationPath;
