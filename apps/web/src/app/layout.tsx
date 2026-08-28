@@ -7,6 +7,7 @@ import "./premium.css";
 import "./admin-premium.css";
 import "./dashboard-premium.css";
 import "./login-premium.css";
+import "./experience-states.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.PUBLIC_PORTAL_URL ?? "http://localhost:3000"),
