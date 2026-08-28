@@ -42,7 +42,7 @@ O inventário não equivale a publicação. Conteúdo e documentos permanecem su
 
 - backend: build com zero warnings, 180 testes de domínio/contrato, migrations, banco vazio, idempotência, script e snapshot EF;
 - frontend: lint, TypeScript strict, 55 testes Vitest e build de produção;
-- E2E: 46 cenários Playwright aprovados em execução serial equivalente à CI, cobrindo a POC executiva, Ouvidoria ponta a ponta, mídia governada, redirects, busca acentuada, compliance, acessibilidade pública e administrativa, responsividade em quatro pontos de quebra, status 404 e crawl interno;
+- E2E: 47 cenários Playwright aprovados em execução serial equivalente à CI, cobrindo a POC executiva, Ouvidoria ponta a ponta, mídia governada, redirects, busca acentuada, compliance, acessibilidade pública e administrativa, responsividade em quatro pontos de quebra, status 404 e crawl interno;
 - segurança: secret scan, rejeição de chaves/certificados, audit de dependências e Trivy;
 - containers: publish da API, build API/Web não-root, PostgreSQL 17 limpo e validação do Compose com credenciais efêmeras;
 - documentação/reset: 23 arquivos obrigatórios verificados e reset que recusa Production e ausência de opt-in.

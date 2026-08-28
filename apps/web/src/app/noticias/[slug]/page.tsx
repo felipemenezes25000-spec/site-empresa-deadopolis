@@ -20,7 +20,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <PublicShell>
-      <PageIntro eyebrow="Notícia" title={article.title} description={article.summary} />
+      <PageIntro eyebrow="Notícia" title={article.title} description={article.summary} breadcrumb={[{ label: "Início", href: "/" }, { label: "Notícias", href: "/noticias" }, { label: article.title }]} />
       <section className="content-section">
         <div className="page-shell detail-grid">
           <article className="prose-card">

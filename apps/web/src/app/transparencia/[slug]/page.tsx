@@ -25,6 +25,7 @@ export default async function TransparencyCategoryPage({ params, searchParams }:
       eyebrow: "Prestação de contas",
       title: category.title,
       description: `${category.description} Somente documentos aprovados e publicados são exibidos.`,
+      breadcrumb: [{ label: "Início", href: "/" }, { label: "Transparência", href: "/transparencia" }, { label: category.title }],
     }}
   />;
 }

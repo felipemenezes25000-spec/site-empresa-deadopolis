@@ -13,7 +13,7 @@ export default async function DepartmentPage({ params }: { params: Promise<{ slu
   const hasContact = Boolean(department.phone || department.email || department.address || department.openingHours);
 
   return <PublicShell>
-    <PageIntro eyebrow={department.acronym || "Estrutura municipal"} title={department.name} description="Informações oficiais de contato e atendimento da unidade administrativa." />
+    <PageIntro eyebrow={department.acronym || "Estrutura municipal"} title={department.name} description="Informações oficiais de contato e atendimento da unidade administrativa." breadcrumb={[{ label: "Início", href: "/" }, { label: "Secretarias", href: "/secretarias" }, { label: department.name }]} />
     <section className="content-section">
       <div className="page-shell">
         <div className="card-grid">

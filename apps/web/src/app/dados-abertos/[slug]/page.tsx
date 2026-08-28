@@ -13,7 +13,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 
   const { dataset, versions } = detail;
   return <PublicShell>
-    <PageIntro eyebrow={dataset.category || "Dados Abertos"} title={dataset.title} description={dataset.description} />
+    <PageIntro eyebrow={dataset.category || "Dados Abertos"} title={dataset.title} description={dataset.description} breadcrumb={[{ label: "Início", href: "/" }, { label: "Dados Abertos", href: "/dados-abertos" }, { label: dataset.title }]} />
     <section className="content-section">
       <div className="page-shell">
         <div className="editor-grid">

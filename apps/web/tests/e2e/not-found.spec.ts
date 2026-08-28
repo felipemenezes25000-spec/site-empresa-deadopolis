@@ -32,3 +32,26 @@ test("página 404 mantém navegação governada e busca municipal", async ({ pag
   await page.waitForURL(/\/buscar\?q=IPTU/);
   await expect(page.getByRole("link", { name: /IPTU/i }).first()).toBeVisible();
 });
+
+test("páginas de detalhe expõem trilha de navegação municipal", async ({ page }) => {
+  const trails: Array<[string, string[]]> = [
+    ["/servicos/emitir-guia-iptu", ["Início", "Serviços"]],
+    ["/secretarias/saude", ["Início", "Secretarias"]],
+    ["/transparencia/documentos", ["Início", "Transparência"]],
+  ];
+
+  for (const [route, expected] of trails) {
+    await page.goto(route);
+    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+    await expect(breadcrumb, route).toBeVisible();
+    for (const label of expected) {
+      await expect(breadcrumb.getByRole("link", { name: label }), `${route} → ${label}`).toBeVisible();
+    }
+    await expect(breadcrumb.locator("[aria-current='page']"), route).toHaveCount(1);
+  }
+
+  await page.goto("/servicos/emitir-guia-iptu");
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Serviços" }).click();
+  await page.waitForURL(/\/servicos$/);
+  await expect(page.getByRole("heading", { level: 1, name: /O que você precisa resolver/i })).toBeVisible();
+});

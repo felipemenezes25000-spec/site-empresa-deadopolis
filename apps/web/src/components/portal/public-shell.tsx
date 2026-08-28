@@ -2,6 +2,7 @@ import { CircleHelp, Headphones, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Breadcrumb } from "@/components/ui/navigation";
 import { getResources, type PortalResource } from "@/lib/portal-api";
 
 const fallbackNavigation = [
@@ -94,8 +95,8 @@ function readPayload(payload: unknown): MenuPayload { return payload && typeof p
 function safeHref(value?: string) { if (!value) return null; const normalized = value.trim(); if (normalized.startsWith("/") && !normalized.startsWith("//")) return normalized; try { const url = new URL(normalized); return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null; } catch { return null; } }
 function flattenMenu(node: MenuNode): MenuNode[] { return [node, ...node.children.flatMap(flattenMenu)]; }
 
-export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
-  return <section className="page-intro"><div className="page-shell"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p>{description}</p>}</div></section>;
+export function PageIntro({ eyebrow, title, description, breadcrumb }: { eyebrow: string; title: string; description?: string; breadcrumb?: { label: string; href?: string }[] }) {
+  return <section className="page-intro"><div className="page-shell">{breadcrumb && breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}<p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p>{description}</p>}</div></section>;
 }
 
 export function EmptyPanel({ title, description }: { title: string; description: string }) {

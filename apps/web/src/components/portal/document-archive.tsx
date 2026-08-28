@@ -5,7 +5,7 @@ import { getPublicDocuments, type PublicDocument } from "@/lib/portal-api";
 import { EmptyPanel, PageIntro, PublicShell } from "./public-shell";
 
 export type ArchiveSearch = { q?: string; category?: string; subcategory?: string; type?: string; year?: string; page?: string };
-type ArchiveIntro = { eyebrow: string; title: string; description: string };
+type ArchiveIntro = { eyebrow: string; title: string; description: string; breadcrumb?: { label: string; href?: string }[] };
 type DocumentArchiveProps = {
   search: ArchiveSearch;
   category?: string;
@@ -19,6 +19,7 @@ const defaultIntro: ArchiveIntro = {
   eyebrow: "Memória administrativa",
   title: "Acervo público de documentos",
   description: "Pesquise documentos preservados do portal anterior. Cada arquivo publicado conserva origem, contexto e impressão digital SHA-256.",
+  breadcrumb: [{ label: "Início", href: "/" }, { label: "Transparência", href: "/transparencia" }, { label: "Acervo de documentos" }],
 };
 
 export async function DocumentArchive({ search, category, subcategory, action = "/transparencia/documentos", intro = defaultIntro, children }: DocumentArchiveProps) {
