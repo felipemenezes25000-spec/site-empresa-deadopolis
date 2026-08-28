@@ -1,1 +1,23 @@
-import type { Metadata } from "next";import { PageIntro,PublicShell } from "@/components/portal/public-shell";import { TicketForm } from "@/components/portal/ticket-form";export const metadata:Metadata={title:"Ouvidoria"};export default function Page(){return <PublicShell><PageIntro eyebrow="Participação" title="Ouvidoria Municipal" description="Registre solicitação, reclamação, denúncia, sugestão ou elogio e receba protocolo para acompanhamento."/><section className="content-section"><div className="page-shell detail-grid"><article className="prose-card"><h2>Registrar manifestação</h2><TicketForm/></article><aside className="side-card"><h2>Privacidade</h2><p>Informe apenas os dados necessários. O protocolo e o código de acompanhamento são necessários para consultar a manifestação.</p><p>Quando o canal externo oficial estiver configurado, o portal deverá identificar claramente o redirecionamento.</p></aside></div></section></PublicShell>}
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PageIntro, PublicShell } from "@/components/portal/public-shell";
+import { TicketForm } from "@/components/portal/ticket-form";
+
+export const metadata: Metadata = { title: "Ouvidoria" };
+
+export default function Page() {
+  return <PublicShell>
+    <PageIntro eyebrow="Participação" title="Ouvidoria Municipal" description="Registre solicitação, reclamação, denúncia, sugestão ou elogio e receba protocolo para acompanhamento." />
+    <section className="content-section"><div className="page-shell detail-grid">
+      <article className="prose-card"><h2>Registrar manifestação</h2><TicketForm /></article>
+      <aside className="side-card">
+        <h2>Já registrou?</h2>
+        <p>Use o protocolo e o código de acompanhamento para consultar a situação, os prazos e as respostas da Prefeitura.</p>
+        <Link className="action-button secondary" href="/ouvidoria/acompanhar">Acompanhar manifestação</Link>
+        <h2>Privacidade</h2>
+        <p>Informe apenas os dados necessários. O protocolo e o código de acompanhamento são necessários para consultar a manifestação.</p>
+        <p>Quando o canal externo oficial estiver configurado, o portal deverá identificar claramente o redirecionamento.</p>
+      </aside>
+    </div></section>
+  </PublicShell>;
+}
