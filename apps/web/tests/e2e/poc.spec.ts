@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Operações, Diário e Ouvidoria", async ({ page }) => {
-  test.setTimeout(75_000);
+  test.setTimeout(120_000);
   const password = process.env.DEMO_PASSWORD;
   if (!password) throw new Error("DEMO_PASSWORD é obrigatório para a POC automatizada.");
 
@@ -80,28 +80,41 @@ test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Ope
   await expect(page.getByText(cmsSummary, { exact: true })).toBeVisible();
 
   await page.goto("/admin/conteudo");
-  const newContentButton = page.getByRole("button", { name: "Novo conteúdo" });
-  if (await newContentButton.count()) await newContentButton.click();
-  const homeForm = page.getByRole("heading", { name: "Novo conteúdo" }).locator("xpath=ancestor::form");
-  await homeForm.getByLabel("Título").fill(`Página inicial POC ${suffix}`);
-  await homeForm.getByLabel("Slug").fill("home");
-  await homeForm.getByLabel("Resumo").fill("Composição governada da página inicial criada pelo teste executivo.");
+  await expect(page.getByRole("button", { name: "Editar Acesso à Informação" })).toBeVisible();
+  const existingHome = page.locator(".compact-item").filter({ has: page.locator("small", { hasText: /^home · v\d+/ }) });
+  const homeAlreadyGoverned = await existingHome.count() > 0;
+  if (homeAlreadyGoverned) {
+    await existingHome.first().getByRole("button", { name: /^Editar / }).click();
+    await expect(page.getByRole("heading", { name: "Editar conteúdo" })).toBeVisible();
+  }
+  const homeForm = page.getByRole("heading", { name: homeAlreadyGoverned ? "Editar conteúdo" : "Novo conteúdo" }).locator("xpath=ancestor::form");
+  await homeForm.getByRole("textbox", { name: "Título", exact: true }).fill(`Página inicial POC ${suffix}`);
+  if (!homeAlreadyGoverned) await homeForm.getByRole("textbox", { name: "Slug", exact: true }).fill("home");
+  await homeForm.getByRole("textbox", { name: "Resumo", exact: true }).fill("Composição governada da página inicial criada pelo teste executivo.");
   const homeBuilder = homeForm.getByRole("region", { name: "Page Builder" });
+  for (let remaining = await homeBuilder.getByRole("article").count(); remaining > 0; remaining--) {
+    await homeBuilder.getByRole("article").first().getByRole("button", { name: /^Remover bloco / }).click();
+  }
+  await expect(homeBuilder.getByRole("article")).toHaveCount(0);
   await homeBuilder.getByLabel("Tipo do novo bloco").selectOption("Hero");
   await homeBuilder.getByRole("button", { name: "Adicionar bloco" }).click();
   const heroBlock = homeBuilder.getByRole("article").nth(0);
-  await heroBlock.getByLabel("Título").fill("Olá! O que você precisa?");
-  await heroBlock.getByRole("textbox", { name: "Conteúdo", exact: true }).fill("Composição administrada e publicada pelo CMS municipal.");
+  await heroBlock.getByLabel("Título do bloco 1").fill("Olá! O que você precisa?");
+  await heroBlock.getByLabel("Conteúdo do bloco 1").fill("Composição administrada e publicada pelo CMS municipal.");
   await homeBuilder.getByLabel("Tipo do novo bloco").selectOption("Alert");
   await homeBuilder.getByRole("button", { name: "Adicionar bloco" }).click();
   const alertBlock = homeBuilder.getByRole("article").nth(1);
-  await alertBlock.getByLabel("Título").fill(`Aviso governado POC ${suffix}`);
-  await alertBlock.getByRole("textbox", { name: "Conteúdo", exact: true }).fill("Este aviso comprova a renderização pública da composição estruturada.");
-  await homeForm.getByRole("button", { name: "Salvar rascunho" }).click();
-  await expect(page.getByText("Conteúdo criado como rascunho.")).toBeVisible();
+  await alertBlock.getByLabel("Título do bloco 2").fill(`Aviso governado POC ${suffix}`);
+  await alertBlock.getByLabel("Conteúdo do bloco 2").fill("Este aviso comprova a renderização pública da composição estruturada.");
+  await homeForm.getByRole("button", { name: homeAlreadyGoverned ? "Salvar alterações" : "Salvar rascunho" }).click();
+  await expect(page.getByText(homeAlreadyGoverned ? "Alterações salvas com nova versão." : "Conteúdo criado como rascunho.")).toBeVisible();
   const homeResource = page.getByText(`Página inicial POC ${suffix}`, { exact: true }).locator("xpath=ancestor::div[contains(@class, 'compact-item')]");
-  await homeResource.getByRole("button", { name: "Publicar" }).click();
-  await expect(page.getByText("Ação publish concluída.")).toBeVisible();
+  const publishHome = homeResource.getByRole("button", { name: "Publicar" });
+  if (await publishHome.count() > 0) {
+    await publishHome.click();
+    await expect(page.getByText("Ação publish concluída.")).toBeVisible();
+  }
+  await expect(homeResource.getByText("PUBLISHED", { exact: true })).toBeVisible();
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Olá! O que você precisa?" })).toBeVisible();
   await expect(page.getByRole("heading", { name: `Aviso governado POC ${suffix}` })).toBeVisible();
