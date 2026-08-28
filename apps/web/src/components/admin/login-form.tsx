@@ -36,7 +36,7 @@ export function LoginForm() {
     <form className="premium-login-form" onSubmit={submit}>
       <div className="field premium-login-field">
         <label htmlFor="username">Usuário</label>
-        <div className="login-input-frame"><UserRound size={18} aria-hidden="true" /><input id="username" name="username" autoComplete="username" autoFocus required placeholder="Seu usuário" /></div>
+        <div className="login-input-frame"><UserRound size={18} aria-hidden="true" /><input id="username" name="username" autoComplete="username" required placeholder="Seu usuário" /></div>
       </div>
       <div className="field premium-login-field">
         <label htmlFor="password">Senha</label>
