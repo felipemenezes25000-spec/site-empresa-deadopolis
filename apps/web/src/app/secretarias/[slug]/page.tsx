@@ -1,9 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageIntro, PublicShell } from "@/components/portal/public-shell";
 import { getDepartment } from "@/lib/portal-api";
 
 export const dynamic = "force-dynamic";
+
+// Sem isto toda secretaria herdava o título e a descrição da home, tornando as páginas
+// indistinguíveis em resultados de busca e no histórico do navegador.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const department = await getDepartment(slug);
+  if (!department) return { title: "Secretaria" };
+  return {
+    title: department.name,
+    description: `Competências, gestores e canais de atendimento da ${department.name} (${department.acronym}) em Deodápolis/MS.`,
+    alternates: { canonical: `/secretarias/${slug}` },
+  };
+}
 
 export default async function DepartmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

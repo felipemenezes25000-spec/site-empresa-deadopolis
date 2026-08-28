@@ -4,7 +4,18 @@ import { notFound } from "next/navigation";
 import { PageIntro, PublicShell } from "@/components/portal/public-shell";
 import { getOpenDataset } from "@/lib/portal-api";
 
-export const metadata: Metadata = { title: "Dataset · Dados Abertos" };
+// Todos os datasets compartilhavam um único título estático, embora o título real já seja
+// carregado logo abaixo pela mesma função de leitura.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const detail = await getOpenDataset(slug);
+  if (!detail) return { title: "Dados Abertos" };
+  return {
+    title: detail.dataset.title,
+    description: detail.dataset.description || "Conjunto de dados abertos publicado pela Prefeitura de Deodápolis/MS.",
+    alternates: { canonical: `/dados-abertos/${slug}` },
+  };
+}
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
