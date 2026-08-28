@@ -8,3 +8,14 @@
   color: #5d6d66;
   opacity: 1;
 }
+
+/* The premium shortcut cards use white surfaces. Keep both heading and helper copy
+   on explicit AA-safe foregrounds so inherited link colors can never dilute contrast. */
+.useful-grid a,
+.useful-grid a strong {
+  color: #0f3528;
+}
+
+.useful-grid a small {
+  color: #435a50;
+}
