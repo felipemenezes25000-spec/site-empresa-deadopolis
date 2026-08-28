@@ -1,17 +1,32 @@
 @import "tailwindcss";
 
+/* Camada de tokens do portal — fonte única.
+   Até aqui estes doze nomes eram declarados duas vezes, aqui e em premium.css, com valores
+   diferentes; como premium.css carrega depois, o bloco daqui estava inteiramente morto e o que
+   se lia no código não era o que a tela mostrava. Os valores abaixo são os que já renderizavam. */
 :root {
-  --background: #f6f7f3;
+  --background: #f4f7f5;
   --surface: #ffffff;
-  --surface-muted: #edf2ed;
-  --foreground: #15352b;
-  --muted: #5d6d66;
+  --surface-muted: #edf3ef;
+  --surface-hover: #eaf2ed;
+  --foreground: #0f241c;
+  --muted: #586961;
   --primary: #176b4d;
-  --primary-strong: #0e4935;
-  --lime: #c9df56;
-  --lime-soft: #eef5c9;
-  --border: #d5ded8;
-  --focus: #f4b942;
+  --primary-strong: #0a3b2a;
+  --primary-ink: #082c20;
+  --primary-mid: #0c5139;
+  --lime: #d8ed72;
+  --lime-soft: #f1f7cf;
+  --border: rgba(15, 36, 28, .12);
+  --hairline: rgba(15, 36, 28, .085);
+  --focus: #efb93d;
+  --shadow-sm: 0 1px 2px rgba(6, 31, 22, .04), 0 7px 20px rgba(6, 31, 22, .05);
+  --shadow-md: 0 18px 48px rgba(6, 31, 22, .10), 0 4px 14px rgba(6, 31, 22, .05);
+  --shadow-lg: 0 36px 100px rgba(3, 26, 18, .20);
+  /* Nomes antigos mantidos como alias: premium.css e as folhas seguintes ainda os referenciam. */
+  --premium-shadow-sm: var(--shadow-sm);
+  --premium-shadow-md: var(--shadow-md);
+  --premium-shadow-lg: var(--shadow-lg);
 }
 
 @theme inline {

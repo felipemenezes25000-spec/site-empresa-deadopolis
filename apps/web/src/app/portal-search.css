@@ -13,7 +13,7 @@
 .portal-search--hero .portal-search-field { min-height: 66px; padding: 7px 7px 7px 19px; border-radius: 16px; background: #fff; box-shadow: 0 18px 44px rgba(5, 49, 34, .28); }
 .portal-search--hero .portal-search-field input { font-size: 1.02rem; }
 .portal-search--hero .portal-search-field button[type="submit"] { min-height: 52px; padding: 0 26px; border: 0; border-radius: 12px; background: var(--primary-strong); color: #fff; font-weight: 800; cursor: pointer; }
-.portal-search--hero .portal-search-field button[type="submit"]:hover { background: #0a3b2a; }
+.portal-search--hero .portal-search-field button[type="submit"]:hover { background: var(--primary-strong); }
 
 /* Interno: acompanha a barra de conteúdo das listagens. */
 .portal-search--content .portal-search-field { min-height: 48px; padding: 4px 4px 4px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
@@ -60,8 +60,8 @@
 
 /* Estado atual no dock móvel: cor sozinha não basta, então o item ativo ganha peso,
    fundo e um traço superior além do aria-current. */
-.public-mobile-dock > a.is-current { position: relative; background: #eaf2ed; color: #0c5139; font-weight: 800; }
-.public-mobile-dock > a.is-current::before { content: ""; position: absolute; top: 3px; left: 50%; width: 18px; height: 3px; border-radius: 99px; background: #176b4d; transform: translateX(-50%); }
+.public-mobile-dock > a.is-current { position: relative; background: var(--surface-hover); color: var(--primary-mid); font-weight: 800; }
+.public-mobile-dock > a.is-current::before { content: ""; position: absolute; top: 3px; left: 50%; width: 18px; height: 3px; border-radius: 99px; background: var(--primary); transform: translateX(-50%); }
 .public-mobile-dock > a.public-mobile-dock-search.is-current { background: transparent; }
 .public-mobile-dock > a.public-mobile-dock-search.is-current::before { display: none; }
 .public-mobile-dock > a.public-mobile-dock-search.is-current > span { box-shadow: 0 0 0 3px rgba(216, 237, 114, .55), 0 10px 24px rgba(10, 59, 42, .24); }

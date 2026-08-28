@@ -155,7 +155,7 @@
 }
 
 /* --- Hero público -------------------------------------------------------------
-   O gradiente anterior clareava para a direita (#082f21 -> #176b4d) e punha o realce
+   O gradiente anterior clareava para a direita (#082f21 -> var(--primary)) e punha o realce
    lima em 82% 18%, então todo o peso visual caía sobre a metade vazia da faixa, longe
    do título e da busca. A luz passa a nascer atrás do conteúdo e a cair para as bordas.
    A parada mais clara aqui é #14603f: texto branco sobre ela mede 7,5:1. */

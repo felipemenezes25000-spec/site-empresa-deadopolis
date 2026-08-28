@@ -89,7 +89,7 @@
 .news-preview-bar h2 { margin: 2px 0 0; }
 .news-preview-bar .eyebrow { margin: 0; }
 
-.news-preview-viewports { display: flex; gap: 4px; padding: 3px; border: 1px solid rgba(15, 36, 28, .10); border-radius: 10px; background: #f4f7f5; }
+.news-preview-viewports { display: flex; gap: 4px; padding: 3px; border: 1px solid rgba(15, 36, 28, .10); border-radius: 10px; background: var(--background); }
 .news-preview-viewports button {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 34px; padding: 0 11px;
