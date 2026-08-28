@@ -10,6 +10,6 @@ export default async function MunicipalityPage() {
     resource={await getResource("PAGE", "municipio")}
     eyebrow="Deodápolis"
     fallbackTitle="O Município"
-    fallbackDescription="História, características e informações institucionais de Deodápolis. O conteúdo histórico está sendo reconciliado com o portal legado antes da publicação."
+    fallbackDescription="História, características e informações institucionais de Deodápolis."
   />;
 }

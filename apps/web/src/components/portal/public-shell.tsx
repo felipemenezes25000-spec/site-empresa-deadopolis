@@ -1,4 +1,4 @@
-import { CircleHelp, Headphones, Home, LayoutGrid, Menu, Search } from "lucide-react";
+import { CircleHelp, FileQuestion, Headphones, Home, LayoutGrid, Menu, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -105,6 +105,13 @@ export function PageIntro({ eyebrow, title, description, breadcrumb }: { eyebrow
   return <section className="page-intro"><div className="page-shell">{breadcrumb && breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}<p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p>{description}</p>}</div></section>;
 }
 
-export function EmptyPanel({ title, description }: { title: string; description: string }) {
-  return <div className="empty-state page-empty" role="status"><h2>{title}</h2><p>{description}</p></div>;
+// `children` é opcional para que cada chamada existente continue válida, mas permite oferecer um
+// caminho de saída: um estado vazio sem ação deixa o cidadão sem para onde ir.
+export function EmptyPanel({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
+  return <div className="empty-state page-empty" role="status">
+    <FileQuestion size={26} aria-hidden="true" />
+    <h2>{title}</h2>
+    <p>{description}</p>
+    {children}
+  </div>;
 }

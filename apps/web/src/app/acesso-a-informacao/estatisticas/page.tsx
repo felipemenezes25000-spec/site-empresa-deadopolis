@@ -5,5 +5,5 @@ import { getResource } from "@/lib/portal-api";
 export const metadata: Metadata = { title: "Estatísticas do e-SIC" };
 
 export default async function Page() {
-  return <ManagedResourcePage resource={await getResource("PAGE", "esic-estatisticas")} eyebrow="Acesso à informação" fallbackTitle="Estatísticas do e-SIC" fallbackDescription="Indicadores oficiais sobre os pedidos de acesso à informação recebidos pelo Município." />;
+  return <ManagedResourcePage resource={await getResource("PAGE", "esic-estatisticas")} eyebrow="Acesso à informação" fallbackTitle="Estatísticas do e-SIC" fallbackDescription="Indicadores oficiais sobre os pedidos de acesso à informação recebidos pelo Município." breadcrumb={[{ label: "Início", href: "/" }, { label: "Acesso à Informação", href: "/acesso-a-informacao" }, { label: "Estatísticas" }]} />;
 }

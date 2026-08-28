@@ -124,3 +124,7 @@
 .filter-pill[aria-current="true"] { border-color: var(--primary-strong); background: var(--primary-strong); color: #fff; }
 .result-count { margin: 0 0 18px; color: var(--muted); font-size: .9rem; }
 .result-count a { color: var(--primary); font-weight: 750; }
+
+/* --- Estados vazios com saída ------------------------------------------------- */
+.empty-state-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.empty-state.page-empty { justify-items: start; gap: 8px; }

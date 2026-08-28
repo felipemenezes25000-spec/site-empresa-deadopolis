@@ -10,6 +10,7 @@ export default async function MunicipalManagementPage() {
     resource={await getResource("PAGE", "gestao")}
     eyebrow="Institucional"
     fallbackTitle="Gestão Municipal"
-    fallbackDescription="Missão, diretrizes e informações institucionais da gestão municipal. O conteúdo legado precisa ser revisado no CMS antes do redirecionamento definitivo."
+    fallbackDescription="Missão, diretrizes e informações institucionais da gestão municipal."
+    breadcrumb={[{ label: "Início", href: "/" }, { label: "O Município", href: "/municipio" }, { label: "Gestão Municipal" }]}
   />;
 }
