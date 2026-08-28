@@ -28,24 +28,26 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CommandPalette } from "@/components/ui";
 
 type User = { displayName: string; role: string; capabilities: string[] };
-type AdminLink = { href: string; label: string; group: "Visão geral" | "Conteúdo" | "Atendimento" | "Plataforma"; icon: LucideIcon };
+// `capability` espelha exatamente a claim que a API exige no grupo de endpoints da área.
+// Sem `capability` o item é sempre visível (a visão geral só pede sessão autenticada).
+type AdminLink = { href: string; label: string; group: "Visão geral" | "Conteúdo" | "Atendimento" | "Plataforma"; icon: LucideIcon; capability?: string };
 
 const links: AdminLink[] = [
   { href: "/admin", label: "Visão geral", group: "Visão geral", icon: LayoutDashboard },
-  { href: "/admin/comunicacao", label: "Comunicação", group: "Conteúdo", icon: Megaphone },
-  { href: "/admin/conteudo", label: "Páginas e blocos", group: "Conteúdo", icon: Blocks },
-  { href: "/admin/governanca-conteudo", label: "Governança", group: "Conteúdo", icon: ShieldCheck },
-  { href: "/admin/servicos", label: "Serviços", group: "Conteúdo", icon: Wrench },
-  { href: "/admin/midia", label: "Mídia", group: "Conteúdo", icon: ImageIcon },
-  { href: "/admin/dados-abertos", label: "Dados Abertos", group: "Conteúdo", icon: Database },
-  { href: "/admin/diario", label: "Diário Oficial", group: "Conteúdo", icon: FileBadge2 },
-  { href: "/admin/tickets", label: "Tickets e SLA", group: "Atendimento", icon: MessageSquareText },
-  { href: "/admin/email", label: "E-mail institucional", group: "Atendimento", icon: Mail },
-  { href: "/admin/usuarios", label: "Usuários e RBAC", group: "Plataforma", icon: Users },
-  { href: "/admin/integracoes", label: "Integrações", group: "Plataforma", icon: PlugZap },
-  { href: "/admin/migracao", label: "Migração", group: "Plataforma", icon: Waypoints },
-  { href: "/admin/operacoes", label: "Operações", group: "Plataforma", icon: Activity },
-  { href: "/admin/compliance", label: "Compliance", group: "Plataforma", icon: Gauge },
+  { href: "/admin/comunicacao", label: "Comunicação", group: "Conteúdo", icon: Megaphone, capability: "content.write" },
+  { href: "/admin/conteudo", label: "Páginas e blocos", group: "Conteúdo", icon: Blocks, capability: "resources.manage" },
+  { href: "/admin/governanca-conteudo", label: "Governança", group: "Conteúdo", icon: ShieldCheck, capability: "resources.manage" },
+  { href: "/admin/servicos", label: "Serviços", group: "Conteúdo", icon: Wrench, capability: "services.manage" },
+  { href: "/admin/midia", label: "Mídia", group: "Conteúdo", icon: ImageIcon, capability: "media.manage" },
+  { href: "/admin/dados-abertos", label: "Dados Abertos", group: "Conteúdo", icon: Database, capability: "datasets.manage" },
+  { href: "/admin/diario", label: "Diário Oficial", group: "Conteúdo", icon: FileBadge2, capability: "gazette.write" },
+  { href: "/admin/tickets", label: "Tickets e SLA", group: "Atendimento", icon: MessageSquareText, capability: "support.write" },
+  { href: "/admin/email", label: "E-mail institucional", group: "Atendimento", icon: Mail, capability: "mail.manage" },
+  { href: "/admin/usuarios", label: "Usuários e RBAC", group: "Plataforma", icon: Users, capability: "users.manage" },
+  { href: "/admin/integracoes", label: "Integrações", group: "Plataforma", icon: PlugZap, capability: "settings.manage" },
+  { href: "/admin/migracao", label: "Migração", group: "Plataforma", icon: Waypoints, capability: "migration.manage" },
+  { href: "/admin/operacoes", label: "Operações", group: "Plataforma", icon: Activity, capability: "operations.manage" },
+  { href: "/admin/compliance", label: "Compliance", group: "Plataforma", icon: Gauge, capability: "settings.manage" },
 ];
 
 const groups = ["Visão geral", "Conteúdo", "Atendimento", "Plataforma"] as const;
@@ -56,7 +58,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const commands = useMemo(() => links.map(({ href, label }) => ({ id: href, label, description: `Abrir ${label}`, keywords: ["admin", "navegação"], run: () => window.location.assign(href) })), []);
+  // O RBAC do backend já recusa o acesso; a navegação deixa de oferecer o caminho que terminaria em 403.
+  const visibleLinks = useMemo(
+    () => links.filter((item) => !item.capability || (user?.capabilities ?? []).includes(item.capability)),
+    [user],
+  );
+  const commands = useMemo(
+    () => visibleLinks.map(({ href, label }) => ({ id: href, label, description: `Abrir ${label}`, keywords: ["admin", "navegação"], run: () => window.location.assign(href) })),
+    [visibleLinks],
+  );
 
   useEffect(() => {
     fetch("/api/v1/auth/me", { credentials: "include" })
@@ -92,6 +102,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   if (!user) return <main className="login-shell"><div className="login-card" aria-busy="true">Validando sessão…</div></main>;
 
   return <div className="admin-shell">
+    <a className="skip-link" href="#admin-conteudo">Ir para o conteúdo do workspace</a>
     <header className="admin-topbar">
       <div className="admin-product-mark"><span className="admin-product-symbol" aria-hidden="true">D</span><span><strong>Deodápolis</strong><small>Portal Municipal · Workspace</small></span></div>
       <div className="admin-top-actions">
@@ -107,16 +118,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside id="admin-navigation" className={`admin-sidebar${navOpen ? " is-open" : ""}`}>
         <div className="admin-mobile-nav-heading"><span>Navegação</span><button type="button" onClick={() => setNavOpen(false)} aria-label="Fechar menu"><X size={18} aria-hidden="true" /></button></div>
         <nav aria-label="Administração">
-          {groups.map((group) => <div className="admin-nav-group" key={group}>
+          {groups.filter((group) => visibleLinks.some((item) => item.group === group)).map((group) => <div className="admin-nav-group" key={group}>
             {group !== "Visão geral" && <p>{group}</p>}
-            {links.filter((item) => item.group === group).map(({ href, label, icon: Icon }) => {
+            {visibleLinks.filter((item) => item.group === group).map(({ href, label, icon: Icon }) => {
               const active = href === "/admin" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
               return <Link key={href} href={href} onClick={() => setNavOpen(false)} className={active ? "is-active" : undefined} aria-current={active ? "page" : undefined}><Icon size={17} strokeWidth={1.9} aria-hidden="true" /><span>{label}</span></Link>;
             })}
           </div>)}
         </nav>
       </aside>
-      <main className="admin-main">{children}</main>
+      <main className="admin-main" id="admin-conteudo" tabIndex={-1}>{children}</main>
     </div>
     <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={commands} title="Ir para uma área" />
   </div>;
