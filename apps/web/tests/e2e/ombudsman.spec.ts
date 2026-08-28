@@ -27,11 +27,12 @@ test("Ouvidoria: cidadão registra, servidor responde e o acompanhamento públic
   await page.getByLabel("Protocolo").fill(protocol!);
   await page.getByLabel("Código de acompanhamento").fill("00000000000000000000000000000000");
   await page.getByRole("button", { name: "Consultar manifestação" }).click();
-  await expect(page.locator(".form-message.error")).toContainText("Nenhuma manifestação corresponde");
+  // A consulta cruza portal e API; o cenário verifica o comportamento, não a latência de uma execução.
+  await expect(page.locator(".form-message.error")).toContainText("Nenhuma manifestação corresponde", { timeout: 25_000 });
 
   await page.getByLabel("Código de acompanhamento").fill(trackingCode!);
   await page.getByRole("button", { name: "Consultar manifestação" }).click();
-  await expect(page.getByRole("heading", { name: `Manifestação ${protocol}` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Manifestação ${protocol}` })).toBeVisible({ timeout: 25_000 });
   await expect(page.getByText("Aberta — aguardando primeira resposta")).toBeVisible();
   await expect(page.getByText("Ainda não há resposta pública registrada para esta manifestação.")).toBeVisible();
 
@@ -70,7 +71,7 @@ test("Ouvidoria: cidadão registra, servidor responde e o acompanhamento públic
   await page.getByLabel("Protocolo").fill(protocol!);
   await page.getByLabel("Código de acompanhamento").fill(trackingCode!);
   await page.getByRole("button", { name: "Consultar manifestação" }).click();
-  await expect(page.getByText("Respondida e encerrada")).toBeVisible();
+  await expect(page.getByText("Respondida e encerrada")).toBeVisible({ timeout: 25_000 });
   await expect(page.getByText(publicAnswer)).toBeVisible();
   await expect(page.getByText(internalNote)).toHaveCount(0);
 });

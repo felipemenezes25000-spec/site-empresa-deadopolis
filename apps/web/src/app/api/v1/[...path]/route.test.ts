@@ -64,4 +64,29 @@ describe("API proxy route", () => {
     expect(forwarded.get("transfer-encoding")).toBeNull();
     expect(forwarded.get("content-type")).toBe("application/json");
   });
+
+  it("answers 504 instead of holding the browser request open when the API stalls", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("The operation was aborted.", "TimeoutError")));
+
+    const response = await GET(new NextRequest("http://portal.test/api/v1/tickets/DEO-1?code=secret"), params(["tickets", "DEO-1"]));
+
+    expect(response.status).toBe(504);
+    expect(response.headers.get("content-type")).toContain("application/problem+json");
+    await expect(response.json()).resolves.toMatchObject({ status: 504 });
+  });
+
+  it("keeps the request content encoding so the API can still read the body it was sent", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://portal.test/api/v1/tickets", {
+      method: "POST",
+      body: "{}",
+      headers: { "content-type": "application/json", "content-encoding": "gzip" },
+    });
+    await POST(request, params(["tickets"]));
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(new Headers(init.headers).get("content-encoding")).toBe("gzip");
+  });
 });

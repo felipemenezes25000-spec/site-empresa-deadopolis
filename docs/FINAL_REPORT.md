@@ -41,7 +41,7 @@ O inventário não equivale a publicação. Conteúdo e documentos permanecem su
 ## Verificação automatizada
 
 - backend: build com zero warnings, 180 testes de domínio/contrato, migrations, banco vazio, idempotência, script e snapshot EF;
-- frontend: lint, TypeScript strict, 59 testes Vitest e build de produção;
+- frontend: lint, TypeScript strict, 61 testes Vitest e build de produção;
 - E2E: 48 cenários Playwright aprovados em execução serial equivalente à CI, cobrindo a POC executiva, Ouvidoria ponta a ponta, mídia governada, redirects, busca acentuada, compliance, acessibilidade pública e administrativa, responsividade em quatro pontos de quebra, status 404 e crawl interno;
 - segurança: secret scan, rejeição de chaves/certificados, audit de dependências e Trivy;
 - containers: publish da API, build API/Web não-root, PostgreSQL 17 limpo e validação do Compose com credenciais efêmeras;
@@ -58,7 +58,7 @@ Cada item abaixo foi reproduzido no runtime empacotado antes da correção e cob
 | `.NET` inicia em modo globalization-invariant na imagem Alpine | busca acentuada retornava zero e `/buscar` respondia 500 no contêiner | dobra de acentos independente de ICU, contrato de busca e solução inteira compilada/testada em modo invariante |
 | `loading.tsx` na raiz abria streaming antes de resolver o recurso | todo `notFound()` era confirmado como HTTP 200 | cenário que exige 404 real para recurso inexistente |
 | destino de redirect exigia apenas `/` inicial | `//host` saía do domínio municipal (open redirect) | recusa no domínio, no middleware, no resolvedor público e na importação do legado |
-| proxy repassava cabeçalhos hop-by-hop | resposta podia travar no navegador | teste de unidade do proxy |
+| proxy repassava cabeçalhos hop-by-hop e não tinha limite de espera | resposta podia travar no navegador sem retorno | proxy com limite de 20s que responde 504, cliente com limite próprio e testes de unidade |
 | estado de integração serializado como enum | painel exibia o literal `3` | vocabulário único verificado em três superfícies |
 | `StatusBadge` só tratava `NOT_`/`FAILED`/`UNAVAILABLE` como risco | `DEMO_ONLY`, `DEGRADED` e `QUARANTINED` apareciam em verde | mapa de severidade explícito e cenário de compliance |
 | cartões de conta não quebravam linha | `/admin/usuarios` rolava lateralmente em 375px | cenário responsivo em 375, 768, 1024 e 1440 pixels |
