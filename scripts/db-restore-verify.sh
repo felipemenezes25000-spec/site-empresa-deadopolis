@@ -14,6 +14,11 @@ checksum_path="$backup_path.sha256"
 
 command -v docker >/dev/null 2>&1 || { echo "Docker é obrigatório para o restore drill." >&2; exit 2; }
 
+# Git Bash reescreve caminhos absolutos ao repassá-los ao Docker; manter os caminhos do
+# contêiner literais deixa o drill reprodutível também em estações Windows. Ignorado no Linux.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 if [[ -f "$checksum_path" ]]; then
   (
     cd "$backup_dir"
@@ -52,15 +57,15 @@ for _ in $(seq 1 30); do
 done
 [[ "$ready" == true ]] || { echo "PostgreSQL temporário não ficou pronto." >&2; exit 4; }
 
-docker cp "$backup_path" "$container_name:/tmp/municipal.dump" >/dev/null
-docker exec -e PGPASSWORD="$restore_password" "$container_name" \
+# O arquivo entra por stdin: o drill não depende de caminhos dentro do contêiner e continua
+# reprodutível em qualquer estação, inclusive onde o shell reescreve caminhos absolutos.
+docker exec -i -e PGPASSWORD="$restore_password" "$container_name" \
   pg_restore \
     --host 127.0.0.1 \
     --username municipal \
     --dbname municipal_restore \
     --no-owner \
-    --no-privileges \
-    /tmp/municipal.dump
+    --no-privileges < "$backup_path"
 
 table_count="$(docker exec -e PGPASSWORD="$restore_password" "$container_name" \
   psql -h 127.0.0.1 -U municipal -d municipal_restore -Atqc \
