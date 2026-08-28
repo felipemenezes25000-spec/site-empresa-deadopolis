@@ -467,7 +467,9 @@ public static class PortalEndpoints
         var editions = await database.GazetteEditions.AsNoTracking()
             .Where(item => item.Status == Modules.Gazette.Domain.GazetteStatus.Published)
             .OrderByDescending(item => item.PublicationDate)
-            .Select(item => new { item.Number, item.Year, item.Type, item.PublicationDate, item.VerificationCode, item.Sha256, item.DocumentObjectKey })
+            // Id e TypeName são adicionados sem remover nada: o portal precisa do identificador para
+            // oferecer o PDF que o hash descreve, e do nome do tipo para não exibir o ordinal do enum.
+            .Select(item => new { item.Id, item.Number, item.Year, item.Type, TypeName = item.Type.ToString(), item.PublicationDate, item.VerificationCode, item.Sha256, item.DocumentObjectKey })
             .ToListAsync(cancellationToken);
         return Results.Ok(editions);
     }
@@ -482,6 +484,8 @@ public static class PortalEndpoints
             .Where(item => item.VerificationCode == code && item.Status == Modules.Gazette.Domain.GazetteStatus.Published)
             .Select(item => new
             {
+                // O identificador permite ao cidadão baixar exatamente o documento que este hash descreve.
+                item.Id,
                 item.Number,
                 item.Year,
                 item.PublicationDate,
