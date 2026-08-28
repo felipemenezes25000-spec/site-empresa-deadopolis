@@ -57,10 +57,18 @@ export function DashboardClient() {
     </section>
 
     <section className="admin-panel dashboard-integrations">
-      <div className="dashboard-panel-heading"><div><p>Infraestrutura conectada</p><h2>Saúde das integrações</h2></div><span>{data.integrations.length} providers</span></div>
+      <div className="dashboard-panel-heading"><div><p>Dependências externas</p><h2>Saúde das integrações</h2></div><span>{operationalIntegrations(data.integrations)} de {data.integrations.length} operacionais</span></div>
       <div className="compact-list">{data.integrations.map((item) => <div className="compact-item integration-row" key={item.provider}><div><strong>{item.provider}</strong><small>{item.message}</small></div><StatusBadge status={item.state} /></div>)}</div>
     </section>
   </div>;
+}
+
+// "Infraestrutura conectada" descrevia quatro providers NOT_CONFIGURED. O painel passa a contar
+// apenas o que o runtime reporta como operacional; demonstração não conta como operacional.
+const operationalStates = new Set(["AVAILABLE", "CONFIGURED", "OPERATIONAL", "READY", "ACTIVE"]);
+
+function operationalIntegrations(integrations: ReadonlyArray<{ state: string }>) {
+  return integrations.filter((item) => operationalStates.has(item.state.trim().toUpperCase())).length;
 }
 
 function Metric({ label, value, icon: Icon, featured = false, alert = false }: { label: string; value: number; icon: LucideIcon; featured?: boolean; alert?: boolean }) {

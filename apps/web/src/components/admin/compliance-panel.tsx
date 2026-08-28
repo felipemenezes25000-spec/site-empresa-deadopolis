@@ -65,13 +65,25 @@ export function CompliancePanel() {
     ["AVIF", compliance.providers.mediaVariants.avif],
   ] as const;
 
+  const readiness = summarizeReadiness(providers.map(([, provider]) => provider.state));
+
   return <>
     <div className="admin-grid">
-      <Metric title="Readiness" value={compliance.readiness.state} />
+      <Metric title="Banco de dados" value={compliance.readiness.databaseReady ? "Pronto" : "Indisponível"} />
       <Metric title="Links degradados" value={`${compliance.evidence.links.degraded} de ${compliance.evidence.links.total}`} />
       <Metric title="Evidências de migração" value={String(compliance.evidence.migration.total)} />
       <Metric title="Restores evidenciados" value={`${compliance.evidence.backups.restoreTested} de ${compliance.evidence.backups.total}`} />
     </div>
+
+    <section className="admin-panel">
+      <div className="admin-heading"><div><h2>Prontidão para produção</h2><p>Contagem derivada dos estados reais do runtime. Demonstração e ausência de provider nunca entram como pronto.</p></div></div>
+      <div className="admin-grid">
+        <Metric title="Pronto" value={String(readiness.ready)} />
+        <Metric title="Demonstração" value={String(readiness.demo)} />
+        <Metric title="Aguardando configuração" value={String(readiness.pending)} />
+        <Metric title="Atenção" value={String(readiness.attention)} />
+      </div>
+    </section>
 
     <section className="admin-panel">
       <div className="admin-heading"><div><h2>Capacidades do runtime</h2><p>Estados obtidos do processo em execução. Demonstração e ausência de provider permanecem explícitas.</p></div><small>Atualizado em {formatDate(compliance.generatedAt)}</small></div>
@@ -104,6 +116,24 @@ export function CompliancePanel() {
 
 function Metric({ title, value }: { title: string; value: string }) {
   return <div className="metric-card"><span>{title}</span><strong>{value}</strong></div>;
+}
+
+// A API resume readiness a partir do banco de dados apenas, então "READY" convive com providers
+// em demonstração. Aqui a prontidão é contada pelo que cada capacidade realmente reporta, e
+// qualquer estado desconhecido cai em "Atenção" em vez de ser presumido saudável.
+const readyStates = new Set(["AVAILABLE", "CONFIGURED", "OPERATIONAL", "READY", "ACTIVE"]);
+const demonstrationStates = new Set(["DEMO_ONLY", "DEVELOPMENT_ONLY"]);
+
+function summarizeReadiness(states: readonly string[]) {
+  const summary = { ready: 0, demo: 0, pending: 0, attention: 0 };
+  for (const state of states) {
+    const normalized = state.toUpperCase();
+    if (readyStates.has(normalized)) summary.ready += 1;
+    else if (demonstrationStates.has(normalized)) summary.demo += 1;
+    else if (normalized === "NOT_CONFIGURED") summary.pending += 1;
+    else summary.attention += 1;
+  }
+  return summary;
 }
 
 function formatDate(value: string) {
