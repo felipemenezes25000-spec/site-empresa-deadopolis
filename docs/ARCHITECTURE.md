@@ -28,8 +28,10 @@ Navegador/PWA
 
 - `apps/web`: Next.js App Router, React, TypeScript strict e Tailwind.
 - `apps/api`: ASP.NET Core API, autenticação, autorização, OpenAPI, health e workers.
-- `tests`: testes de contrato, integração PostgreSQL e Playwright.
-- `infra`: Docker Compose, Dockerfiles, observabilidade e Terraform de referência.
+- `tests/api`: testes de domínio e contratos HTTP da API.
+- `apps/web/tests/e2e`: Playwright, axe, responsividade e crawl interno.
+- `scripts`: verificações locais, backup/restore drill e automação segura da POC.
+- `compose.yaml` e `apps/*/Dockerfile`: empacotamento da stack; ainda não há Terraform versionado, a infraestrutura permanece dependência externa.
 - `docs`: arquitetura, segurança, operação, migração, POC e evidências.
 
 ## Limites modulares

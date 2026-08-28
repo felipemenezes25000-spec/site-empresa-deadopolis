@@ -55,7 +55,19 @@ bash scripts/tests/verify-docs.test.sh
 bash scripts/verify-docs.sh
 ```
 
-A CI também valida migrations em banco limpo, idempotência, imagens Docker, vulnerabilidades críticas corrigíveis, segredos e 22 fluxos E2E.
+Com a stack em execução, o drill de backup e restauração isolada também roda localmente:
+
+```bash
+bash scripts/db-restore-verify.sh "$(bash scripts/db-backup.sh)"
+```
+
+Os cenários E2E exigem a stack no ar e a mesma `DEMO_PASSWORD` usada pelo Compose:
+
+```bash
+npm --prefix apps/web run test:e2e
+```
+
+A CI também valida migrations em banco limpo, idempotência, imagens Docker, vulnerabilidades críticas corrigíveis, segredos e 46 cenários E2E (POC executiva, Ouvidoria, mídia, redirects, busca, compliance, acessibilidade, responsividade, 404 e crawl interno).
 
 ## Documentação
 

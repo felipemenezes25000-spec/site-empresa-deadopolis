@@ -4,7 +4,16 @@ Meta de engenharia: WCAG 2.2 nível AA para fluxos públicos e administrativos r
 
 ## Gates automatizados
 
-A CI executa Playwright/axe nos cenários definidos e bloqueia violações configuradas de severidade séria/crítica. O frontend também passa por lint, typecheck, testes e build de produção. Há skip link, landmarks, labels, estados de foco e componentes com semântica ARIA onde aplicável.
+A CI executa Playwright/axe e bloqueia violações de severidade séria/crítica em 14 rotas públicas e em todo o workspace administrativo autenticado (`/admin`, conteúdo, comunicação, mídia, usuários, tickets, compliance, dados abertos e Diário). O frontend também passa por lint, typecheck, testes e build de produção.
+
+Além do axe, os cenários automatizados exigem:
+
+- skip link alcançável na primeira tabulação, com foco visível e destino real;
+- exatamente um `main#conteudo-principal`, um `banner`, um `contentinfo` e um `h1` por página pública;
+- hierarquia de títulos sem nível pulado;
+- ausência de rolagem horizontal em 375, 768, 1024 e 1440 pixels, no portal e na administração;
+- menu móvel que abre a navegação municipal e fecha por teclado;
+- estado de compliance comunicado por texto literal, não apenas por cor.
 
 ## Critérios manuais
 

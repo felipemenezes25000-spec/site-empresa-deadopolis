@@ -51,8 +51,10 @@ Todos os usuários `.demo` usam a senha fornecida no ambiente. Dados sintéticos
 9. Migração: dry-run seguro, inventário, SSRF bloqueado e redirect resolvido.
 10. Operações: link check, evidência de backup, auditoria e compliance.
 11. E-mail/Diário: destacar claramente `DEMO_ONLY` e a fronteira externa.
+12. Ouvidoria ponta a ponta: responder a manifestação, registrar uma nota interna e consultar `/ouvidoria/acompanhar` com protocolo e código para mostrar que a nota interna não é publicada.
+13. Mídia: aprovar um arquivo e ajustar ponto focal e recorte com a prévia visual, sem sobrescrever o original.
 
-O roteiro automatizado completo está em `apps/web/tests/e2e/poc.spec.ts`.
+O roteiro automatizado completo está em `apps/web/tests/e2e/poc.spec.ts`; os fluxos específicos de Ouvidoria, mídia, redirects, busca, compliance, acessibilidade, responsividade e 404 estão nos demais arquivos de `apps/web/tests/e2e/`.
 
 ## Reset
 

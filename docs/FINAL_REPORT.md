@@ -1,6 +1,6 @@
 # Relatório final de engenharia
 
-Atualizado em 27/08/2026. Fonte de verdade: código do `main`, evidência versionada e workflows do GitHub Actions.
+Atualizado em 28/08/2026. Fonte de verdade: código do `main`, evidência versionada e workflows do GitHub Actions.
 
 ## Estado
 
@@ -17,7 +17,9 @@ Atualizado em 27/08/2026. Fonte de verdade: código do `main`, evidência versio
 - Diário Oficial determinístico, hash, QR/código e verificação pública;
 - Ouvidoria/tickets/SLA, e-mail governado e estados honestos de provider;
 - crawler SSRF-safe, importação, evidências e redirects auditáveis;
-- link health, backup evidence, compliance e Presentation Mode.
+- link health, backup evidence, compliance e Presentation Mode;
+- acompanhamento público de manifestação da Ouvidoria por protocolo e código;
+- enquadramento editorial de mídia com prévia visual do recorte e do ponto focal.
 
 ## Migração do legado
 
@@ -38,14 +40,29 @@ O inventário não equivale a publicação. Conteúdo e documentos permanecem su
 
 ## Verificação automatizada
 
-- backend: build com zero warnings, 106 testes de domínio/contrato, migrations, banco vazio, idempotência, script e snapshot EF;
-- frontend: lint, TypeScript strict, 12 testes Vitest e build de produção;
-- E2E: 22 cenários Playwright aprovados em execução serial equivalente à CI, incluindo POC, acessibilidade e crawl interno;
+- backend: build com zero warnings, 180 testes de domínio/contrato, migrations, banco vazio, idempotência, script e snapshot EF;
+- frontend: lint, TypeScript strict, 55 testes Vitest e build de produção;
+- E2E: 46 cenários Playwright aprovados em execução serial equivalente à CI, cobrindo a POC executiva, Ouvidoria ponta a ponta, mídia governada, redirects, busca acentuada, compliance, acessibilidade pública e administrativa, responsividade em quatro pontos de quebra, status 404 e crawl interno;
 - segurança: secret scan, rejeição de chaves/certificados, audit de dependências e Trivy;
 - containers: publish da API, build API/Web não-root, PostgreSQL 17 limpo e validação do Compose com credenciais efêmeras;
-- documentação/reset: 14 arquivos obrigatórios verificados e reset que recusa Production e ausência de opt-in.
+- documentação/reset: 23 arquivos obrigatórios verificados e reset que recusa Production e ausência de opt-in.
 
-A validação local de 27/08/2026 comprovou os números acima, incluindo a migration `EnableAccentInsensitiveSearch` em banco vazio e a busca executada no PostgreSQL real. Audit npm e Trivy permanecem gates do runner Linux porque o host Windows local não dispõe de Trivy e sua conexão npm usa uma cadeia CA não reconhecida pelo Node.
+A validação local de 28/08/2026 comprovou os números acima contra a stack Compose real: 8 migrations aplicadas, 40 tabelas públicas restauradas em contêiner isolado e busca executada no PostgreSQL. Audit npm e Trivy permanecem gates do runner Linux porque o host Windows local não dispõe de Trivy e sua conexão npm usa uma cadeia CA não reconhecida pelo Node.
+
+## Correções desta rodada
+
+Cada item abaixo foi reproduzido no runtime empacotado antes da correção e coberto por teste automatizado depois dela.
+
+| Falha encontrada | Efeito real | Cobertura permanente |
+|---|---|---|
+| `.NET` inicia em modo globalization-invariant na imagem Alpine | busca acentuada retornava zero e `/buscar` respondia 500 no contêiner | dobra de acentos independente de ICU, contrato de busca e solução inteira compilada/testada em modo invariante |
+| `loading.tsx` na raiz abria streaming antes de resolver o recurso | todo `notFound()` era confirmado como HTTP 200 | cenário que exige 404 real para recurso inexistente |
+| destino de redirect exigia apenas `/` inicial | `//host` saía do domínio municipal (open redirect) | recusa no domínio, no middleware, no resolvedor público e na importação do legado |
+| proxy repassava cabeçalhos hop-by-hop | resposta podia travar no navegador | teste de unidade do proxy |
+| estado de integração serializado como enum | painel exibia o literal `3` | vocabulário único verificado em três superfícies |
+| `StatusBadge` só tratava `NOT_`/`FAILED`/`UNAVAILABLE` como risco | `DEMO_ONLY`, `DEGRADED` e `QUARANTINED` apareciam em verde | mapa de severidade explícito e cenário de compliance |
+| cartões de conta não quebravam linha | `/admin/usuarios` rolava lateralmente em 375px | cenário responsivo em 375, 768, 1024 e 1440 pixels |
+| Ouvidoria não expunha acompanhamento ao cidadão | protocolo e código eram emitidos sem tela de consulta | fluxo completo cidadão/servidor em E2E e contrato |
 
 O baseline anterior a este fechamento passou no [workflow CI 33049689836](https://github.com/felipemenezes25000-spec/site-empresa-deadopolis/actions/runs/33049689836) e no [schema preview 33049689905](https://github.com/felipemenezes25000-spec/site-empresa-deadopolis/actions/runs/33049689905). Cada commit posterior precisa repetir os mesmos gates; um relatório não substitui o status do SHA implantado.
 

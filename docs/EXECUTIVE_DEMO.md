@@ -7,7 +7,7 @@ Duração sugerida: 15 minutos. Objetivo: demonstrar serviço ao cidadão, gover
 1. **Cidadão primeiro (3 min):** home orientada por necessidade, serviço, busca global, secretaria e acessibilidade.
 2. **Transparência e memória (3 min):** licitações, prestação de contas e legislação com filtros, origem, SHA-256 e download governado.
 3. **Autonomia editorial (3 min):** login, CMS, revisão, notícia e trilha de auditoria.
-4. **Plataformas verificáveis (3 min):** Dados Abertos versionados, Diário com hash/código e Ouvidoria com protocolo.
+4. **Plataformas verificáveis (3 min):** Dados Abertos versionados, Diário com hash/código e Ouvidoria com protocolo — registre uma manifestação, responda por dentro da administração e mostre o acompanhamento público em `/ouvidoria/acompanhar`, evidenciando que a nota interna não aparece para o cidadão.
 5. **Operação honesta (3 min):** migração segura/SSRF, redirects, link health, backup evidence e painel de integrações.
 
 ## Mensagens essenciais

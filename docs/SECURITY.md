@@ -10,6 +10,8 @@ Este documento descreve os controles presentes no código e as condições obrig
 - Rate limit no login e confirmação MFA.
 - Auditoria tenant-scoped, correlation ID e logs estruturados sem corpo, cookie ou credencial.
 - Proteção SSRF com validação de esquema, DNS, IP privado/local/reservado, portas e redirects.
+- Redirect legado restrito a destino interno: `//host`, `/\host`, esquema absoluto, caractere de controle e auto-referência são recusados na criação, na importação, no middleware e no resolvedor público.
+- Limite de requisição também nas rotas anônimas de abertura e acompanhamento de manifestação.
 - Upload com limite, magic bytes, MIME, SHA-256, quarentena e liberação condicionada ao scanner.
 - CSP, HSTS em produção, `nosniff`, `frame-ancestors`, Referrer Policy e Permissions Policy.
 - Data Protection persistente e separada por aplicação.
@@ -18,6 +20,8 @@ Este documento descreve os controles presentes no código e as condições obrig
 ## Fronteira de confiança
 
 O navegador chama `/api/v1` pelo proxy do Next.js. O proxy define `X-Municipality` a partir da configuração do servidor, não do valor enviado pelo cliente. A API resolve novamente o município e aplica autorização e filtros de tenant. Nenhuma decisão de permissão depende apenas da interface.
+
+O proxy do portal remove cabeçalhos hop-by-hop (`connection`, `transfer-encoding`, `upgrade` e afins) e o comprimento/codificação do corpo da resposta original: o runtime já decodifica e reenquadra o conteúdo, e repassar o enquadramento anterior travava respostas no navegador.
 
 Cookies `SameSite=Strict` reduzem CSRF; mutações administrativas também exigem sessão e capability. A implantação deve manter portal e API na mesma origem pública prevista pela arquitetura e não deve ampliar o domínio do cookie. Se a topologia futura aceitar origens adicionais, deve-se adicionar proteção antiforgery explícita antes da mudança.
 
@@ -34,6 +38,8 @@ PRESENTATION_MODE=false
 ```
 
 Sem provider real, storage, scanner, assinatura, timestamp e e-mail permanecem `NOT_CONFIGURED`. `DEMO_ONLY` é aceitável somente em Testing/Presentation.
+
+Todas as superfícies administrativas publicam o mesmo vocabulário (`CONFIGURED`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) e a interface classifica `DEMO_ONLY`, `DEVELOPMENT_ONLY`, `DEGRADED`, `NOT_CONFIGURED` e `QUARANTINED` como situação que exige atenção, nunca como confirmação.
 
 ## Checklist de produção
 
