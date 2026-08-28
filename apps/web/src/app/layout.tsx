@@ -9,6 +9,7 @@ import "./dashboard-premium.css";
 import "./login-premium.css";
 import "./experience-states.css";
 import "./command-palette-premium.css";
+import "./portal-search.css";
 // Carregada por último de propósito: é a camada que decide contraste e foco, e só consegue
 // decidir se vier depois das folhas premium que reintroduzem cores decorativas mais claras.
 import "./a11y-overrides.css";

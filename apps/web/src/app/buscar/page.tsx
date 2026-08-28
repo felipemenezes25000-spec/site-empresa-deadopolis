@@ -14,7 +14,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return <PublicShell>
     <PageIntro eyebrow="Busca universal" title="Encontre serviços e informações" description="Pesquise pelo que precisa, sem precisar saber qual secretaria é responsável." />
     <section className="content-section"><div className="page-shell">
-      <form className="content-toolbar" role="search" action="/buscar"><SearchAutocomplete defaultValue={q} /></form>
+      <form className="portal-search-form" role="search" action="/buscar"><SearchAutocomplete defaultValue={q} placeholder="Ex.: matrícula, IPTU, licitação" /></form>
       {!result
         ? <EmptyPanel title="Digite pelo menos dois caracteres" description="A busca consulta serviços, notícias, secretarias, páginas, dados abertos, documentos e Diário Oficial." />
         : result.results.length === 0

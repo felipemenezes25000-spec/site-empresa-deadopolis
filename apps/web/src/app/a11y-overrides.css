@@ -9,6 +9,7 @@
   color: var(--muted);
 }
 
+.portal-search-field input::placeholder,
 .universal-search input::placeholder {
   color: #5d6d66;
   opacity: 1;
@@ -54,6 +55,24 @@
 .command-palette-search input:focus-visible {
   outline: 3px solid var(--primary-strong) !important;
   outline-offset: 1px;
+}
+
+/* A busca do portal é uma superfície composta (ícone + campo + botão). O indicador envolve a
+   superfície inteira, não o input nu — e a cor muda com o fundo em que ela se apoia: âmbar sobre
+   o verde escuro do hero (5,9:1) e verde escuro sobre as superfícies claras internas (10,4:1). */
+.portal-search-field input:focus-visible {
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.portal-search--hero .portal-search-field:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.portal-search--content .portal-search-field:focus-within {
+  outline: 3px solid var(--primary-strong);
+  outline-offset: 2px;
 }
 
 .login-input-frame:focus-within,

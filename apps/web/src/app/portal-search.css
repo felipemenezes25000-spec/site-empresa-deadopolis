@@ -1,0 +1,59 @@
+/* Busca do portal com sugestões.
+   Folha própria carregada depois de premium.css e public-experience.css: aquelas duas estilizam
+   `.universal-search` com !important e sobrescreveriam este componente se ele viesse antes. */
+/* --- Busca com sugestões ------------------------------------------------------ */
+.portal-search { position: relative; width: 100%; }
+.portal-search-field { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+.portal-search-field > svg:first-child { color: #5d6d66; }
+.portal-search-field input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--foreground); }
+.portal-search-field input:focus { outline: 0; }
+.portal-search-field input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+/* Hero: o campo é a própria superfície branca sobre o verde. */
+.portal-search--hero .portal-search-field { min-height: 66px; padding: 7px 7px 7px 19px; border-radius: 16px; background: #fff; box-shadow: 0 18px 44px rgba(5, 49, 34, .28); }
+.portal-search--hero .portal-search-field input { font-size: 1.02rem; }
+.portal-search--hero .portal-search-field button[type="submit"] { min-height: 52px; padding: 0 26px; border: 0; border-radius: 12px; background: var(--primary-strong); color: #fff; font-weight: 800; cursor: pointer; }
+.portal-search--hero .portal-search-field button[type="submit"]:hover { background: #0a3b2a; }
+
+/* Interno: acompanha a barra de conteúdo das listagens. */
+.portal-search--content .portal-search-field { min-height: 48px; padding: 4px 4px 4px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.portal-search--content .portal-search-field button[type="submit"] { min-height: 40px; padding: 0 18px; border: 0; border-radius: 9px; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; }
+
+.portal-search-spinner { color: var(--primary); animation: portalSearchSpin .9s linear infinite; }
+@keyframes portalSearchSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .portal-search-spinner { animation: none; } }
+
+.portal-search-suggestions {
+  position: absolute; z-index: 70; top: calc(100% + 9px); left: 0; right: 0;
+  display: grid; gap: 2px; max-height: min(60vh, 420px); overflow: auto;
+  margin: 0; padding: 7px;
+  border: 1px solid rgba(15, 36, 28, .10); border-radius: 15px; background: #fff;
+  box-shadow: 0 26px 64px rgba(4, 32, 21, .22);
+  animation: portalSearchDrop .16s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes portalSearchDrop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .portal-search-suggestions { animation: none; } }
+
+.portal-search-suggestions a {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: 100%; min-height: 54px; padding: 9px 12px;
+  border: 0; border-radius: 11px; background: transparent; color: var(--foreground);
+  text-align: left; cursor: pointer;
+}
+.portal-search-suggestions a > svg:first-child { color: var(--primary); }
+.portal-search-suggestions a > svg:last-child { color: #93a29b; }
+.portal-search-suggestions span { display: grid; gap: 1px; min-width: 0; }
+.portal-search-suggestions strong { overflow: hidden; font-size: .96rem; text-overflow: ellipsis; white-space: nowrap; }
+.portal-search-suggestions small { color: var(--muted); font-size: .74rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.portal-search-suggestions a.is-active { background: #eef4f0; }
+.portal-search-suggestions a.is-active > svg:last-child { color: var(--primary); }
+
+@media (max-width: 760px) {
+  .portal-search--hero .portal-search-field { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 62px; padding: 8px 8px 8px 14px; }
+  .portal-search--hero .portal-search-field button[type="submit"] { grid-column: 1 / -1; width: 100%; margin-top: 6px; }
+  .portal-search-suggestions { max-height: 54vh; }
+}
+
+/* Os formulários são apenas o envelope de submit: a superfície é o próprio componente. */
+.hero-search-form { max-width: 930px; margin: 0; }
+.portal-search-form { max-width: 680px; margin: 0 0 28px; }

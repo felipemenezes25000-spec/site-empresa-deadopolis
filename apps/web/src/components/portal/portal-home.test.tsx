@@ -48,7 +48,7 @@ describe("PortalHome", () => {
     render(<PortalHome content={content} presentationMode />);
 
     expect(screen.getByRole("heading", { level: 1, name: /olá! o que você precisa/i })).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: /buscar serviço/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /buscar serviço/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^buscar$/i })).toBeInTheDocument();
     expect(document.querySelector("main")).toHaveAttribute("data-home-composition", "fallback");
   });
@@ -125,7 +125,7 @@ describe("PortalHome", () => {
     expect(screen.getByRole("heading", { name: "Atualizações do município" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Aviso da página inicial" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Serviços escolhidos pela Comunicação" })).toBeInTheDocument();
-    expect(screen.queryByRole("searchbox", { name: /buscar serviço/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /buscar serviço/i })).not.toBeInTheDocument();
 
     const news = screen.getByRole("heading", { name: "Atualizações do município" });
     const services = screen.getByRole("heading", { name: "Serviços escolhidos pela Comunicação" });
@@ -162,6 +162,6 @@ describe("PortalHome", () => {
 
     expect(document.querySelector("main")).toHaveAttribute("data-home-composition", "fallback");
     expect(screen.queryByText("Não deve aparecer")).not.toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: /buscar serviço/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /buscar serviço/i })).toBeInTheDocument();
   });
 });

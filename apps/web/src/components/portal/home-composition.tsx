@@ -1,9 +1,9 @@
-import { ArrowRight, BookOpenText, Building2, CalendarDays, ChevronRight, FileCheck2, Headphones, Landmark, MapPin, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpenText, Building2, CalendarDays, ChevronRight, FileCheck2, Headphones, Landmark, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { internalMediaUrl, readPageBlocks, type PageBlock, type PageBlockType } from "@/lib/page-blocks";
 import type { PortalHomeContent } from "@/lib/portal-api";
 import { PageBlockRenderer } from "./page-block-renderer";
+import { SearchAutocomplete } from "./search-autocomplete";
 import { ResponsiveMediaImage } from "./responsive-media-image";
 
 type HomeBlock = PageBlock;
@@ -57,11 +57,9 @@ function ServiceHero({ block }: { block: HomeBlock }) {
       <p className="eyebrow">Serviços municipais em um só lugar</p>
       <h1 id={`hero-title-${safeId(block.id)}`}>{title}</h1>
       <p className="hero-lead">{lead}</p>
-      <form className="universal-search" role="search" action="/buscar" method="get">
-        <label className="sr-only" htmlFor={`portal-search-${safeId(block.id)}`}>Buscar serviço</label>
-        <Search aria-hidden="true" size={23} />
-        <input id={`portal-search-${safeId(block.id)}`} name="q" type="search" placeholder="Ex.: segunda via do IPTU, vaga na escola, poda de árvore" autoComplete="off" />
-        <Button type="submit" size="large">Buscar</Button>
+      {/* A busca é a tese da home: precisa responder enquanto se digita, não só no Enter. */}
+      <form className="hero-search-form" role="search" action="/buscar" method="get">
+        <SearchAutocomplete variant="hero" label="Buscar serviço" />
       </form>
       <div className="quick-needs" aria-label="Buscas sugeridas"><span>Mais buscados:</span>{["IPTU", "Nota fiscal", "Matrícula", "Licitações", "Ouvidoria"].map((need) => <Link key={need} href={`/buscar?q=${encodeURIComponent(need)}`}>{need}</Link>)}</div>
       {safeInternalOrHttpUrl(block.reference) && <Link className="read-more" href={safeInternalOrHttpUrl(block.reference)!}>Abrir destaque <ArrowRight size={17} aria-hidden="true" /></Link>}
