@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, FilePenLine, Headphones, ImageIcon, Layers3, Send, Wrench, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, FilePenLine, Files, Headphones, ImageIcon, Layers3, Plus, Send, Wrench, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/ui";
 
@@ -10,6 +11,13 @@ type Data = {
   content: { resources: number; services: number; mediaQuarantined: number };
   integrations: Array<{ provider: string; state: string; message: string }>;
 };
+
+const quickActions = [
+  { href: "/admin/noticias/nova", label: "Nova notícia", detail: "Criar publicação", icon: Plus },
+  { href: "/admin/conteudo", label: "Páginas", detail: "Editar portal", icon: Files },
+  { href: "/admin/midia", label: "Mídia", detail: "Arquivos e imagens", icon: ImageIcon },
+  { href: "/admin/tickets", label: "Atendimento", detail: "Tickets e SLA", icon: Headphones },
+] as const;
 
 export function DashboardClient() {
   const [data, setData] = useState<Data | null>(null);
@@ -28,6 +36,10 @@ export function DashboardClient() {
   if (!data) return <div className="admin-panel dashboard-loading" aria-busy="true"><span className="dashboard-loading-dot" />Carregando visão operacional…</div>;
 
   return <div className="dashboard-stack">
+    <nav className="dashboard-launchpad" aria-label="Ações rápidas">
+      {quickActions.map(({ href, label, detail, icon: Icon }) => <Link href={href} key={href}><span className="dashboard-launch-icon"><Icon size={18} aria-hidden="true" /></span><span><strong>{label}</strong><small>{detail}</small></span><ArrowUpRight className="dashboard-launch-arrow" size={16} aria-hidden="true" /></Link>)}
+    </nav>
+
     <section className="dashboard-bento" aria-label="Indicadores operacionais">
       <div className="dashboard-zone dashboard-zone-editorial">
         <div className="dashboard-zone-heading"><span>Publicação</span><strong>Fluxo editorial</strong></div>
