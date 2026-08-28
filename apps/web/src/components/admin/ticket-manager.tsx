@@ -11,9 +11,18 @@ type Violation = { id: string; protocol: string; firstResponseBreached: boolean;
 const priorities = [["CRITICAL", "Crítica · 1h/4h"], ["HIGH", "Alta · 4h/16h"], ["NORMAL", "Normal · 8h/40h"], ["LOW", "Baixa · 16h/80h"]] as const;
 const priorityLabels: Record<string, string> = { CRITICAL: "Crítica", HIGH: "Alta", NORMAL: "Normal", LOW: "Baixa" };
 
+// O filtro logo acima já oferece "Aberto / Em atendimento / Resolvido"; o selo mostrava o enum
+// cru em inglês na mesma tela. O rótulo passa a ser o mesmo vocabulário nos dois lugares.
+const ticketStatusLabels: Record<string, string> = { OPEN: "Aberto", IN_PROGRESS: "Em atendimento", RESOLVED: "Resolvido" };
+
+function ticketStatusLabel(status: string) {
+  return ticketStatusLabels[status.trim().toUpperCase()] ?? status;
+}
+
 export function TicketManager() {
   const [items, setItems] = useState<Ticket[]>([]);
   const [violations, setViolations] = useState<Violation[]>([]);
+  const [violationsState, setViolationsState] = useState<"READY" | "ERROR">("READY");
   const [listState, setListState] = useState<"LOADING" | "READY" | "ERROR">("LOADING");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
@@ -32,10 +41,13 @@ export function TicketManager() {
     ]).then(async ([ticketsResponse, violationsResponse]) => {
       if (!ticketsResponse.ok) throw new Error("tickets");
       const tickets = await ticketsResponse.json() as Ticket[];
+      // Uma consulta de SLA que falhou não é uma fila sem violações: sinalize a ausência de
+      // resposta em vez de exibir um "tudo certo" que a plataforma não conseguiu apurar.
       const breaches = violationsResponse.ok ? await violationsResponse.json() as Violation[] : [];
       if (controller.signal.aborted) return;
       setItems(tickets);
       setViolations(breaches);
+      setViolationsState(violationsResponse.ok ? "READY" : "ERROR");
       setListState("READY");
     }).catch(() => { if (!controller.signal.aborted) setListState("ERROR"); });
     return () => controller.abort();
@@ -107,7 +119,7 @@ export function TicketManager() {
           <td>{item.protocol}<br /><small>{item.category}</small></td>
           <td>{item.requesterName}</td>
           <td>{priorityLabels[item.priority.toUpperCase()] ?? item.priority}</td>
-          <td><StatusBadge status={item.status} />{breached.has(item.id) && <><br /><small className="text-danger">SLA estourado</small></>}</td>
+          <td><StatusBadge status={ticketStatusLabel(item.status)} />{breached.has(item.id) && <><br /><small className="text-danger">SLA estourado</small></>}</td>
           <td>{formatDateTime(item.resolutionDueAt)}</td>
           <td><button type="button" className="action-button secondary" aria-expanded={selectedId === item.id} onClick={() => select(item.id)}>{selectedId === item.id ? "Fechar" : "Atender"}</button></td>
         </tr>)}</tbody>
@@ -146,7 +158,9 @@ export function TicketManager() {
       </>}
     </section>}
 
-    <section className="admin-panel"><h2>Violações de SLA</h2>{violations.length === 0
+    <section className="admin-panel"><h2>Violações de SLA</h2>{violationsState === "ERROR"
+      ? <div className="warning-box" role="alert"><p>Não foi possível apurar as violações de SLA agora.</p><p>Este painel não está afirmando que a fila está em dia — a consulta de prazos não respondeu. Recarregue para tentar novamente.</p></div>
+      : violations.length === 0
       ? <div className="ok-box">Nenhuma violação identificada agora.</div>
       : <div className="warning-box"><p>{violations.length} ticket(s) exigem atenção imediata.</p><ul>{violations.map((violation) => <li key={violation.id}>{violation.protocol} — {[violation.firstResponseBreached && "primeira resposta vencida", violation.resolutionBreached && "conclusão vencida"].filter(Boolean).join(" e ")}</li>)}</ul></div>}
     </section>

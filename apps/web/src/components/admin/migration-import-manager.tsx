@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
+import { stateLabel } from "./migration-manager";
 
 type MigrationJob = {
   id: string;
@@ -288,7 +290,7 @@ export function MigrationImportManager() {
     {loading ? <div className="empty-state" aria-busy="true"><p>Carregando inventários…</p></div> : jobs.length === 0 ? <div className="empty-state"><h3>Nenhum inventário disponível</h3><p>Execute um dry-run acima antes de preparar conteúdo.</p></div> : <div className="compact-list" style={{ marginTop: 16 }}>
       {jobs.map((job) => <button key={job.id} type="button" className="compact-item" style={{ width: "100%", cursor: "pointer" }} onClick={() => { setSelectedJobId(job.id); setSelectedLegacyId(null); setBatchDocuments([]); setInventoryPage(1); setInventoryQuery(""); setMessage(""); }}>
         <span><strong>{job.allowedHost}</strong><small style={{ display: "block" }}>{job.discoveredCount} descobertas · {job.importedCount} importadas · {job.failedCount} falhas</small></span>
-        <span className="status-pill">{String(job.state)}</span>
+        <StatusBadge status={stateLabel(job.state)} />
       </button>)}
     </div>}
 

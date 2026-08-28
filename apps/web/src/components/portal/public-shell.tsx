@@ -1,6 +1,7 @@
-import { CircleHelp, Headphones, Menu } from "lucide-react";
+import { CircleHelp, FileQuestion, Headphones, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { MobileDock } from "./mobile-dock";
 import type { ReactNode } from "react";
 import { Breadcrumb } from "@/components/ui/navigation";
 import { getResources, type PortalResource } from "@/lib/portal-api";
@@ -41,6 +42,7 @@ export function PortalChrome({ menuResources, presentationMode = false, children
     </header>
     {children}
     <footer className="site-footer"><div className="page-shell footer-grid"><div className="footer-brand"><span className="brand-mark inverse" aria-hidden="true">D</span><div><strong>Prefeitura de Deodápolis</strong><p>Serviço público próximo, claro e acessível.</p></div></div><div><h2>Atendimento</h2><p>Consulte endereços e horários atualizados no diretório de contatos.</p><Link href="/contatos">Ver contatos</Link></div><div><h2>Acesso direto</h2>{footerMenu.length > 0 ? footerMenu.flatMap(flattenMenu).slice(0, 8).map((node) => <MenuLink key={node.resource.id} node={node} />) : fallbackFooter.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div></div><div className="page-shell footer-bottom"><span>© 2026 Prefeitura Municipal de Deodápolis</span><span>Portal preparado para dispositivos móveis.</span></div></footer>
+    <MobileDock />
   </div>;
 }
 
@@ -99,6 +101,13 @@ export function PageIntro({ eyebrow, title, description, breadcrumb }: { eyebrow
   return <section className="page-intro"><div className="page-shell">{breadcrumb && breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}<p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description && <p>{description}</p>}</div></section>;
 }
 
-export function EmptyPanel({ title, description }: { title: string; description: string }) {
-  return <div className="empty-state page-empty" role="status"><h2>{title}</h2><p>{description}</p></div>;
+// `children` é opcional para que cada chamada existente continue válida, mas permite oferecer um
+// caminho de saída: um estado vazio sem ação deixa o cidadão sem para onde ir.
+export function EmptyPanel({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
+  return <div className="empty-state page-empty" role="status">
+    <FileQuestion size={26} aria-hidden="true" />
+    <h2>{title}</h2>
+    <p>{description}</p>
+    {children}
+  </div>;
 }

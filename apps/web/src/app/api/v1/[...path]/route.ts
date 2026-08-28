@@ -9,11 +9,36 @@ const rewrittenResponseHeaders = ["content-encoding", "content-length"];
 const rewrittenRequestHeaders = ["content-length"];
 // An upstream that never answers must fail visibly instead of holding the browser request open.
 const upstreamTimeoutMs = 20_000;
+// This route is the only public door to the API, and it opens onto /api/v1 alone. A segment that
+// still means "go up" once decoded would be resolved away by the URL constructor and land on an
+// unrelated backend path, so segments are judged by what they decode to, not by how they arrived.
+function isTraversal(segment: string) {
+  let decoded = segment;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    // A malformed escape is never a legitimate resource name; judge the raw text instead.
+  }
+  return decoded === "." || decoded === ".." || decoded.includes("/") || decoded.includes("\\");
+}
 
 async function forward(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
+  if (path.some(isTraversal)) {
+    return Response.json(
+      { title: "Recurso inválido", detail: "O caminho solicitado não é um recurso da API municipal.", status: 400 },
+      { status: 400, headers: { "Content-Type": "application/problem+json" } },
+    );
+  }
   const apiUrl = process.env.API_URL ?? "http://localhost:5080";
-  const destination = new URL(`/api/v1/${path.join("/")}`, apiUrl);
+  const destination = new URL(`/api/v1/${path.map(encodeURIComponent).join("/")}`, apiUrl);
+  // Defence in depth: whatever the segments were, the destination must still live under the prefix.
+  if (!destination.pathname.startsWith("/api/v1/")) {
+    return Response.json(
+      { title: "Recurso inválido", detail: "O caminho solicitado não é um recurso da API municipal.", status: 400 },
+      { status: 400, headers: { "Content-Type": "application/problem+json" } },
+    );
+  }
   destination.search = request.nextUrl.search;
 
   const headers = new Headers(request.headers);

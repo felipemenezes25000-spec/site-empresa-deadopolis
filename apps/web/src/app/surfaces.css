@@ -1,0 +1,192 @@
+/* Sistema de superfícies do portal.
+   Carregada depois das folhas premium, que fixam altura mínima e praticamente anulam a elevação.
+   Em grid as linhas já se igualam sozinhas (align-items: stretch), então altura mínima fixa não
+   alinha nada: só estica o cartão de menor conteúdo e abre o vazio que se via em /transparencia. */
+
+.info-card {
+  min-height: 0;
+  gap: 9px;
+  padding: 24px;
+  border: 1px solid rgba(15, 36, 28, .085);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(6, 31, 22, .035), 0 10px 26px -20px rgba(6, 31, 22, .40);
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(23, 107, 77, .28);
+  box-shadow: 0 2px 4px rgba(6, 31, 22, .05), 0 24px 46px -26px rgba(6, 31, 22, .45);
+}
+
+.info-card h2,
+.info-card h3 {
+  font-size: 1.24rem;
+  line-height: 1.22;
+}
+
+.info-card p {
+  font-size: .92rem;
+  line-height: 1.55;
+}
+
+/* A meta desce para a base só quando existe: antes empurrava o vazio junto. */
+.info-card small {
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.card-grid {
+  gap: 16px;
+}
+
+/* --- Lista de serviços: a peça mais lida da home ------------------------------ */
+.service-row {
+  min-height: 0;
+  padding: 22px 16px;
+  border-radius: 14px;
+  border-bottom: 1px solid rgba(15, 36, 28, .07);
+}
+
+.service-row:hover {
+  padding-inline: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(6, 31, 22, .04), 0 16px 34px -26px rgba(6, 31, 22, .45);
+}
+
+.service-copy strong {
+  font-size: 1.3rem;
+  line-height: 1.24;
+}
+
+.service-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .89rem;
+}
+
+.service-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+
+.service-meta em {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: .64rem;
+}
+
+/* --- Cartões "Encontre a Prefeitura" ------------------------------------------ */
+.useful-grid {
+  gap: 14px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.useful-grid a {
+  min-height: 0;
+  padding: 24px;
+  border: 1px solid rgba(15, 36, 28, .085);
+  border-right: 1px solid rgba(15, 36, 28, .085);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(6, 31, 22, .035), 0 10px 26px -20px rgba(6, 31, 22, .40);
+}
+
+.useful-grid a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(23, 107, 77, .28);
+  box-shadow: 0 2px 4px rgba(6, 31, 22, .05), 0 24px 46px -26px rgba(6, 31, 22, .45);
+}
+
+.useful-grid strong {
+  font-size: 1.16rem;
+  line-height: 1.25;
+}
+
+.useful-grid small {
+  margin-top: 5px;
+  font-size: .87rem;
+  line-height: 1.5;
+}
+
+/* --- Ritmo vertical ------------------------------------------------------------
+   As seções usavam o mesmo respiro em toda parte. Um pouco menos de altura entre
+   blocos aproxima a densidade de um produto e afasta a de folheto. */
+.services-section,
+.useful-section {
+  padding-top: 66px;
+  padding-bottom: 70px;
+}
+
+.section-heading {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .useful-grid a { border-right: 1px solid rgba(15, 36, 28, .085); }
+}
+
+/* --- Workspace: coluna da navegação -------------------------------------------
+   A barra lateral é sticky com altura de viewport, o que é o comportamento certo para
+   uma navegação longa. Mas ela também é o item do grid, então sua superfície terminava
+   junto com a viewport e a coluna aparecia cortada no meio de páginas altas.
+   A superfície passa a ser pintada pelo container, que ocupa a linha inteira. */
+@media (min-width: 901px) {
+  .admin-layout {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(249, 251, 250, .92) 0 267px,
+        rgba(15, 36, 28, .09) 267px 268px,
+        transparent 268px
+      );
+  }
+
+  .admin-sidebar {
+    border-right: 0 !important;
+    background: transparent !important;
+  }
+}
+
+/* --- Hero público -------------------------------------------------------------
+   O gradiente anterior clareava para a direita (#082f21 -> var(--primary)) e punha o realce
+   lima em 82% 18%, então todo o peso visual caía sobre a metade vazia da faixa, longe
+   do título e da busca. A luz passa a nascer atrás do conteúdo e a cair para as bordas.
+   A parada mais clara aqui é #14603f: texto branco sobre ela mede 7,5:1. */
+.service-hero {
+  background:
+    radial-gradient(120% 90% at 18% 32%, rgba(31, 122, 84, .55), transparent 62%),
+    radial-gradient(70% 60% at 8% 8%, rgba(216, 237, 114, .10), transparent 60%),
+    linear-gradient(160deg, #0b3a29 0%, #0a3324 42%, #072a1e 100%);
+}
+
+/* A curva decorativa acompanhava o antigo foco à direita; agora é só profundidade ao pé. */
+.service-hero::after {
+  inset: auto -14% -78% 46%;
+  background: rgba(255, 255, 255, .035);
+}
+
+.hero-pattern {
+  opacity: .07;
+  mask-image: linear-gradient(90deg, #000 0 34%, transparent 74%);
+}
+
+/* Respiro menor: 94/98px empurrava a lista de serviços para fora da primeira tela. */
+.hero-content {
+  padding-top: 76px;
+  padding-bottom: 80px;
+}
+
+.hero-lead {
+  margin: 22px 0 30px;
+}
+
+@media (max-width: 900px) {
+  .hero-content { padding-top: 60px; padding-bottom: 64px; }
+}

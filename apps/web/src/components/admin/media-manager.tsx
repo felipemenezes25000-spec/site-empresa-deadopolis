@@ -147,6 +147,10 @@ export function MediaManager() {
       <h2>Biblioteca</h2>
       <SearchField value={query} onChange={setQuery} onSubmit={(value) => { setAppliedQuery(value.trim()); setPage(1); refresh(); }} label="Filtrar mídia" placeholder="Nome, tipo, ALT, legenda, crédito ou tags" />
       <label className="field mt-3">Status<select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); refresh(); }}><option value="">Todos</option><option value="APPROVED">Aprovada</option><option value="QUARANTINED">Em quarentena</option><option value="REJECTED">Rejeitada</option></select></label>
+      {/* "Aprovada" é o veredito do provedor antimalware configurado, não uma garantia absoluta.
+          O estado real do provedor vive em Compliance; referenciá-lo evita fixar aqui um valor que
+          deixaria de ser verdade assim que um scanner de produção fosse contratado. */}
+      <p className="muted-note">A aprovação registra o resultado do provedor antimalware configurado neste ambiente. O provedor em vigor e seu estado aparecem em Compliance › Capacidades do runtime.</p>
       {listState === "LOADING" && <p role="status" aria-live="polite">Carregando biblioteca…</p>}
       {listState === "ERROR" && <div className="form-message error" role="alert">Não foi possível carregar a biblioteca. <button type="button" className="action-button secondary" onClick={() => refresh()}>Tentar novamente</button></div>}
       {listState === "READY" && <div className="compact-list">{items.map((item) => <div className="compact-item" key={item.id}>

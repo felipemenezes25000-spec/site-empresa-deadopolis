@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageIntro, PublicShell } from "@/components/portal/public-shell";
 import { ResponsiveMediaImage } from "@/components/portal/responsive-media-image";
 import { RichText } from "@/components/portal/rich-text";
+import { StructuredData, breadcrumbList, newsArticle } from "@/components/portal/structured-data";
 import { getArticle } from "@/lib/portal-api";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -16,11 +17,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await getArticle(slug);
   if (!article) notFound();
 
+  const baseUrl = (process.env.PUBLIC_PORTAL_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  const trail = [{ label: "Início", href: "/" }, { label: "Notícias", href: "/noticias" }, { label: article.title }];
   const internalCover = article.coverImageUrl?.startsWith("/api/v1/media/") ? article.coverImageUrl : null;
 
   return (
     <PublicShell>
-      <PageIntro eyebrow="Notícia" title={article.title} description={article.summary} breadcrumb={[{ label: "Início", href: "/" }, { label: "Notícias", href: "/noticias" }, { label: article.title }]} />
+      <StructuredData data={newsArticle(article, `${baseUrl}/noticias/${slug}`)} />
+      <StructuredData data={breadcrumbList(trail, baseUrl)} />
+      <PageIntro eyebrow="Notícia" title={article.title} description={article.summary} breadcrumb={trail} />
       <section className="content-section">
         <div className="page-shell detail-grid">
           <article className="prose-card">

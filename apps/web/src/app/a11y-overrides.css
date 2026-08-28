@@ -1,10 +1,113 @@
 /* Accessibility hardening overrides kept separate from the legacy visual sheet.
-   These values meet WCAG 2.2 AA contrast requirements on the portal surfaces. */
+   This sheet is imported LAST (see layout.tsx) so the premium sheets cannot
+   quietly re-lighten a foreground after it has been made AA-safe.
+   Every colour below is stated against the surface it actually sits on. */
+
+/* premium.css re-colours this to #8ba098, which measures 2.56:1 on the section
+   background. The numbers are decorative (aria-hidden) but still read as text. */
 .service-number {
   color: var(--muted);
 }
 
+.portal-search-field input::placeholder,
 .universal-search input::placeholder {
   color: #5d6d66;
   opacity: 1;
+}
+
+/* Both frames are white, where #9aa7a1 and #95a29c measure ~2.5:1. Placeholder
+   text is text: it has to clear 4.5:1 like anything else. axe cannot inspect
+   ::placeholder, so nothing else would have caught these. */
+.login-input-frame input::placeholder,
+.command-palette-search input::placeholder {
+  color: #5d6d66;
+  opacity: 1;
+}
+
+/* The premium shortcut cards use white surfaces. Keep both heading and helper copy
+   on explicit AA-safe foregrounds so inherited link colors can never dilute contrast. */
+.useful-grid a,
+.useful-grid a strong {
+  color: #0f3528;
+}
+
+.useful-grid a small {
+  color: #435a50;
+}
+
+/* --- Focus visibility -------------------------------------------------------
+   The amber ring alone measures 1.77:1 against white, so on the portal's light
+   surfaces it failed SC 1.4.11 (3:1 for non-text indicators). Pairing it with a
+   dark halo makes the indicator legible on both families of surface: the dark
+   ring carries light backgrounds (10.4:1 on white) and the amber carries the
+   dark green bands (5.9:1 on --primary-strong). */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(8, 44, 32, 0.45);
+}
+
+/* These three controls stripped their own outline, leaving the portal's most
+   used input, the admin credentials and the command palette with no keyboard
+   indicator at all. Restore one that survives their `outline:0` declarations. */
+.universal-search input:focus-visible,
+.login-input-frame input:focus-visible,
+.command-palette-search input:focus-visible {
+  outline: 3px solid var(--primary-strong) !important;
+  outline-offset: 1px;
+}
+
+/* A busca do portal é uma superfície composta (ícone + campo + botão). O indicador envolve a
+   superfície inteira, não o input nu — e a cor muda com o fundo em que ela se apoia: âmbar sobre
+   o verde escuro do hero (5,9:1) e verde escuro sobre as superfícies claras internas (10,4:1). */
+.portal-search-field input:focus-visible {
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.portal-search--hero .portal-search-field:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.portal-search--content .portal-search-field:focus-within {
+  outline: 3px solid var(--primary-strong);
+  outline-offset: 2px;
+}
+
+.login-input-frame:focus-within,
+.command-palette-search:focus-within {
+  border-color: var(--primary-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Alvos de toque ----------------------------------------------------------
+   Em telas de toque os controles precisam de 44px de altura (WCAG 2.2 SC 2.5.8
+   pede 24px; 44px é o alvo confortável adotado no restante do portal). */
+@media (pointer: coarse), (max-width: 760px) {
+  .filter-pill {
+    min-height: 44px;
+  }
+
+  /* Links de rodapé eram alvos de ~21px: o texto é curto, mas a área tocável não pode ser.
+     O mesmo vale para as buscas rápidas do hero, os links de seção e a chamada das notícias —
+     todos são ações primárias do portal, não texto corrido. */
+  .site-footer a,
+  .quick-needs a,
+  .section-link,
+  .read-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

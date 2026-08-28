@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { StatusBadge } from "@/components/ui";
 import { ResourcePayloadFields, serializeResourcePayload } from "./resource-payload-fields";
 
 type Resource = {
@@ -30,6 +31,32 @@ type Revision = {
 };
 
 const kinds = ["PAGE", "BANNER", "EVENT", "LEGISLATION", "DATASET", "LOCATION", "CONTACT", "ALERT", "MENU", "HOME_BLOCK", "PROCUREMENT_LINK", "ESIC_LINK", "OUVIDORIA_LINK"];
+
+// Onde cada tipo realmente aparece no portal. `null` significa que nenhuma rota pública lê este
+// tipo hoje: publicar continua gravando e versionando o registro, mas nada muda para o cidadão.
+// Dizer isto antes é preferível a deixar o servidor descobrir depois que publicou no vazio.
+const publicDestination: Record<string, string | null> = {
+  PAGE: "Páginas institucionais, pelo slug",
+  EVENT: "/agenda",
+  LOCATION: "/locais",
+  LEGISLATION: "/legislacao",
+  CONTACT: "/contatos",
+  PROCUREMENT_LINK: "/licitacoes",
+  MENU: "Menu de navegação do portal",
+  BANNER: null,
+  DATASET: null,
+  ALERT: null,
+  HOME_BLOCK: null,
+  ESIC_LINK: null,
+  OUVIDORIA_LINK: null,
+};
+
+// Slugs de PAGE que possuem rota pública. Qualquer outro slug fica governado no CMS sem
+// destino no portal até que uma rota passe a lê-lo.
+const routedPageSlugs = [
+  "home", "municipio", "gestao", "prefeito", "vice-prefeito", "conselhos", "obras",
+  "acesso-a-informacao", "esic-estatisticas", "esic-perguntas-frequentes", "calendario-licitacoes",
+];
 
 export function ResourceManager() {
   const [items, setItems] = useState<Resource[]>([]);
@@ -189,6 +216,7 @@ export function ResourceManager() {
         <label>Tipo <select value={kind} onChange={(event) => changeKind(event.target.value)}>{kinds.map((value) => <option key={value}>{value}</option>)}</select></label>
         {selected && <button type="button" className="action-button secondary" onClick={() => { setSelectedId(null); setRevisions([]); setMessage(""); }}>Novo conteúdo</button>}
       </div>
+      <PublicationDestination kind={kind} />
       {kind === "MENU" && items.length > 0 && <MenuStructureOverview items={items} />}
       {listState === "LOADING" && <p role="status" aria-live="polite">Carregando conteúdo governado…</p>}
       {listState === "ERROR" && <div className="form-message error" role="alert">Não foi possível carregar este tipo de conteúdo. <button type="button" className="action-button secondary" onClick={() => setReloadToken((current) => current + 1)}>Tentar novamente</button></div>}
@@ -198,7 +226,7 @@ export function ResourceManager() {
           <small style={{ display: "block" }}>{item.slug} · v{item.version}{scheduleLabel(item)}</small>
         </div>
         <div className="button-row">
-          <span className="status-pill">{item.status}</span>
+          <StatusBadge status={item.status} />
           <button type="button" className="action-button secondary" onClick={() => void selectResource(item)} aria-label={`Editar ${item.title}`}>Editar</button>
           {item.status !== "PUBLISHED" && item.status !== "ARCHIVED" && <button type="button" className="action-button" onClick={() => void transition(item.id, "publish")}>Publicar</button>}
           {item.status !== "ARCHIVED" && <button type="button" className="action-button secondary" onClick={() => void transition(item.id, "archive")}>Arquivar</button>}
@@ -280,6 +308,24 @@ function toDateTimeLocal(value: string | null) {
   if (Number.isNaN(date.getTime())) return "";
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+/** Diz, antes da publicação, onde o conteúdo deste tipo aparece — ou que ainda não aparece. */
+function PublicationDestination({ kind }: { kind: string }) {
+  const destination = publicDestination[kind];
+  if (destination === null) {
+    return <div className="warning-box" role="note">
+      <strong>Este tipo ainda não tem destino público.</strong>
+      <p>Nenhuma rota do portal lê conteúdo <code>{kind}</code> hoje. O registro é criado, versionado e auditado normalmente, mas não passa a ser exibido ao cidadão enquanto uma área pública não consumir este tipo.</p>
+    </div>;
+  }
+  if (kind === "PAGE") {
+    return <div className="ok-box" role="note">
+      <strong>Publica em: páginas institucionais.</strong>
+      <p>Uma página só aparece no portal quando seu slug corresponde a uma rota existente: {routedPageSlugs.join(", ")}. Outros slugs ficam governados aqui até que uma rota passe a lê-los.</p>
+    </div>;
+  }
+  return <div className="ok-box" role="note"><strong>Publica em: {destination}.</strong></div>;
 }
 
 function scheduleLabel(resource: Resource) {

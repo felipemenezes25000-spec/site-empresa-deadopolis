@@ -1,0 +1,121 @@
+/* Densidade do workspace administrativo.
+   Carregada depois de dashboard-premium.css, que dimensiona o cockpit com medidas de vitrine:
+   cartões de 147px para um número, zona editorial de 310px, respiro de 42px na área principal.
+   Um painel operacional é lido muitas vezes por dia — vale mais informação por tela que impacto.
+   Os raios também encolhem: a área pública é institucional, esta é ferramenta. */
+
+.admin-main {
+  padding: 30px clamp(20px, 3vw, 40px) !important;
+}
+
+.admin-heading {
+  margin-bottom: 20px;
+}
+
+.admin-heading h1 {
+  font-size: clamp(1.9rem, 3.4vw, 2.6rem);
+}
+
+.admin-panel {
+  margin-top: 16px !important;
+  padding: 20px !important;
+  border-radius: 12px;
+}
+
+.admin-panel h2 {
+  font-size: 1.22rem;
+}
+
+/* --- Cockpit ------------------------------------------------------------------ */
+.dashboard-stack { gap: 16px; }
+.dashboard-launchpad { gap: 8px; }
+
+.dashboard-launchpad a {
+  min-height: 62px;
+  padding: 10px 12px;
+  border-radius: 11px;
+}
+
+.dashboard-launch-icon { width: 34px; height: 34px; border-radius: 9px; }
+.dashboard-launchpad strong { font-size: .8rem; }
+
+.dashboard-bento { gap: 12px; }
+
+.dashboard-zone {
+  min-height: 0;
+  padding: 20px;
+  border-radius: 14px;
+}
+
+.dashboard-zone-heading strong { font-size: 1.3rem; }
+.dashboard-zone-metrics { gap: 8px; margin-top: 20px; }
+
+.metric-card,
+.dashboard-metric {
+  min-height: 0;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.dashboard-metric { min-height: 108px; }
+.dashboard-zone .dashboard-metric { min-height: 92px; }
+
+/* 2.45rem para um inteiro de um dígito é vitrine, não leitura operacional. */
+.dashboard-metric strong { font-size: 1.95rem !important; }
+.dashboard-metric i { width: 28px; height: 28px; border-radius: 8px; }
+.dashboard-metric-top > span { font-size: .68rem; }
+
+.dashboard-panel-heading { margin-bottom: 14px; }
+.dashboard-panel-heading h2 { font-size: 1.3rem; }
+
+.compact-item {
+  padding: 11px 13px !important;
+  border-radius: 10px;
+}
+
+.compact-list { gap: 6px; }
+
+.integration-row small { font-size: .82rem; }
+
+@media (max-width: 900px) {
+  .admin-main { padding: 22px 16px !important; }
+  .admin-panel { padding: 16px !important; }
+}
+
+/* --- Pré-visualização da notícia ---------------------------------------------- */
+.news-preview { grid-column: 1 / -1; }
+
+.news-preview-bar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
+.news-preview-bar h2 { margin: 2px 0 0; }
+.news-preview-bar .eyebrow { margin: 0; }
+
+.news-preview-viewports { display: flex; gap: 4px; padding: 3px; border: 1px solid rgba(15, 36, 28, .10); border-radius: 10px; background: var(--background); }
+.news-preview-viewports button {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 0 11px;
+  border: 0; border-radius: 7px; background: transparent;
+  color: #4f6058; font-size: .8rem; font-weight: 750; cursor: pointer;
+}
+.news-preview-viewports button:hover { background: #e7eeea; }
+.news-preview-viewports button.is-active { background: #fff; color: var(--primary-strong); box-shadow: 0 1px 2px rgba(6, 31, 22, .10); }
+
+/* O palco imita o fundo do portal para que a página não seja julgada sobre o cinza do painel. */
+.news-preview-stage { display: flex; justify-content: center; margin-top: 14px; padding: 20px; border-radius: 12px; background: var(--background); }
+.news-preview-frame { transition: width .22s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .news-preview-frame { transition: none; } }
+
+.news-preview-article { padding: 30px; border: 1px solid rgba(15, 36, 28, .085); border-radius: 14px; background: #fff; }
+.news-preview-article h1 { margin: 6px 0 0; font-family: var(--portal-display); font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 600; line-height: 1.12; letter-spacing: -.028em; }
+.news-preview-summary { margin: 12px 0 0; color: var(--muted); font-size: 1.03rem; line-height: 1.55; }
+.news-preview-cover { display: block; width: 100%; height: auto; margin-top: 18px; border-radius: 10px; }
+.news-preview-article p { line-height: 1.65; }
+.news-preview-empty { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .news-preview-stage { padding: 12px; }
+  .news-preview-article { padding: 20px; }
+}
+
+/* RichText produz <ul> de verdade; o reset do painel apagava os marcadores na prévia. */
+.news-preview-article ul { margin: 12px 0; padding-left: 22px; list-style: disc; }
+.news-preview-article li { margin: 3px 0; line-height: 1.6; }

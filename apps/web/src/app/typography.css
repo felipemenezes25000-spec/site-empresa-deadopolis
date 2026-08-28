@@ -1,0 +1,71 @@
+/* Tipografia do portal.
+   Carregada depois das folhas premium porque elas declaram as pilhas antigas com !important.
+   As variáveis vêm do next/font (layout.tsx), então as fontes são auto-hospedadas: nenhuma
+   requisição a servidor externo em execução. */
+
+:root {
+  --portal-sans: var(--font-sans-portal), ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --portal-display: var(--font-display-portal), Georgia, "Times New Roman", serif;
+}
+
+body {
+  font-family: var(--portal-sans);
+  font-feature-settings: "cv05" 1, "ss01" 1;
+  letter-spacing: -0.006em;
+}
+
+/* Antes: Georgia/Palatino em toda a hierarquia editorial — a peça mais datada da interface.
+   Newsreader mantém a autoridade institucional da serifada com desenho contemporâneo. */
+.hero-content h1,
+.page-intro h1,
+.section-heading h2,
+.participation-intro h2,
+.info-card h2,
+.info-card h3,
+.news-row h2,
+.story-copy h3,
+.recent-stories h3,
+.cms-banner-copy h2,
+.cms-link-grid h3,
+.admin-heading h1,
+.admin-route-error h1,
+.login-card h1,
+.prose-card h2,
+.side-card h2,
+.gazette-row-main h2,
+.dashboard-zone-heading strong,
+.dashboard-panel-heading h2,
+.admin-panel h2,
+.metric-card strong,
+.dashboard-metric strong {
+  font-family: var(--portal-display) !important;
+  font-weight: 600;
+  letter-spacing: -0.021em;
+}
+
+/* Números e rótulos operacionais pedem a sans: no painel eles são dado, não editorial. */
+.metric-card span,
+.dashboard-metric span,
+.service-number,
+.verification-hash,
+kbd,
+code {
+  font-family: var(--portal-sans);
+}
+
+.verification-hash,
+code {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+}
+
+.hero-content h1 {
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.service-copy strong,
+.useful-grid strong {
+  font-family: var(--portal-display) !important;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}

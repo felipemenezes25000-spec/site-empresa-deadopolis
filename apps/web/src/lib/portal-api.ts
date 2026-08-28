@@ -13,8 +13,8 @@ export type Department = { name: string; slug: string; acronym: string; managerN
 export type TransparencyLink = { title: string; category: string; url: string; description: string; isExternal?: boolean };
 export type SearchResult = { type: string; title: string; description: string; url: string; score?: number };
 export type SearchResponse = { query: string; usedFuzzy?: boolean; results: SearchResult[] };
-export type GazetteEdition = { id?: string; number: number; year: number; type: string; publicationDate: string; verificationCode: string | null; sha256: string | null; documentObjectKey: string | null };
-export type GazetteVerification = { number: number; year: number; publicationDate: string; sha256: string; verificationCode: string; certificateSubject: string | null; certificateIssuer: string | null; signedAt: string | null; status: string };
+export type GazetteEdition = { id?: string; number: number; year: number; type: string; typeName?: string; publicationDate: string; verificationCode: string | null; sha256: string | null; documentObjectKey: string | null };
+export type GazetteVerification = { id?: string; number: number; year: number; publicationDate: string; sha256: string; verificationCode: string; certificateSubject: string | null; certificateIssuer: string | null; signedAt: string | null; status: string };
 export type PortalResource = { id: string; kind: string; slug: string; title: string; summary: string; payload: unknown; displayOrder: number; startsAt: string | null; endsAt: string | null; publishedAt: string | null; version: number };
 export type PublicDocument = {
   id: string; category: string; subcategory: string; title: string; description: string;

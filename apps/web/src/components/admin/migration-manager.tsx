@@ -388,7 +388,8 @@ export function MigrationManager() {
   </>;
 }
 
-function stateLabel(value: string | number) {
+// Exportado para que o painel de importação use exatamente o mesmo vocabulário de estado.
+export function stateLabel(value: string | number) {
   if (typeof value === "number") return migrationStateNames[value] ?? `Estado ${value}`;
   const numeric = Number(value);
   if (Number.isInteger(numeric) && String(numeric) === value) return migrationStateNames[numeric] ?? `Estado ${value}`;
