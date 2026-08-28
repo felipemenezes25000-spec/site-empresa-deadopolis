@@ -153,3 +153,40 @@
     background: transparent !important;
   }
 }
+
+/* --- Hero público -------------------------------------------------------------
+   O gradiente anterior clareava para a direita (#082f21 -> #176b4d) e punha o realce
+   lima em 82% 18%, então todo o peso visual caía sobre a metade vazia da faixa, longe
+   do título e da busca. A luz passa a nascer atrás do conteúdo e a cair para as bordas.
+   A parada mais clara aqui é #14603f: texto branco sobre ela mede 7,5:1. */
+.service-hero {
+  background:
+    radial-gradient(120% 90% at 18% 32%, rgba(31, 122, 84, .55), transparent 62%),
+    radial-gradient(70% 60% at 8% 8%, rgba(216, 237, 114, .10), transparent 60%),
+    linear-gradient(160deg, #0b3a29 0%, #0a3324 42%, #072a1e 100%);
+}
+
+/* A curva decorativa acompanhava o antigo foco à direita; agora é só profundidade ao pé. */
+.service-hero::after {
+  inset: auto -14% -78% 46%;
+  background: rgba(255, 255, 255, .035);
+}
+
+.hero-pattern {
+  opacity: .07;
+  mask-image: linear-gradient(90deg, #000 0 34%, transparent 74%);
+}
+
+/* Respiro menor: 94/98px empurrava a lista de serviços para fora da primeira tela. */
+.hero-content {
+  padding-top: 76px;
+  padding-bottom: 80px;
+}
+
+.hero-lead {
+  margin: 22px 0 30px;
+}
+
+@media (max-width: 900px) {
+  .hero-content { padding-top: 60px; padding-bottom: 64px; }
+}
