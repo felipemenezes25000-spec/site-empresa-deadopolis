@@ -1,4 +1,4 @@
-import { CircleHelp, Headphones, Menu } from "lucide-react";
+import { CircleHelp, Headphones, Home, LayoutGrid, Menu, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -41,6 +41,12 @@ export function PortalChrome({ menuResources, presentationMode = false, children
     </header>
     {children}
     <footer className="site-footer"><div className="page-shell footer-grid"><div className="footer-brand"><span className="brand-mark inverse" aria-hidden="true">D</span><div><strong>Prefeitura de Deodápolis</strong><p>Serviço público próximo, claro e acessível.</p></div></div><div><h2>Atendimento</h2><p>Consulte endereços e horários atualizados no diretório de contatos.</p><Link href="/contatos">Ver contatos</Link></div><div><h2>Acesso direto</h2>{footerMenu.length > 0 ? footerMenu.flatMap(flattenMenu).slice(0, 8).map((node) => <MenuLink key={node.resource.id} node={node} />) : fallbackFooter.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div></div><div className="page-shell footer-bottom"><span>© 2026 Prefeitura Municipal de Deodápolis</span><span>Portal preparado para dispositivos móveis.</span></div></footer>
+    <nav className="public-mobile-dock" aria-label="Atalhos principais">
+      <Link href="/"><Home size={19} aria-hidden="true" /><span>Início</span></Link>
+      <Link href="/servicos"><LayoutGrid size={19} aria-hidden="true" /><span>Serviços</span></Link>
+      <Link className="public-mobile-dock-search" href="/buscar"><span><Search size={21} aria-hidden="true" /></span><small>Buscar</small></Link>
+      <Link href="/ouvidoria"><Headphones size={19} aria-hidden="true" /><span>Ouvidoria</span></Link>
+    </nav>
   </div>;
 }
 
