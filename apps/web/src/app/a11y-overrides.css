@@ -71,3 +71,24 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Alvos de toque ----------------------------------------------------------
+   Em telas de toque os controles precisam de 44px de altura (WCAG 2.2 SC 2.5.8
+   pede 24px; 44px é o alvo confortável adotado no restante do portal). */
+@media (pointer: coarse), (max-width: 760px) {
+  .filter-pill {
+    min-height: 44px;
+  }
+
+  /* Links de rodapé eram alvos de ~21px: o texto é curto, mas a área tocável não pode ser.
+     O mesmo vale para as buscas rápidas do hero, os links de seção e a chamada das notícias —
+     todos são ações primárias do portal, não texto corrido. */
+  .site-footer a,
+  .quick-needs a,
+  .section-link,
+  .read-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
