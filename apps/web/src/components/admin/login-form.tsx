@@ -40,7 +40,7 @@ export function LoginForm() {
       </div>
       <div className="field premium-login-field">
         <label htmlFor="password">Senha</label>
-        <div className="login-input-frame"><LockKeyhole size={18} aria-hidden="true" /><input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required placeholder="Sua senha" /><button type="button" className="login-password-toggle" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button></div>
+        <div className="login-input-frame"><LockKeyhole size={18} aria-hidden="true" /><input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required placeholder="Sua senha" /><button type="button" className="login-password-toggle" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ocultar caracteres" : "Exibir caracteres"}>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button></div>
       </div>
       {error && <div className="form-message error login-error" role="alert">{error}</div>}
       <button className="action-button premium-login-submit" disabled={loading} aria-busy={loading}>{loading ? <><span className="login-spinner" aria-hidden="true" /> Entrando…</> : <>Entrar <LogIn size={18} aria-hidden="true" /></>}</button>
