@@ -13,6 +13,29 @@ public sealed class SearchNormalizerTests
         Assert.Equal(expected, SearchNormalizer.Normalize(input));
     }
 
+    [Theory]
+    [InlineData("saúde", "saude")]
+    [InlineData("SAÚDE", "saude")]
+    [InlineData("Educação", "educacao")]
+    [InlineData("Licitações", "licitacoes")]
+    [InlineData("Órgão", "orgao")]
+    [InlineData("Matrícula", "matricula")]
+    public void NormalizeFoldsAccentsWithoutDependingOnUnicodeNormalization(string input, string expected)
+    {
+        // The Alpine runtime image starts in globalization-invariant mode, where String.Normalize
+        // silently returns the input unchanged. The folding must not rely on it.
+        Assert.Equal(expected, SearchNormalizer.Normalize(input));
+        Assert.Equal(expected, SearchNormalizer.Normalize(input.Normalize(System.Text.NormalizationForm.FormD)));
+    }
+
+    [Fact]
+    public void NormalizeTreatsAccentedAndUnaccentedQueriesAsTheSameTerm()
+    {
+        Assert.Equal(SearchNormalizer.Normalize("saude"), SearchNormalizer.Normalize("saúde"));
+        Assert.True(SearchNormalizer.IsDirectMatch("saúde", "Secretaria Municipal de Saúde"));
+        Assert.True(SearchNormalizer.IsDirectMatch("EDUCAÇÃO", "Secretaria Municipal de Educacao"));
+    }
+
     [Fact]
     public void TokenizeTreatsMunicipalDocumentPunctuationAsSeparators()
     {

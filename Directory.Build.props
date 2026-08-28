@@ -4,5 +4,8 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <!-- The runtime image ships without ICU, so every environment must behave the same way.
+         Building and testing in invariant mode surfaces culture dependencies before deployment. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 </Project>

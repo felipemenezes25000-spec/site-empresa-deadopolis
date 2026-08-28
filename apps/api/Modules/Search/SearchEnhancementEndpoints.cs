@@ -96,7 +96,7 @@ public static class SearchEnhancementEndpoints
             .Where(item => item.Score >= 160)
             .OrderByDescending(item => item.Score)
             .ThenByDescending(item => item.Candidate.Priority)
-            .ThenBy(item => item.Candidate.Title, StringComparer.Create(new System.Globalization.CultureInfo("pt-BR"), ignoreCase: true))
+            .ThenBy(item => SearchNormalizer.Normalize(item.Candidate.Title), StringComparer.Ordinal)
             .GroupBy(item => item.Candidate.Url, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
             .Take(limit)

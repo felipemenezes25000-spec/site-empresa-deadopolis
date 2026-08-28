@@ -5,15 +5,21 @@ namespace MunicipalPlatform.Api.Modules.Search.Domain;
 
 public static class SearchNormalizer
 {
+    // Unicode normalization is a silent no-op when the runtime starts in globalization-invariant
+    // mode, which is the default of the Alpine runtime image. Folding the Latin letters explicitly
+    // keeps "saúde" and "saude" equivalent in every environment the platform is deployed to.
+    private const string AccentedLetters = "àáâãäåāăąçćĉċčďđðèéêëēĕėęěĝğġģìíîïĩīĭįıĺļľŀłñńņňŉòóôõöøōŏőŕŗřśŝşšßţťŧùúûüũūŭůűųýÿŷžźż";
+    private const string AccentedUpperLetters = "ÀÁÂÃÄÅĀĂĄÇĆĈĊČĎĐÐÈÉÊËĒĔĖĘĚĜĞĠĢÌÍÎÏĨĪĬĮIĹĻĽĿŁÑŃŅŇŉÒÓÔÕÖØŌŎŐŔŖŘŚŜŞŠßŢŤŦÙÚÛÜŨŪŬŮŰŲÝŸŶŽŹŻ";
+    private const string FoldedLetters = "aaaaaaaaacccccdddeeeeeeeeeggggiiiiiiiiilllllnnnnnooooooooorrrssssstttuuuuuuuuuuyyyzzz";
+
     public static string Normalize(string input)
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        var decomposed = input.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(decomposed.Length);
+        var builder = new StringBuilder(input.Length);
         var pendingSpace = false;
 
-        foreach (var character in decomposed)
+        foreach (var character in input.Trim())
         {
             if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
             {
@@ -32,10 +38,19 @@ public static class SearchNormalizer
                 pendingSpace = false;
             }
 
-            builder.Append(character);
+            builder.Append(Fold(character));
         }
 
-        return builder.ToString().Normalize(NormalizationForm.FormC);
+        return builder.ToString();
+    }
+
+    private static char Fold(char character)
+    {
+        if (character is >= 'a' and <= 'z') return character;
+        if (character is >= 'A' and <= 'Z') return (char)(character + ('a' - 'A'));
+        var index = AccentedLetters.IndexOf(character, StringComparison.Ordinal);
+        if (index < 0) index = AccentedUpperLetters.IndexOf(character, StringComparison.Ordinal);
+        return index >= 0 ? FoldedLetters[index] : char.ToLowerInvariant(character);
     }
 
     public static string[] Tokenize(string input)
