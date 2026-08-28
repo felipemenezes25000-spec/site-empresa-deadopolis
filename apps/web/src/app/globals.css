@@ -153,9 +153,6 @@ button, input { font: inherit; }
 .error-page { display: grid; align-content: center; min-height: 100vh; width: min(640px, calc(100% - 40px)); margin: auto; }
 .error-page h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(2.2rem, 7vw, 4rem); line-height: 1.05; }
 .error-page button { justify-self: start; margin-top: 18px; padding: 12px 18px; border: 0; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; }
-.loading-page { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 100vh; color: var(--primary); font-weight: 700; }
-.loading-page span { width: 18px; height: 18px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 880px) {
   .header-actions { display: none; }
