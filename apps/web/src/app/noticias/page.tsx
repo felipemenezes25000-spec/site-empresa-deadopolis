@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyPanel, PageIntro, PublicShell } from "@/components/portal/public-shell";
-import { NEWS_CATEGORIES, newsCategoryLabel } from "@/lib/news-categories";
+import { NEWS_CATEGORIES, NEWS_FILTER_OPTIONS, newsCategoryLabel } from "@/lib/news-categories";
 import { getNews } from "@/lib/portal-api";
 
 export const metadata: Metadata = { title: "Notícias" };
@@ -15,7 +15,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
     <PageIntro eyebrow="Comunicação" title="Notícias da Prefeitura" description="Informações publicadas pela comunicação municipal e suas secretarias." />
     <section className="content-section"><div className="page-shell">
       <form className="archive-filters archive-filters--dedicated" action="/noticias">
-        <div><label htmlFor="news-category">Área da notícia</label><select id="news-category" name="category" defaultValue={selectedCategory}>{NEWS_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+        <div><label htmlFor="news-category">Área da notícia</label><select id="news-category" name="category" defaultValue={selectedCategory}>{NEWS_FILTER_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
         <button type="submit">Filtrar notícias</button>
       </form>
       {news.length === 0

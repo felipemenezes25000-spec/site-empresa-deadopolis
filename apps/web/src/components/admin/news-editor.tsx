@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { MediaPicker, RichTextEditor, type MediaPickerItem } from "@/components/ui";
+import { NewsPreview } from "./news-preview";
 import { NEWS_CATEGORIES } from "@/lib/news-categories";
 
 type Draft = { title: string; slug: string; summary: string; body: string; category: string; coverImageUrl: string; coverImageAlt: string; isFeatured: boolean };
@@ -137,6 +138,7 @@ export function NewsEditor({ articleId }: { articleId?: string }) {
       {message && <div className="form-message" role="status">{message}</div>}
       <h3>Checklist de qualidade</h3><ul><li>Título objetivo</li><li>Linha fina preenchida</li><li>Imagem com ALT quando houver</li><li>Links revisados</li><li>Responsável e categoria definidos no processo editorial</li></ul>
     </aside>
+    <NewsPreview draft={draft} />
   </div>;
 }
 

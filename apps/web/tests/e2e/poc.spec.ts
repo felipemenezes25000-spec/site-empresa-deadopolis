@@ -16,7 +16,8 @@ test("POC principal: cidadão, RBAC, CMS, Dados Abertos, Migração, E-mail, Ope
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
   await page.waitForURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: /Bom dia/i })).toBeVisible();
+  // A saudação segue o relógio de Campo Grande, então o trecho estável do título é o que se afirma.
+  await expect(page.getByRole("heading", { name: /Aqui está a operação/i })).toBeVisible();
 
   const suffix = Date.now().toString().slice(-8);
 

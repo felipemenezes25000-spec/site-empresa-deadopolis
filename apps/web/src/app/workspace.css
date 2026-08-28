@@ -81,3 +81,41 @@
   .admin-main { padding: 22px 16px !important; }
   .admin-panel { padding: 16px !important; }
 }
+
+/* --- Pré-visualização da notícia ---------------------------------------------- */
+.news-preview { grid-column: 1 / -1; }
+
+.news-preview-bar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
+.news-preview-bar h2 { margin: 2px 0 0; }
+.news-preview-bar .eyebrow { margin: 0; }
+
+.news-preview-viewports { display: flex; gap: 4px; padding: 3px; border: 1px solid rgba(15, 36, 28, .10); border-radius: 10px; background: #f4f7f5; }
+.news-preview-viewports button {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 0 11px;
+  border: 0; border-radius: 7px; background: transparent;
+  color: #4f6058; font-size: .8rem; font-weight: 750; cursor: pointer;
+}
+.news-preview-viewports button:hover { background: #e7eeea; }
+.news-preview-viewports button.is-active { background: #fff; color: var(--primary-strong); box-shadow: 0 1px 2px rgba(6, 31, 22, .10); }
+
+/* O palco imita o fundo do portal para que a página não seja julgada sobre o cinza do painel. */
+.news-preview-stage { display: flex; justify-content: center; margin-top: 14px; padding: 20px; border-radius: 12px; background: var(--background); }
+.news-preview-frame { transition: width .22s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .news-preview-frame { transition: none; } }
+
+.news-preview-article { padding: 30px; border: 1px solid rgba(15, 36, 28, .085); border-radius: 14px; background: #fff; }
+.news-preview-article h1 { margin: 6px 0 0; font-family: var(--portal-display); font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 600; line-height: 1.12; letter-spacing: -.028em; }
+.news-preview-summary { margin: 12px 0 0; color: var(--muted); font-size: 1.03rem; line-height: 1.55; }
+.news-preview-cover { display: block; width: 100%; height: auto; margin-top: 18px; border-radius: 10px; }
+.news-preview-article p { line-height: 1.65; }
+.news-preview-empty { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .news-preview-stage { padding: 12px; }
+  .news-preview-article { padding: 20px; }
+}
+
+/* RichText produz <ul> de verdade; o reset do painel apagava os marcadores na prévia. */
+.news-preview-article ul { margin: 12px 0; padding-left: 22px; list-style: disc; }
+.news-preview-article li { margin: 3px 0; line-height: 1.6; }
