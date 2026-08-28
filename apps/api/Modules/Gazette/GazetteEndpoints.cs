@@ -375,7 +375,11 @@ public static class GazetteEndpoints
         if (edition is null || string.IsNullOrWhiteSpace(edition.DocumentObjectKey)) return Results.NotFound();
         if (storage.State == "NOT_CONFIGURED") return Results.Problem(title: "Documento temporariamente indisponível", detail: "Storage de produção ainda não configurado.", statusCode: 503);
         var bytes = await storage.ReadAsync(edition.DocumentObjectKey, cancellationToken);
-        return bytes is null ? Results.NotFound() : Results.File(bytes, "application/pdf", $"diario-{edition.Year}-{edition.Number:D5}.pdf", enableRangeProcessing: true);
+        // A edicao publicada declara um artefato: se ele sumiu do storage isso e uma falha operacional,
+        // nao "documento inexistente". Responder 404 aqui esconderia a perda do arquivo oficial.
+        return bytes is null
+            ? Results.Problem(title: "Documento indisponível no storage", detail: "A edição está publicada e registrada, mas o arquivo referenciado não foi encontrado no storage configurado. Verifique a persistência do object storage antes de divulgar o link.", statusCode: 503)
+            : Results.File(bytes, "application/pdf", $"diario-{edition.Year}-{edition.Number:D5}.pdf", enableRangeProcessing: true);
     }
 
     private static async Task<IResult> QrAsync(string code, HttpContext context, ApplicationDbContext database, CancellationToken cancellationToken)

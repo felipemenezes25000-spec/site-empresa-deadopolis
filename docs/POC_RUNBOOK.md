@@ -56,6 +56,10 @@ Todos os usuários `.demo` usam a senha fornecida no ambiente. Dados sintéticos
 
 O roteiro automatizado completo está em `apps/web/tests/e2e/poc.spec.ts`; os fluxos específicos de Ouvidoria, mídia, redirects, busca, compliance, acessibilidade, responsividade e 404 estão nos demais arquivos de `apps/web/tests/e2e/`.
 
+## Persistência da demonstração
+
+O banco usa volume nomeado e sobrevive a reinícios. Os objetos gerados (PDF do Diário, mídia aprovada, arquivos de dataset) ficam em `tmpfs` porque os contêineres rodam com sistema de arquivos somente leitura: eles são apagados quando a API reinicia. O metadado permanece no banco, e a rota pública do documento passa a responder `503` com a causa em vez de fingir que a edição não existe. Antes de uma apresentação, gere novamente os artefatos ou execute o reset completo. Object storage persistente continua dependência externa.
+
 ## Reset
 
 O reset apaga somente o banco/volumes nomeados da stack de demonstração e recria o seed. Feche qualquer trabalho que precise ser preservado.

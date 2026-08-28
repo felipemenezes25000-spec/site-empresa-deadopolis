@@ -67,7 +67,7 @@ Os cenários E2E exigem a stack no ar e a mesma `DEMO_PASSWORD` usada pelo Compo
 npm --prefix apps/web run test:e2e
 ```
 
-A CI também valida migrations em banco limpo, idempotência, imagens Docker, vulnerabilidades críticas corrigíveis, segredos e 47 cenários E2E (POC executiva, Ouvidoria, mídia, redirects, busca, compliance, acessibilidade, responsividade, 404 e crawl interno).
+A CI também valida migrations em banco limpo, idempotência, imagens Docker, vulnerabilidades críticas corrigíveis, segredos e 48 cenários E2E (POC executiva, Ouvidoria, mídia, redirects, busca, compliance, acessibilidade, responsividade, 404 e crawl interno).
 
 ## Documentação
 
