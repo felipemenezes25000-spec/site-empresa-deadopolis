@@ -75,6 +75,18 @@ describe("API proxy route", () => {
     await expect(response.json()).resolves.toMatchObject({ status: 504 });
   });
 
+  it("refuses to leave the /api/v1 prefix, whatever the caller encodes into the path", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (const path of [["..", "..", "health", "ready"], ["%2e%2e", "health"], ["tickets", ".."], ["..%2fhealth"]]) {
+      const response = await GET(new NextRequest("http://portal.test/api/v1/x"), params(path));
+      expect(response.status, path.join("/")).toBe(400);
+    }
+
+    expect(fetchMock, "nenhuma tentativa de travessia pode alcançar a API").not.toHaveBeenCalled();
+  });
+
   it("keeps the request content encoding so the API can still read the body it was sent", async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true }, { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
