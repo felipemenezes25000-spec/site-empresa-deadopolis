@@ -69,7 +69,13 @@ function EventsBlock({ block }: { block: PageBlock }) {
 }
 
 function DocumentsBlock({ block }: { block: PageBlock }) {
-  return <section className="prose-card" data-block-type={block.type}><BlockIntro block={block} eyebrow="Documentos" />{block.items.length > 0 ? <div className="cms-document-list">{block.items.map((item) => <div key={item.id}><FileText aria-hidden="true" /><div><OptionalItemLink item={item} />{item.description && <p>{item.description}</p>}</div>{safeBlockHref(item.url) && <Download aria-label="Download disponível" />}</div>)}</div> : <EmptyBlockItems label="Nenhum documento publicado." />}</section>;
+  return <section className="prose-card" data-block-type={block.type}><BlockIntro block={block} eyebrow="Documentos" />{block.items.length > 0 ? <div className="cms-document-list">{block.items.map((item) => <div key={item.id}><FileText aria-hidden="true" /><div><OptionalItemLink item={item} />{item.description && <p>{item.description}</p>}{item.date && <small><time dateTime={item.date}>{formatBlockDate(item.date)}</time></small>}</div>{safeBlockHref(item.url) && <span className="cms-document-format"><Download size={16} aria-hidden="true" />{documentFormat(item.url)}</span>}</div>)}</div> : <EmptyBlockItems label="Nenhum documento publicado." />}</section>;
+}
+
+function documentFormat(url: string) {
+  const path = url.split(/[?#]/, 1)[0];
+  const extension = /\.([a-z0-9]{2,5})$/i.exec(path)?.[1];
+  return extension ? extension.toUpperCase() : "Arquivo";
 }
 
 function ContactBlock({ block }: { block: PageBlock }) {
@@ -77,7 +83,20 @@ function ContactBlock({ block }: { block: PageBlock }) {
 }
 
 function LinkGridBlock({ block }: { block: PageBlock }) {
-  return <section className="prose-card" data-block-type={block.type}><BlockIntro block={block} eyebrow={defaultTitle(block.type)} />{block.items.length > 0 ? <div className="cms-link-grid">{block.items.map((item) => <article key={item.id}><h3><OptionalItemLink item={item} /></h3>{item.description && <p>{item.description}</p>}</article>)}</div> : block.reference ? <BlockLink reference={block.reference}>{block.linkLabel || "Abrir"}</BlockLink> : <EmptyBlockItems label="Nenhum item publicado neste bloco." />}</section>;
+  const featured = block.type === "FeaturedNews";
+  return <section className="prose-card" data-block-type={block.type}><BlockIntro block={block} eyebrow={defaultTitle(block.type)} />{block.items.length > 0 ? <div className={`cms-link-grid${featured ? " is-featured" : ""}`}>{block.items.map((item) => <LinkGridCard key={item.id} item={item} />)}</div> : block.reference ? <BlockLink reference={block.reference}>{block.linkLabel || "Abrir"}</BlockLink> : <EmptyBlockItems label="Nenhum item publicado neste bloco." />}</section>;
+}
+
+function LinkGridCard({ item }: { item: PageBlockItem }) {
+  const mediaUrl = internalMediaUrl(item.mediaUrl);
+  return <article className={mediaUrl ? "has-media" : undefined}>
+    {mediaUrl && <ResponsiveMediaImage className="cms-link-grid-image" src={mediaUrl} width={640} height={360} sizes="(max-width: 760px) 100vw, 380px" alt={item.mediaAlt || item.label} />}
+    <div className="cms-link-grid-copy">
+      {item.date && <time dateTime={item.date}>{formatBlockDate(item.date)}</time>}
+      <h3><OptionalItemLink item={item} /></h3>
+      {item.description && <p>{item.description}</p>}
+    </div>
+  </article>;
 }
 
 function BlockIntro({ block, eyebrow }: { block: PageBlock; eyebrow: string }) {

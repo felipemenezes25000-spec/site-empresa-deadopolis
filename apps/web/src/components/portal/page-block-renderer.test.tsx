@@ -74,6 +74,37 @@ describe("PageBlockRenderer", () => {
     expect(screen.getByText("Link inseguro")).toBeInTheDocument();
   });
 
+  it("renders governed card covers and download formats for editorial grids", () => {
+    const mediaUrl = "/api/v1/media/44444444-4444-4444-4444-444444444444";
+    const { container } = render(<PageBlockRenderer payload={{ blocks: [
+      {
+        id: "featured",
+        type: "FeaturedNews",
+        title: "Destaques da semana",
+        items: [
+          { id: "story", label: "Nova UBS entregue", description: "Atendimento ampliado no distrito.", url: "/noticias/nova-ubs", date: "2026-09-01", mediaUrl, mediaAlt: "Fachada da nova unidade de saúde" },
+          { id: "external-cover", label: "Capa externa recusada", url: "/noticias/outra", mediaUrl: "https://images.example.test/cover.jpg", mediaAlt: "Capa externa" },
+        ],
+        enabled: true,
+      },
+      {
+        id: "docs",
+        type: "Documents",
+        title: "Documentos da semana",
+        items: [{ id: "pdf", label: "Balancete", url: "/api/v1/public-documents/55555555-5555-5555-5555-555555555555/download.pdf?v=2" }],
+        enabled: true,
+      },
+    ] }} />);
+
+    const cover = screen.getByRole("img", { name: "Fachada da nova unidade de saúde" });
+    expect(cover).toHaveAttribute("src", mediaUrl);
+    expect(container.querySelector("source[type='image/webp']")?.getAttribute("srcset")).toContain(`${mediaUrl}/variant`);
+    expect(screen.getByText("01/09/2026")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Capa externa" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Capa externa recusada" })).toHaveAttribute("href", "/noticias/outra");
+    expect(screen.getByText("PDF")).toBeInTheDocument();
+  });
+
   it("renders governed gallery media and ignores unknown block types", () => {
     render(<PageBlockRenderer payload={{ blocks: [
       {
