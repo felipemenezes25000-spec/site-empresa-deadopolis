@@ -116,3 +116,11 @@
 .transparency-archive { min-height: 0; margin-bottom: 18px; border-left: 5px solid var(--primary); }
 .transparency-archive .kicker { display: inline-flex; align-items: center; gap: 6px; }
 .transparency-categories .info-card { min-height: 168px; }
+
+/* --- Filtros de listagem pública --------------------------------------------- */
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filter-pill { display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--foreground); text-decoration: none; font-size: .84rem; font-weight: 700; }
+.filter-pill:hover { border-color: var(--primary); background: var(--surface-muted); color: var(--primary-strong); }
+.filter-pill[aria-current="true"] { border-color: var(--primary-strong); background: var(--primary-strong); color: #fff; }
+.result-count { margin: 0 0 18px; color: var(--muted); font-size: .9rem; }
+.result-count a { color: var(--primary); font-weight: 750; }
